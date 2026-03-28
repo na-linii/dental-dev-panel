@@ -78,48 +78,70 @@
 
 <!-- PAGE: ROADMAP -->
 <div class="page" id="page-roadmap">
-  <h2 style="font-size:1.1rem;margin-bottom:.5rem">Roadmap</h2>
-  <p style="font-size:.75rem;color:var(--muted);margin-bottom:1rem">Обновлено 28.03.2026</p>
-  <div class="progress">
-    <div class="seg g" style="width:50%">Этапы 1-3</div>
-    <div class="seg y" style="width:17%">Этап 4</div>
-    <div class="seg r" style="width:33%">5-6</div>
-  </div>
-  <div style="margin:1.5rem 0"><div class="grid">
-    <div class="card"><h3>Архитектура</h3><table>
-      <tr><td>Telegram Bot</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Chat Gateway + Streaming</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Dental Router</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>FAQ Agent (2-tier KB)</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Booking Agent (6 tools)</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>CRM Protocol + Google Sheets</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Handoff (operator)</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>LLM Fallback (OpenRouter)</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>CI/CD (GitHub Actions)</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Dental Hub + Langfuse</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Confirmation Agent</td><td><span class="tag wip">Валентин</span></td></tr>
-      <tr><td>IDENT Adapter</td><td><span class="tag no">Нет</span></td></tr>
-      <tr><td>WhatsApp / MAX</td><td><span class="tag skip">Потом</span></td></tr>
-      <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
-    </table></div>
-    <div class="card"><h3>Блокеры к понедельнику</h3><table>
-      <tr><td>Operator handoff</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Dental Hub</td><td><span class="tag ok">Готово</span></td></tr>
-      <tr><td>Confirmation flow</td><td><span class="tag wip">Валентин</span></td></tr>
-      <tr><td>Данные Элайнер РФ</td><td><span class="tag no">Нужно</span></td></tr>
-      <tr><td>Red button</td><td><span class="tag no">Нужно</span></td></tr>
-      <tr><td>E2E тесты</td><td><span class="tag wip">Модуль готов</span></td></tr>
-    </table></div>
-  </div></div>
-  <h3 style="font-size:.95rem;margin:1.5rem 0 .5rem">Таймлайн</h3>
-  <div class="timeline">
-    <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking, Identity, pgvector. 50 тестов.</div></div>
-    <div class="tl done"><div class="date">ЭТАП 2 — 28 марта (утро)</div><div class="title">CRM Gateway: Google Sheets</div><div class="desc">Protocol, adapter, 2 клиники, register_patient. 134 теста.</div></div>
-    <div class="tl done"><div class="date">ЭТАП 3 — 28 марта (день)</div><div class="title">Chat Gateway + Telegram + CI/CD</div><div class="desc">Gateway, polling, streaming, handoff, fallback LLM. 143 теста.</div></div>
-    <div class="tl done"><div class="date">ЭТАП 4 (частично) — 28 марта (вечер)</div><div class="title">Dental Hub + Langfuse migration</div><div class="desc">Hub API, Langfuse перенесён, ngrok tunnel, clinic registry.</div></div>
-    <div class="tl wip"><div class="date">ЭТАП 5 — 29-30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Confirmation agent, real data, E2E, red button.</div></div>
-    <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">IDENT + Telegram Business + MAX</div></div>
-    <div class="tl todo"><div class="date">ЭТАП 7 — Апрель</div><div class="title">Полная админ-панель + 10 клиник</div></div>
+  <div style="display:flex;gap:1.5rem;height:calc(100vh - 48px - 3rem)">
+
+    <!-- Left: text content -->
+    <div style="flex:1;overflow-y:auto;padding-right:1rem">
+      <h2 style="font-size:1.1rem;margin-bottom:.5rem">Roadmap</h2>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:1rem">Обновлено 29.03.2026</p>
+
+      <h3 style="font-size:.9rem;margin:1rem 0 .5rem;color:var(--accent)">Как работает система</h3>
+      <div class="card" style="font-size:.75rem;line-height:1.6;color:var(--muted)">
+        <p><b style="color:var(--text)">Dental Core</b> — инстанс клиники. 1 Docker-контейнер = 1 клиника. Содержит: Dental Router → FAQ/Booking Agent → Tools. Два gateway: Chat Gateway (Telegram) и CRM Gateway (Google Sheets). Промпты из Langfuse, модель gpt-5.4-mini + OpenRouter fallback.</p>
+        <p style="margin-top:.4rem"><b style="color:var(--text)">Dental Hub</b> — платформа управления. Langfuse (shared для всех клиник), Hub API (управление клиниками, proxy), ngrok (связь с удалёнными серверами). Фронтенд: клиники, визуализатор, roadmap.</p>
+        <p style="margin-top:.4rem"><b style="color:var(--text)">Разворачивание клиники:</b> YAML конфиг + env vars → docker compose up → CLINIC_ID выбирает клинику → agent подключается к Langfuse через Hub. 3-4 клиники на один сервер Yandex.</p>
+        <p style="margin-top:.4rem"><b style="color:var(--text)">В планах:</b> добавление новых агентов и настройка через Dental Hub UI. Confirmation Agent (Валентин), Reschedule Agent, Admin Agent (red button). Новые каналы: Telegram Business, WhatsApp, MAX. CRM: IDENT adapter.</p>
+      </div>
+
+      <h3 style="font-size:.9rem;margin:1rem 0 .5rem;color:var(--accent)">Компоненты</h3>
+      <div class="grid">
+        <div class="card"><h3>Готово</h3><table>
+          <tr><td>Dental Router</td><td><span class="tag ok">Core</span></td></tr>
+          <tr><td>FAQ Agent + Tier 1/2</td><td><span class="tag ok">Agent</span></td></tr>
+          <tr><td>Booking Agent + 5 tools</td><td><span class="tag ok">Agent</span></td></tr>
+          <tr><td>Handoff tool</td><td><span class="tag ok">Tool</span></td></tr>
+          <tr><td>Chat Gateway + Streaming</td><td><span class="tag ok">Gateway</span></td></tr>
+          <tr><td>CRM Gateway + Protocol</td><td><span class="tag ok">Gateway</span></td></tr>
+          <tr><td>Telegram Bot (polling)</td><td><span class="tag ok">Plugin</span></td></tr>
+          <tr><td>Google Sheets adapter</td><td><span class="tag ok">Plugin</span></td></tr>
+          <tr><td>LLM Fallback (OpenRouter)</td><td><span class="tag ok">Infra</span></td></tr>
+          <tr><td>CI/CD (GitHub Actions)</td><td><span class="tag ok">Infra</span></td></tr>
+          <tr><td>Dental Hub + Langfuse</td><td><span class="tag ok">Platform</span></td></tr>
+        </table></div>
+        <div class="card"><h3>В работе / Планируется</h3><table>
+          <tr><td>Confirmation Agent</td><td><span class="tag wip">Валентин</span></td></tr>
+          <tr><td>Telegram Business</td><td><span class="tag wip">Parse готов</span></td></tr>
+          <tr><td>Reschedule Agent</td><td><span class="tag no">Планируется</span></td></tr>
+          <tr><td>Admin Agent (red button)</td><td><span class="tag no">Планируется</span></td></tr>
+          <tr><td>IDENT CRM Adapter</td><td><span class="tag no">Планируется</span></td></tr>
+          <tr><td>WhatsApp (Wazzup)</td><td><span class="tag skip">Потом</span></td></tr>
+          <tr><td>MAX Messenger</td><td><span class="tag skip">Потом</span></td></tr>
+          <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
+          <tr><td>Hub: Deploy по кнопке</td><td><span class="tag no">Планируется</span></td></tr>
+          <tr><td>Hub: Создание агентов через UI</td><td><span class="tag no">Планируется</span></td></tr>
+        </table></div>
+      </div>
+
+      <h3 style="font-size:.9rem;margin:1rem 0 .5rem;color:var(--accent)">Таймлайн</h3>
+      <div class="timeline">
+        <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking, Identity, pgvector.</div></div>
+        <div class="tl done"><div class="date">ЭТАП 2 — 28 марта</div><div class="title">CRM Gateway + Chat Gateway + CI/CD</div><div class="desc">Google Sheets, Telegram Bot, auto-deploy.</div></div>
+        <div class="tl done"><div class="date">ЭТАП 3 — 28 марта</div><div class="title">Dental Hub + Langfuse migration</div><div class="desc">Hub API, визуализатор, trace animation.</div></div>
+        <div class="tl wip"><div class="date">ЭТАП 4 — 29-30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Confirmation agent, real data, Telegram Business.</div></div>
+        <div class="tl todo"><div class="date">ЭТАП 5 — Апрель</div><div class="title">Новые агенты через Hub</div><div class="desc">Reschedule, Admin, создание агентов через UI.</div></div>
+        <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">10 клиник + IDENT + каналы</div><div class="desc">WhatsApp, MAX, IDENT adapter, deploy по кнопке.</div></div>
+      </div>
+    </div>
+
+    <!-- Right: 3D architecture visualization -->
+    <div style="width:45%;min-width:400px;position:relative">
+      <div id="roadmap-viz" style="width:100%;height:100%;border-radius:10px;overflow:hidden"></div>
+      <div style="position:absolute;top:.5rem;left:.5rem;font-size:.6rem;color:var(--muted);display:flex;gap:8px">
+        <span style="color:#10b981">● Готово</span>
+        <span style="color:#f59e0b">● В работе</span>
+        <span style="color:#555">● Планируется</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -127,6 +149,7 @@
 <script src="js/auth.js"></script>
 <script src="js/app.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/roadmap.js"></script>
 <!-- Modules: viz + trace load async, won't block login -->
 <script type="module" src="js/viz.js"></script>
 <script type="module" src="js/trace.js"></script>

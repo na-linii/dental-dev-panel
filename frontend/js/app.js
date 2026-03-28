@@ -15,6 +15,9 @@ window.showPage = function(id) {
   if (page) page.classList.add('active');
   var tab = document.querySelector('.tab[data-page="' + id + '"]');
   if (tab) tab.classList.add('active');
+  if (id === 'roadmap' && window.initRoadmapViz) {
+    setTimeout(window.initRoadmapViz, 300);
+  }
 };
 
 /* =================== CLINICS =================== */
