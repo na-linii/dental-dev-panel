@@ -9,7 +9,6 @@
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-    /* NAV */
     nav{background:var(--card);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;height:48px;gap:1.5rem}
     nav .logo{font-weight:700;color:var(--accent);font-size:.95rem}
     nav .tabs{display:flex;gap:0}
@@ -20,11 +19,7 @@
     nav .user img{width:24px;height:24px;border-radius:50%}
     nav .user .name{color:var(--text)}
 
-    /* PAGES */
-    .page{display:none;padding:1.5rem}
-    .page.active{display:block}
-
-    /* GRID */
+    .page{display:none;padding:1.5rem}.page.active{display:block}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
     .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem}
     .card h3{font-size:.9rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
@@ -36,16 +31,9 @@
     .tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.65rem;font-weight:600}
     .tag.ok{background:#052e16;color:var(--green)}.tag.wip{background:#422006;color:var(--yellow)}.tag.no{background:#450a0a;color:var(--red)}.tag.skip{background:#1e293b;color:var(--muted)}
 
-    /* ENV EDITOR */
-    .env-grid{display:grid;grid-template-columns:140px 1fr;gap:4px 8px;font-size:.78rem;align-items:center}
-    .env-grid label{color:var(--muted);font-size:.7rem}
-    .env-grid input,.env-grid select{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.78rem;outline:none}
-    .env-grid input:focus{border-color:var(--accent)}
-
-    /* 3D */
     #viz-wrap{position:relative;width:100%;height:calc(100vh - 48px - 3rem)}
     #viz-graph{width:calc(100% - 300px);height:100%;display:inline-block;vertical-align:top}
-    #viz-chat{width:300px;height:100%;display:inline-block;vertical-align:top;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;position:absolute;right:0;top:0}
+    #viz-chat{width:300px;height:100%;position:absolute;right:0;top:0;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column}
     #viz-msgs{flex:1;overflow-y:auto;padding:6px 10px;font-size:.78rem}
     .vm{margin:3px 0;padding:4px 8px;border-radius:6px;max-width:88%;word-wrap:break-word}
     .vm.u{background:#1e3a5f;color:#bfdbfe;margin-left:auto;text-align:right}
@@ -55,7 +43,6 @@
     #viz-iw input{flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.78rem;outline:none}
     #viz-iw button{padding:5px 10px;border-radius:5px;border:none;background:#7c3aed;color:white;font-size:.78rem;cursor:pointer}
 
-    /* ROADMAP */
     .timeline{position:relative;padding-left:1.5rem}
     .timeline::before{content:'';position:absolute;left:.5rem;top:0;bottom:0;width:2px;background:var(--border)}
     .tl{position:relative;margin-bottom:1.2rem}
@@ -66,29 +53,34 @@
     .tl .date{font-size:.65rem;color:var(--muted);font-weight:600}
     .tl .title{font-weight:600;font-size:.85rem}
     .tl .desc{font-size:.75rem;color:var(--muted);margin-top:.2rem}
-
-    /* PROGRESS */
     .progress{height:20px;background:#1e293b;border-radius:5px;overflow:hidden;display:flex;margin:.5rem 0}
     .progress .seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:600;color:white}
     .seg.g{background:var(--green)}.seg.y{background:var(--yellow)}.seg.r{background:var(--red)}
 
     /* LOGIN */
-    #login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
-    #login-overlay h1{color:var(--accent);font-size:1.5rem}
-    #login-overlay p{color:var(--muted);font-size:.85rem}
-    #login-overlay button{padding:.6rem 1.5rem;border-radius:8px;border:none;background:var(--card);color:var(--text);font-size:.9rem;cursor:pointer;border:1px solid var(--border)}
-    #login-overlay button:hover{background:#1e293b}
-    #login-overlay.hidden{display:none}
+    #login{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+    #login h1{color:var(--accent);font-size:1.5rem}
+    #login p{color:var(--muted);font-size:.85rem;max-width:400px;text-align:center;line-height:1.5}
+    #login input{width:360px;padding:.5rem .8rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;outline:none;text-align:center}
+    #login input:focus{border-color:var(--accent)}
+    #login button{padding:.5rem 1.5rem;border-radius:8px;border:none;background:var(--accent);color:var(--bg);font-size:.85rem;font-weight:600;cursor:pointer}
+    #login button:hover{opacity:.9}
+    #login .err{color:var(--red);font-size:.8rem;min-height:1.2rem}
+    #login a{color:var(--accent);font-size:.75rem}
+    #login.hidden{display:none}
   </style>
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="login-overlay">
+<!-- LOGIN: GitHub PAT verification -->
+<div id="login">
   <h1>Dental Core</h1>
-  <p>Dev Panel — только для команды</p>
-  <button onclick="loginGH()">Login with GitHub</button>
+  <p>Dev Panel. Доступ только для участников na-linii.<br>Вставь GitHub Personal Access Token с scope <b>read:org</b></p>
+  <a href="https://github.com/settings/tokens/new?scopes=read:org&description=dental-dev-panel" target="_blank">Создать токен (read:org)</a>
+  <input id="login-token" type="password" placeholder="ghp_... или github_pat_...">
+  <div class="err" id="login-err"></div>
+  <button onclick="doLogin()">Войти</button>
 </div>
 
 <!-- NAV -->
@@ -102,7 +94,7 @@
   <div class="user">
     <img id="user-avatar" src="">
     <span id="user-name" class="name"></span>
-    <span style="cursor:pointer;color:var(--red)" onclick="logout()">выйти</span>
+    <span style="cursor:pointer;color:var(--red)" onclick="doLogout()">выйти</span>
   </div>
 </nav>
 
@@ -118,7 +110,7 @@
     <div id="viz-graph"></div>
     <div id="viz-chat">
       <div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--accent);font-weight:600">
-        Chat — <select id="viz-clinic" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:.75rem;padding:1px 4px" onchange="vizClinicChanged()"></select>
+        Chat — <select id="viz-clinic" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:.75rem;padding:1px 4px"></select>
       </div>
       <div id="viz-msgs"><div class="vm s">Выбери клинику и напиши сообщение</div></div>
       <div id="viz-iw">
@@ -133,56 +125,45 @@
 <div class="page" id="page-roadmap">
   <h2 style="font-size:1.1rem;margin-bottom:.5rem">Roadmap</h2>
   <p style="font-size:.75rem;color:var(--muted);margin-bottom:1rem">Обновлено 28.03.2026</p>
-
   <div class="progress">
     <div class="seg g" style="width:50%">Этапы 1-3</div>
     <div class="seg y" style="width:17%">Этап 4</div>
     <div class="seg r" style="width:33%">5-6</div>
   </div>
-
-  <div style="margin:1.5rem 0">
-    <div class="grid">
-      <div class="card">
-        <h3>Архитектура</h3>
-        <table>
-          <tr><td>Telegram Bot</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Chat Gateway + Streaming</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Dental Router</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>FAQ Agent (2-tier KB)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Booking Agent (5 tools)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>CRM Protocol + Google Sheets</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Handoff (operator)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>LLM Fallback (OpenRouter)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>CI/CD (GitHub Actions)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Telegram Business</td><td><span class="tag wip">Parse есть</span></td></tr>
-          <tr><td>Confirmation Agent</td><td><span class="tag wip">Валентин</span></td></tr>
-          <tr><td>IDENT Adapter</td><td><span class="tag no">Нет</span></td></tr>
-          <tr><td>Админ-панель</td><td><span class="tag no">Нет</span></td></tr>
-          <tr><td>WhatsApp / MAX</td><td><span class="tag skip">Потом</span></td></tr>
-          <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
-        </table>
-      </div>
-      <div class="card">
-        <h3>Блокеры к понедельнику</h3>
-        <table>
-          <tr><td>Operator handoff</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Confirmation flow</td><td><span class="tag wip">Валентин</span></td></tr>
-          <tr><td>Primary patient block</td><td><span class="tag wip">Тестируем</span></td></tr>
-          <tr><td>Данные Элайнер РФ</td><td><span class="tag no">Нужно</span></td></tr>
-          <tr><td>Red button</td><td><span class="tag no">Нужно</span></td></tr>
-          <tr><td>Persistent checkpointer</td><td><span class="tag no">Желательно</span></td></tr>
-          <tr><td>E2E тесты</td><td><span class="tag wip">Модуль готов</span></td></tr>
-        </table>
-      </div>
-    </div>
-  </div>
-
+  <div style="margin:1.5rem 0"><div class="grid">
+    <div class="card"><h3>Архитектура</h3><table>
+      <tr><td>Telegram Bot</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>Chat Gateway + Streaming</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>Dental Router</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>FAQ Agent (2-tier KB)</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>Booking Agent (5 tools)</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>CRM Protocol + Google Sheets</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>Handoff (operator)</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>LLM Fallback (OpenRouter)</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>CI/CD (GitHub Actions)</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>Telegram Business</td><td><span class="tag wip">Parse есть</span></td></tr>
+      <tr><td>Confirmation Agent</td><td><span class="tag wip">Валентин</span></td></tr>
+      <tr><td>IDENT Adapter</td><td><span class="tag no">Нет</span></td></tr>
+      <tr><td>Админ-панель</td><td><span class="tag no">Нет</span></td></tr>
+      <tr><td>WhatsApp / MAX</td><td><span class="tag skip">Потом</span></td></tr>
+      <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
+    </table></div>
+    <div class="card"><h3>Блокеры к понедельнику</h3><table>
+      <tr><td>Operator handoff</td><td><span class="tag ok">Готово</span></td></tr>
+      <tr><td>Confirmation flow</td><td><span class="tag wip">Валентин</span></td></tr>
+      <tr><td>Primary patient block</td><td><span class="tag wip">Тестируем</span></td></tr>
+      <tr><td>Данные Элайнер РФ</td><td><span class="tag no">Нужно</span></td></tr>
+      <tr><td>Red button</td><td><span class="tag no">Нужно</span></td></tr>
+      <tr><td>Persistent checkpointer</td><td><span class="tag no">Желательно</span></td></tr>
+      <tr><td>E2E тесты</td><td><span class="tag wip">Модуль готов</span></td></tr>
+    </table></div>
+  </div></div>
   <h3 style="font-size:.95rem;margin:1.5rem 0 .5rem">Таймлайн</h3>
   <div class="timeline">
-    <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking agents, Identity, pgvector, YAML configs. 50 тестов.</div></div>
-    <div class="tl done"><div class="date">ЭТАП 2 — 28 марта (утро)</div><div class="title">CRM API: Google Sheets</div><div class="desc">Protocol, adapter, registry, 2 клиники, register_patient. 134 теста.</div></div>
-    <div class="tl done"><div class="date">ЭТАП 3 — 28 марта (день)</div><div class="title">Chat Gateway + Telegram + CI/CD</div><div class="desc">Gateway, polling, streaming, handoff, fallback LLM. 143 теста. Auto-deploy.</div></div>
-    <div class="tl wip"><div class="date">ЭТАП 4 — 28-30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Confirmation agent (Валентин), real data, E2E testing, red button.</div></div>
+    <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking, Identity, pgvector. 50 тестов.</div></div>
+    <div class="tl done"><div class="date">ЭТАП 2 — 28 марта (утро)</div><div class="title">CRM API: Google Sheets</div><div class="desc">Protocol, adapter, 2 клиники, register_patient. 134 теста.</div></div>
+    <div class="tl done"><div class="date">ЭТАП 3 — 28 марта (день)</div><div class="title">Chat Gateway + Telegram + CI/CD</div><div class="desc">Gateway, polling, streaming, handoff, fallback LLM. 143 теста.</div></div>
+    <div class="tl wip"><div class="date">ЭТАП 4 — 28-30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Confirmation agent, real data, E2E, red button.</div></div>
     <div class="tl todo"><div class="date">ЭТАП 5 — Апрель</div><div class="title">IDENT + Telegram Business + MAX</div></div>
     <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">Админ-панель + 10 клиник</div></div>
   </div>
@@ -191,57 +172,61 @@
 <script type="module">
 import SpriteText from "https://esm.sh/three-spritetext";
 
-// =================== CLINICS DATA ===================
+const ORG = 'na-linii';
 const CLINICS = [
-  {
-    id: 'healthy_rodent', name: 'Здоровый Грызун', env: 'local',
-    url: 'http://localhost:8080', status: 'running',
-    config: {
-      CLINIC_ID: 'healthy_rodent', TELEGRAM_BOT_TOKEN: '(local .env)',
-      CRM: 'Google Sheets (full r/w)', MODEL: 'gpt-5.2',
-      STREAMING: 'true', HANDOFF_COOLDOWN: '30 min',
-    }
-  },
-  {
-    id: 'zubatka', name: 'Зубатка', env: 'yandex',
-    url: 'http://158.160.240.47:8080', status: 'running',
-    config: {
-      CLINIC_ID: 'zubatka', TELEGRAM_BOT_TOKEN: '@shmali_robot',
-      CRM: 'Google Sheets (restricted)', MODEL: 'gpt-5.2',
-      STREAMING: 'true', HANDOFF_COOLDOWN: '30 min',
-    }
-  }
+  { id:'healthy_rodent', name:'Здоровый Грызун', env:'local', url:'http://localhost:8080',
+    config:{ CLINIC_ID:'healthy_rodent', CRM:'Google Sheets (full r/w)', MODEL:'gpt-5.2', STREAMING:'true' }},
+  { id:'zubatka', name:'Зубатка', env:'yandex', url:'http://158.160.240.47:8080',
+    config:{ CLINIC_ID:'zubatka', CRM:'Google Sheets (restricted)', MODEL:'gpt-5.2', STREAMING:'true' }},
 ];
 
 // =================== AUTH ===================
-const ALLOWED_USERS = ['mk-amorson', 'amorson-na-linii', 'valentin-nls'];
+async function verifyToken(token) {
+  // 1. Check token works
+  const userResp = await fetch('https://api.github.com/user', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (!userResp.ok) throw new Error('Invalid token');
+  const user = await userResp.json();
 
-window.loginGH = function() {
-  // Simple: check localStorage for saved user, or prompt
-  const user = prompt('GitHub username:');
-  if (!user) return;
-  if (!ALLOWED_USERS.includes(user.toLowerCase()) && !ALLOWED_USERS.some(u => user.toLowerCase().includes(u.split('-')[0]))) {
-    alert('Access denied. Only team members allowed.');
-    return;
+  // 2. Check org membership
+  const orgResp = await fetch('https://api.github.com/orgs/' + ORG + '/members/' + user.login, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (orgResp.status !== 204) throw new Error('Not a member of ' + ORG);
+
+  return { login: user.login, avatar: user.avatar_url, name: user.name || user.login };
+}
+
+window.doLogin = async function() {
+  const token = document.getElementById('login-token').value.trim();
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  if (!token) { errEl.textContent = 'Вставь токен'; return; }
+
+  errEl.textContent = 'Проверяю...';
+  try {
+    const user = await verifyToken(token);
+    // Save encrypted-ish (base64 is not encryption, but token stays in localStorage only)
+    localStorage.setItem('dp_token', btoa(token));
+    localStorage.setItem('dp_user', JSON.stringify(user));
+    initApp(user);
+  } catch(e) {
+    errEl.textContent = e.message;
   }
-  localStorage.setItem('dental_user', user);
-  localStorage.setItem('dental_avatar', `https://github.com/${user}.png`);
-  initApp();
 };
 
-window.logout = function() {
-  localStorage.removeItem('dental_user');
-  localStorage.removeItem('dental_avatar');
+window.doLogout = function() {
+  localStorage.removeItem('dp_token');
+  localStorage.removeItem('dp_user');
   location.reload();
 };
 
-function initApp() {
-  const user = localStorage.getItem('dental_user');
-  if (!user) return;
-  document.getElementById('login-overlay').classList.add('hidden');
+function initApp(user) {
+  document.getElementById('login').classList.add('hidden');
   document.getElementById('main-nav').style.display = 'flex';
-  document.getElementById('user-name').textContent = user;
-  document.getElementById('user-avatar').src = localStorage.getItem('dental_avatar') || '';
+  document.getElementById('user-name').textContent = user.login;
+  document.getElementById('user-avatar').src = user.avatar;
   renderClinics();
   showPage('clinics');
 }
@@ -251,11 +236,11 @@ window.showPage = function(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  document.querySelector(`.tab[onclick*="${id}"]`).classList.add('active');
+  document.querySelector('.tab[onclick*="'+id+'"]').classList.add('active');
   if (id === 'viz') initViz();
 };
 
-// =================== CLINICS PAGE ===================
+// =================== CLINICS ===================
 function renderClinics() {
   const grid = document.getElementById('clinics-grid');
   grid.innerHTML = '';
@@ -263,32 +248,29 @@ function renderClinics() {
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
-      <h3><div class="dot" style="background:${c.status==='running'?'var(--green)':'var(--red)'}"></div>${c.name} <span style="font-weight:400;color:var(--muted);font-size:.7rem">(${c.env})</span></h3>
+      <h3><div class="dot" style="background:var(--green)"></div>${c.name} <span style="font-weight:400;color:var(--muted);font-size:.7rem">(${c.env})</span></h3>
       <table>
-        <tr><td style="color:var(--muted)">URL</td><td><a href="${c.url}/health" target="_blank" style="color:var(--accent);text-decoration:none;font-size:.75rem">${c.url}</a></td></tr>
+        <tr><td style="color:var(--muted)">URL</td><td style="font-size:.75rem">${c.url}</td></tr>
         ${Object.entries(c.config).map(([k,v]) => `<tr><td style="color:var(--muted)">${k}</td><td style="font-size:.75rem">${v}</td></tr>`).join('')}
       </table>
       <div style="margin-top:.5rem;display:flex;gap:.3rem">
-        <button onclick="checkHealth('${c.url}')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;cursor:pointer">Health Check</button>
-        <button onclick="showPage('viz');document.getElementById('viz-clinic').value='${c.id}';vizClinicChanged()" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;cursor:pointer">Open Chat</button>
-      </div>
-    `;
+        <button onclick="healthCheck('${c.url}')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;cursor:pointer">Health</button>
+        <button onclick="showPage('viz');document.getElementById('viz-clinic').value='${c.id}'" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;cursor:pointer">Chat</button>
+      </div>`;
     grid.appendChild(card);
   });
 }
 
-window.checkHealth = async function(url) {
+window.healthCheck = async function(url) {
   try {
-    const r = await fetch(url + '/health', {mode:'no-cors'});
-    alert('Health: OK (request sent)');
-  } catch(e) {
-    alert('Cannot reach: ' + e.message);
-  }
+    const r = await fetch(url + '/health');
+    const d = await r.json();
+    alert('Health: ' + JSON.stringify(d));
+  } catch(e) { alert('Unreachable: ' + e.message); }
 };
 
 // =================== VISUALIZER ===================
 let vizGraph = null;
-
 function initViz() {
   if (vizGraph) return;
   const sel = document.getElementById('viz-clinic');
@@ -316,7 +298,7 @@ function initViz() {
     {id:'identity',name:'Identity',group:'gateway',val:7},
     {id:'admin',name:'Admin TG',group:'external',val:6},
   ];
-  const L = [
+  const Li = [
     {source:'telegram',target:'gateway'},{source:'gateway',target:'identity'},
     {source:'identity',target:'postgres'},{source:'gateway',target:'router'},
     {source:'router',target:'faq'},{source:'router',target:'booking'},
@@ -337,60 +319,57 @@ function initViz() {
   const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444'};
 
   vizGraph = new ForceGraph3D(document.getElementById('viz-graph'))
-    .graphData({nodes:N,links:L})
+    .graphData({nodes:N,links:Li})
     .backgroundColor('#0a0a1a')
-    .nodeVal('val')
-    .nodeColor(n=>C[n.group]||'#888')
-    .nodeOpacity(0.9)
-    .linkColor(()=>'rgba(255,255,255,0.12)')
-    .linkWidth(0.7)
-    .linkDirectionalParticles(0)
-    .linkDirectionalParticleWidth(3)
-    .linkDirectionalParticleColor(()=>'#7dd3fc')
-    .linkDirectionalParticleSpeed(0.012)
+    .nodeVal('val').nodeColor(n=>C[n.group]||'#888').nodeOpacity(0.9)
+    .linkColor(()=>'rgba(255,255,255,0.12)').linkWidth(0.7)
+    .linkDirectionalParticles(0).linkDirectionalParticleWidth(3)
+    .linkDirectionalParticleColor(()=>'#7dd3fc').linkDirectionalParticleSpeed(0.012)
     .nodeThreeObject(node=>{
-      const sprite=new SpriteText(node.name);
-      sprite.color=C[node.group]||'#ccc';
-      sprite.textHeight=3;
-      sprite.material.depthWrite=false;
-      sprite.center.set(0,-0.8);
-      return sprite;
-    })
-    .nodeThreeObjectExtend(true);
-
+      const s=new SpriteText(node.name);s.color=C[node.group]||'#ccc';
+      s.textHeight=3;s.material.depthWrite=false;s.center.set(0,-0.8);return s;
+    }).nodeThreeObjectExtend(true);
   vizGraph.d3Force('charge').strength(-160);
   vizGraph.d3Force('link').distance(55);
 }
 
-window.vizClinicChanged = function() {};
-
 window.vizSend = async function() {
-  const inp = document.getElementById('viz-inp');
-  const t = inp.value.trim(); if (!t) return; inp.value = '';
-  const msgs = document.getElementById('viz-msgs');
-  const clinicId = document.getElementById('viz-clinic').value;
-  const clinic = CLINICS.find(c => c.id === clinicId);
-  const url = clinic ? clinic.url : '';
+  const inp=document.getElementById('viz-inp');
+  const t=inp.value.trim();if(!t)return;inp.value='';
+  const msgs=document.getElementById('viz-msgs');
+  const cid=document.getElementById('viz-clinic').value;
+  const clinic=CLINICS.find(c=>c.id===cid);
+  if(!clinic)return;
 
-  const d1 = document.createElement('div'); d1.className = 'vm u'; d1.textContent = t;
-  msgs.appendChild(d1); msgs.scrollTop = msgs.scrollHeight;
+  const d1=document.createElement('div');d1.className='vm u';d1.textContent=t;
+  msgs.appendChild(d1);msgs.scrollTop=msgs.scrollHeight;
 
-  try {
-    const r = await fetch(url + '/chat', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({message:t, clinic_id:clinicId, channel_user_id:'devpanel-'+Date.now()})
-    });
-    const d = await r.json();
-    const d2 = document.createElement('div'); d2.className = 'vm b'; d2.textContent = d.response || 'No response';
-    msgs.appendChild(d2); msgs.scrollTop = msgs.scrollHeight;
-  } catch(e) {
-    const d3 = document.createElement('div'); d3.className = 'vm s'; d3.textContent = 'Error: ' + e.message;
+  try{
+    const r=await fetch(clinic.url+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:t,clinic_id:cid,channel_user_id:'devpanel-'+Date.now()})});
+    const d=await r.json();
+    const d2=document.createElement('div');d2.className='vm b';d2.textContent=d.response||'No response';
+    msgs.appendChild(d2);msgs.scrollTop=msgs.scrollHeight;
+  }catch(e){
+    const d3=document.createElement('div');d3.className='vm s';d3.textContent='Error: '+e.message;
     msgs.appendChild(d3);
   }
 };
 
 // =================== INIT ===================
-if (localStorage.getItem('dental_user')) initApp();
+const saved = localStorage.getItem('dp_user');
+const savedToken = localStorage.getItem('dp_token');
+if (saved && savedToken) {
+  try {
+    const user = JSON.parse(saved);
+    // Re-verify token silently
+    verifyToken(atob(savedToken)).then(u => initApp(u)).catch(() => {
+      localStorage.removeItem('dp_token');
+      localStorage.removeItem('dp_user');
+      location.reload();
+    });
+  } catch(e) { /* show login */ }
+}
 </script>
 </body>
 </html>
