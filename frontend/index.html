@@ -326,14 +326,14 @@ async function initViz() {
     .backgroundColor('#0a0a1a')
     .nodeVal(n => Math.max(4, (n.val || 5) * 0.6))
     .nodeColor(n => C[n.group] || '#888').nodeOpacity(0.85)
-    .linkColor(() => 'rgba(255,255,255,0.1)').linkWidth(0.5)
+    .linkColor(() => 'rgba(255,255,255,0.35)').linkWidth(1.5)
     .linkDirectionalParticles(0).linkDirectionalParticleWidth(3)
     .linkDirectionalParticleColor(() => '#7dd3fc').linkDirectionalParticleSpeed(0.012)
     .nodeThreeObject(node => {
       const group = new THREE.Group();
 
       // Low-poly sphere (icosahedron, detail=0 = 20 faces, looks like faceted gem)
-      const r = Math.cbrt(node.val || 5) * 1.2;
+      const r = Math.cbrt(node.val || 5) * 7;
       const shape = new THREE.Mesh(
         new THREE.IcosahedronGeometry(r, 0),
         new THREE.MeshLambertMaterial({ color: C[node.group] || '#888', transparent: true, opacity: 0.85 })
@@ -341,9 +341,12 @@ async function initViz() {
       group.add(shape);
 
       // Label
-      const s = new SpriteText('  ' + node.name);
-      s.color = C[node.group] || '#ccc';
+      const s = new SpriteText(node.name);
+      s.color = '#ffffff';
       s.textHeight = 6;
+      s.backgroundColor = 'rgba(0,0,0,0.6)';
+      s.padding = 1.5;
+      s.borderRadius = 2;
       s.material.depthWrite = false;
       s.material.depthTest = false;
       s.renderOrder = 999;
@@ -353,14 +356,35 @@ async function initViz() {
       return group;
     }).nodeThreeObjectExtend(false);
 
-  vizGraph.d3Force('charge').strength(-160);
-  vizGraph.d3Force('link').distance(55);
+  vizGraph.d3Force('charge').strength(-500);
+  vizGraph.d3Force('link').distance(120);
 
   // Resize graph when window changes
   window.addEventListener('resize', () => {
     if (vizGraph && graphEl.clientWidth > 0) {
       vizGraph.width(graphEl.clientWidth).height(graphEl.clientHeight);
     }
+  });
+}
+
+// =================== FLOW ANIMATION ===================
+function animateFlow(path, color) {
+  if (!vizGraph) return;
+  const data = vizGraph.graphData();
+  path.forEach((pair, i) => {
+    setTimeout(() => {
+      const lk = data.links.find(l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        return (s === pair[0] && t === pair[1]) || (s === pair[1] && t === pair[0]);
+      });
+      if (lk) {
+        lk._p = 6; lk._c = color;
+        vizGraph.linkDirectionalParticles(l => l._p || 0);
+        vizGraph.linkDirectionalParticleColor(l => l._c || '#7dd3fc');
+        setTimeout(() => { lk._p = 0; vizGraph.linkDirectionalParticles(l => l._p || 0); }, 2000);
+      }
+    }, i * 500);
   });
 }
 
@@ -373,6 +397,9 @@ window.vizSend = async function() {
   const d1 = document.createElement('div'); d1.className = 'vm u'; d1.textContent = t;
   msgs.appendChild(d1); msgs.scrollTop = msgs.scrollHeight;
 
+  // Animate inbound flow
+  animateFlow([['ext:telegram','router'],['router','ext:llm']], '#7dd3fc');
+
   try {
     const hdrs = Object.assign({'Content-Type': 'application/json'}, authHeaders());
     const r = await fetch('/api/clinics/' + _activeClinic.id + '/chat', {
@@ -382,6 +409,8 @@ window.vizSend = async function() {
     const d = await r.json();
     const d2 = document.createElement('div'); d2.className = 'vm b'; d2.textContent = d.response || 'No response';
     msgs.appendChild(d2); msgs.scrollTop = msgs.scrollHeight;
+    // Animate response flow
+    animateFlow([['faq:agent','ext:langfuse'],['booking:agent','ext:langfuse'],['ext:telegram','router']], '#10b981');
   } catch(e) {
     const d3 = document.createElement('div'); d3.className = 'vm s'; d3.textContent = 'Error: ' + e.message;
     msgs.appendChild(d3);
