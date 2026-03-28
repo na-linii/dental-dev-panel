@@ -31,7 +31,6 @@ def main():
             lf.create_prompt(
                 name=p["name"],
                 prompt=text,
-                is_active=True,
             )
             print(f"  Created: {p['name']}")
         except Exception as e:
