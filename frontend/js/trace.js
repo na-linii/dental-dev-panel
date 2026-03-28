@@ -112,18 +112,23 @@ window.animateFromTrace = async function(traceId) {
     });
     log.scrollTop = log.scrollHeight;
 
-    /* Build animation path */
+    /* Build animation path with real durations */
     var animPath = [];
     steps.forEach(function(step) {
       var fromId = NAME_TO_NODE[step.from];
       var toId = NAME_TO_NODE[step.to];
+      // Calculate duration from trace
+      var dur = 500; // default
+      if (step.obs && step.obs.startTime && step.obs.endTime) {
+        dur = Math.max(200, Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)));
+      }
       if (fromId && toId) {
         if (toId === 'tool:tier1') {
-          animPath.push([[fromId, 'tool:tier1'], [fromId, 'tool:tier2']]);
+          animPath.push({ links: [[fromId, 'tool:tier1'], [fromId, 'tool:tier2']], dur: dur });
         } else if (step.from === 'Tier 1+2 Search') {
-          animPath.push([['tool:tier1', toId], ['tool:tier2', toId]]);
+          animPath.push({ links: [['tool:tier1', toId], ['tool:tier2', toId]], dur: dur });
         } else {
-          animPath.push([fromId, toId]);
+          animPath.push({ links: [[fromId, toId]], dur: dur });
         }
       }
     });

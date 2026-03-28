@@ -96,3 +96,7 @@ tr:last-child td{border-bottom:none}
 #login .err{color:var(--red);font-size:.8rem;min-height:1.2rem}
 #login a{color:var(--accent);font-size:.75rem}
 #login.hidden{display:none}
+
+/* Speed buttons */
+.speed-btn{font-size:.6rem!important;padding:2px 5px!important;min-width:24px}
+.speed-btn.active{background:var(--accent)!important;color:var(--bg)!important;border-color:var(--accent)!important}

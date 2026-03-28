@@ -78,17 +78,26 @@ window.initViz = async function() {
   });
 };
 
+/* =================== SPEED CONTROL =================== */
+window._animSpeed = 1; // 1x = real time, 2x = 2x slower, etc.
+
+window.setSpeed = function(x) {
+  window._animSpeed = x;
+  document.querySelectorAll('.speed-btn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.dataset.speed) === x);
+  });
+};
+
 /* =================== FLOW ANIMATION =================== */
 /*
- * path: array of steps. Each step is either:
- *   [from, to]              — single link animation
- *   [[from, to1], [from, to2]]  — parallel links (same delay)
+ * path: array of steps. Each step is:
+ *   { links: [[from,to], ...], dur: milliseconds }
+ *   or legacy format: [from, to] / [[from,to],[from,to]]
  */
 window.animateFlow = function(path, color) {
   if (!window._vizGraph) return;
   var data = window._vizGraph.graphData();
 
-  // Clear all
   data.links.forEach(function(l) { l._p = 0; });
   window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
 
@@ -100,12 +109,10 @@ window.animateFlow = function(path, color) {
     });
   }
 
-  function lightUp(pairs) {
+  function lightUp(pairs, duration) {
     pairs.forEach(function(pair) {
       var lk = findLink(pair[0], pair[1]);
-      if (lk) {
-        lk._p = 8; lk._c = color;
-      }
+      if (lk) { lk._p = 8; lk._c = color; }
     });
     window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
     window._vizGraph.linkDirectionalParticleColor(function(l) { return l._c || '#7dd3fc'; });
@@ -117,16 +124,28 @@ window.animateFlow = function(path, color) {
         if (lk) lk._p = 0;
       });
       window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
-    }, 1200);
+    }, duration);
   }
 
-  path.forEach(function(step, i) {
+  var cumDelay = 0;
+  path.forEach(function(step) {
+    var pairs, dur;
+    if (step.links) {
+      // New format with duration
+      pairs = step.links;
+      dur = (step.dur || 500) * window._animSpeed;
+    } else {
+      // Legacy format
+      pairs = Array.isArray(step[0]) ? step : [step];
+      dur = 800 * window._animSpeed;
+    }
+
     setTimeout(function() {
       if (!window._vizGraph) return;
-      // Check if parallel step (array of arrays)
-      var pairs = (Array.isArray(step[0])) ? step : [step];
-      lightUp(pairs);
-    }, i * 800);
+      lightUp(pairs, dur);
+    }, cumDelay);
+
+    cumDelay += dur;
   });
 };
 
