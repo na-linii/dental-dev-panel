@@ -39,7 +39,9 @@ window.initArchViz = function() {
     {id:'confirm', name:'Confirmation Agent', type:'agent', group:'wip', val:12, shape:'icosahedron'},
     {id:'confirm_tool', name:'confirm_visit', type:'tool', group:'wip', val:4, shape:'octahedron'},
     {id:'tg_biz', name:'Telegram Business', type:'plugin', group:'wip', val:7, shape:'tetrahedron'},
-    {id:'postgres', name:'PostgreSQL', type:'storage', group:'done', val:7, shape:'box'},
+    {id:'db_identity', name:'Identity DB', type:'storage', group:'done', val:6, shape:'box'},
+    {id:'db_checkpoint', name:'Checkpointer', type:'storage', group:'done', val:6, shape:'box'},
+    {id:'db_kb', name:'Knowledge Base', type:'storage', group:'done', val:6, shape:'box'},
     // PLANNED
     {id:'ident', name:'IDENT Adapter', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
     {id:'max_msg', name:'MAX Messenger', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
@@ -47,13 +49,13 @@ window.initArchViz = function() {
   ];
 
   var L = [
-    {source:'telegram',target:'chat_gw'}, {source:'chat_gw',target:'postgres'},
-    {source:'postgres',target:'chat_gw'}, {source:'chat_gw',target:'router'},
+    {source:'telegram',target:'chat_gw'}, {source:'chat_gw',target:'db_identity'},
+    {source:'db_identity',target:'chat_gw'}, {source:'chat_gw',target:'router'},
     {source:'chat_gw',target:'telegram'},
-    // Checkpointer: agents save/restore state
-    {source:'router',target:'postgres'}, {source:'faq',target:'postgres'}, {source:'booking',target:'postgres'},
-    // Tier 2 KB search (pgvector)
-    {source:'tier2',target:'postgres'},
+    // Checkpointer
+    {source:'router',target:'db_checkpoint'}, {source:'faq',target:'db_checkpoint'}, {source:'booking',target:'db_checkpoint'},
+    // Knowledge Base (pgvector)
+    {source:'tier2',target:'db_kb'},
     {source:'router',target:'faq'}, {source:'router',target:'booking'},
     {source:'faq',target:'tier1'}, {source:'faq',target:'tier2'},
     {source:'tier1',target:'faq'}, {source:'tier2',target:'faq'},
