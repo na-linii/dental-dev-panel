@@ -98,6 +98,43 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
         raise HTTPException(502, f"Clinic unreachable: {e}")
 
 
+@app.get("/api/trace/{trace_id}")
+async def get_trace(trace_id: str, user=Depends(verify_github_token)):
+    """Fetch trace from Langfuse — returns observation chain for flow visualization."""
+    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+
+    if not lf_pk or not lf_sk:
+        return {"observations": [], "error": "Langfuse keys not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"{lf_host}/api/public/traces/{trace_id}",
+                auth=(lf_pk, lf_sk),
+            )
+            trace = r.json()
+
+        # Extract flow path from observations
+        flow = []
+        for obs in trace.get("observations", []):
+            name = obs.get("name", "")
+            typ = obs.get("type", "")
+            model = obs.get("model")
+            flow.append({
+                "name": name,
+                "type": typ,
+                "model": model,
+                "id": obs.get("id", ""),
+                "parentId": obs.get("parentObservationId"),
+            })
+
+        return {"trace_id": trace_id, "flow": flow}
+    except Exception as e:
+        return {"trace_id": trace_id, "flow": [], "error": str(e)}
+
+
 @app.get("/api/clinics/{clinic_id}/graph")
 async def proxy_graph(clinic_id: str, user=Depends(verify_github_token)):
     """Proxy graph structure from clinic agent."""

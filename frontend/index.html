@@ -403,6 +403,85 @@ function animateFlow(path, color) {
   });
 }
 
+// =================== TRACE-BASED FLOW ===================
+async function animateFromTrace(traceId) {
+  try {
+    const r = await fetch('/api/trace/' + traceId, { headers: authHeaders() });
+    const data = await r.json();
+    if (!data.flow || !data.flow.length) return;
+
+    // Map Langfuse observation names to graph node IDs
+    const nameToNode = {
+      'router': 'router',
+      'faq': 'faq:agent',
+      'booking': 'booking:agent',
+      'pre_model_hook': 'tool:tier1',  // pre_model_hook = tier1 + tier2
+      'agent': null,  // generic, skip
+      'call_model': null,
+      'should_continue': null,
+      'RunnableSequence': null,
+      'Prompt': null,
+      'ChatOpenAI': null,  // LLM call — color the previous link
+      'LangGraph': null,
+    };
+
+    // Build path from observations
+    const path = [];
+    const visited = new Set();
+    // Always starts with telegram → chat_gateway → router
+    path.push(['telegram', 'chat_gateway']);
+    path.push(['chat_gateway', 'router']);
+
+    for (const obs of data.flow) {
+      const nodeId = nameToNode[obs.name];
+      if (nodeId && !visited.has(nodeId)) {
+        visited.add(nodeId);
+        // Connect from router to this node
+        if (nodeId !== 'router') {
+          path.push(['router', nodeId]);
+        }
+        // If it's an agent, check for tools
+        if (nodeId === 'faq:agent') {
+          path.push(['faq:agent', 'tool:tier1']);
+          path.push(['faq:agent', 'tool:tier2']);
+        }
+      }
+    }
+
+    // Check if handoff was triggered
+    const hasHandoff = data.flow.some(o => o.name && o.name.includes('handoff'));
+    if (hasHandoff) {
+      const agent = visited.has('faq:agent') ? 'faq:agent' : 'booking:agent';
+      path.push([agent, 'tool:handoff']);
+      path.push(['tool:handoff', 'chat_gateway']);
+    }
+
+    // Check if booking tools were called
+    const bookingTools = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
+    for (const obs of data.flow) {
+      for (const bt of bookingTools) {
+        if (obs.name && obs.name.includes(bt)) {
+          path.push(['booking:agent', 'tool:' + bt]);
+          path.push(['tool:' + bt, 'crm_gateway']);
+        }
+      }
+    }
+
+    // Response back
+    path.push(['chat_gateway', 'telegram']);
+
+    // Determine color by model
+    const usedModel = data.flow.find(o => o.model);
+    const color = usedModel && usedModel.model && usedModel.model.includes('openrouter')
+      ? '#ef4444'   // red = fallback
+      : '#10b981';  // green = primary
+
+    animateFlow(path, color);
+  } catch(e) {
+    console.error('Trace animation failed:', e);
+  }
+}
+
 // =================== CHAT ===================
 window.vizSend = async function() {
   const inp = document.getElementById('viz-inp');
@@ -411,9 +490,6 @@ window.vizSend = async function() {
 
   const d1 = document.createElement('div'); d1.className = 'vm u'; d1.textContent = t;
   msgs.appendChild(d1); msgs.scrollTop = msgs.scrollHeight;
-
-  // Animate inbound flow
-  animateFlow([['ext:telegram','router'],['router','ext:llm']], '#7dd3fc');
 
   try {
     const hdrs = Object.assign({'Content-Type': 'application/json'}, authHeaders());
@@ -424,8 +500,11 @@ window.vizSend = async function() {
     const d = await r.json();
     const d2 = document.createElement('div'); d2.className = 'vm b'; d2.textContent = d.response || 'No response';
     msgs.appendChild(d2); msgs.scrollTop = msgs.scrollHeight;
-    // Animate response flow
-    animateFlow([['faq:agent','ext:langfuse'],['booking:agent','ext:langfuse'],['ext:telegram','router']], '#10b981');
+
+    // Fetch real trace from Langfuse and animate flow
+    if (d.trace_id) {
+      setTimeout(() => animateFromTrace(d.trace_id), 500);
+    }
   } catch(e) {
     const d3 = document.createElement('div'); d3.className = 'vm s'; d3.textContent = 'Error: ' + e.message;
     msgs.appendChild(d3);

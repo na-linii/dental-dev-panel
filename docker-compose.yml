@@ -13,6 +13,9 @@ services:
     environment:
       HUB_DB_PATH: /data/hub.db
       LANGFUSE_EXTERNAL_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_HOST: http://langfuse-web:3000
     depends_on:
       langfuse-web:
         condition: service_started
