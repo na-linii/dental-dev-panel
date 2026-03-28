@@ -79,21 +79,19 @@
 
 <!-- PAGE: ARCHITECTURE -->
 <div class="page" id="page-arch">
-  <div style="display:flex;height:calc(100vh - 48px)">
-    <div style="flex:1;position:relative;overflow:hidden">
-      <div id="arch-graph" style="width:100%;height:100%"></div>
-      <div style="position:absolute;top:.5rem;left:.5rem;font-size:.6rem;color:var(--muted);display:flex;gap:8px;z-index:10">
-        <span style="color:#7dd3fc">● Router</span>
-        <span style="color:#10b981">● Agent</span>
-        <span style="color:#f59e0b">● Tool</span>
-        <span style="color:#3b82f6">● Gateway</span>
-        <span style="color:#8b5cf6">● Plugin</span>
-      </div>
-    </div>
-    <div id="arch-panel" style="width:340px;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto">
-      <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:.82rem;color:var(--accent);font-weight:600">Детали компонента</div>
-      <div id="arch-detail" style="padding:10px 14px;font-size:.78rem;color:var(--muted)">
-        Нажми на компонент для просмотра деталей
+  <div style="height:calc(100vh - 48px);position:relative">
+    <div id="arch-graph" style="width:100%;height:100%"></div>
+    <div style="position:absolute;top:.8rem;left:.8rem;z-index:10;background:rgba(10,10,30,.85);border:1px solid var(--border);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px)">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#7dd3fc"></div>Router</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#10b981"></div>Agent</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></div>Tool</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>Gateway</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#8b5cf6"></div>Plugin</div>
+        <div style="border-top:1px solid var(--border);margin:2px 0;padding-top:3px"></div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border:2px solid #10b981;border-radius:2px;background:transparent"></div>Готово</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border:2px solid #eab308;border-radius:2px;background:transparent"></div>В работе</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#334155"></div>Планируется</div>
       </div>
     </div>
   </div>
@@ -101,10 +99,8 @@
 
 <!-- PAGE: ROADMAP -->
 <div class="page" id="page-roadmap">
-  <div style="display:flex;gap:1.5rem;height:calc(100vh - 48px - 3rem)">
-
-    <!-- Left: text content -->
-    <div style="flex:1;overflow-y:auto;padding-right:1rem">
+  <div style="overflow-y:auto;height:calc(100vh - 48px - 3rem);max-width:900px">
+    <div>
       <h2 style="font-size:1.1rem;margin-bottom:.5rem">Roadmap</h2>
       <p style="font-size:.75rem;color:var(--muted);margin-bottom:1rem">Обновлено 29.03.2026</p>
 
@@ -152,16 +148,6 @@
         <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">10 клиник + Hub UI</div><div class="desc">Создание агентов через UI, deploy по кнопке, мониторинг.</div></div>
       </div>
     </div>
-
-    <!-- Right: 3D architecture visualization -->
-    <div style="width:45%;min-width:400px;position:relative">
-      <div id="roadmap-viz" style="width:100%;height:100%;border-radius:10px;overflow:hidden"></div>
-      <div style="position:absolute;top:.5rem;left:.5rem;font-size:.6rem;color:var(--muted);display:flex;gap:8px">
-        <span style="color:#10b981">● Готово</span>
-        <span style="color:#f59e0b">● В работе</span>
-        <span style="color:#555">● Планируется</span>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -172,7 +158,6 @@
 <!-- Modules: load async, won't block login -->
 <script type="module" src="js/viz.js"></script>
 <script type="module" src="js/trace.js"></script>
-<script type="module" src="js/roadmap-viz.js"></script>
 <script type="module" src="js/arch-viz.js"></script>
 
 </body>
