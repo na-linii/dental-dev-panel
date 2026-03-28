@@ -18,7 +18,7 @@ window.initArchViz = function() {
   var clinics = window.CLINICS || [{id:'zubatka'}];
   var clinicId = clinics[0].id;
 
-  fetch('/api/clinics/' + clinicId + '/graph', { headers: window.authHeaders() })
+  fetch('/api/clinics/' + clinicId + '/graph?include_planned=true', { headers: window.authHeaders() })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var N = (data.nodes || []).map(function(n) {

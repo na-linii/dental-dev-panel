@@ -161,7 +161,7 @@ async def get_trace(trace_id: str, user=Depends(verify_github_token)):
 
 
 @app.get("/api/clinics/{clinic_id}/graph")
-async def proxy_graph(clinic_id: str, user=Depends(verify_github_token)):
+async def proxy_graph(clinic_id: str, request: Request, user=Depends(verify_github_token)):
     """Proxy graph structure from clinic agent."""
     clinic = await get_clinic(clinic_id)
     if not clinic:
@@ -169,7 +169,7 @@ async def proxy_graph(clinic_id: str, user=Depends(verify_github_token)):
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/graph"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(url)
+            r = await client.get(url, params=dict(request.query_params))
             return r.json()
     except Exception as e:
         return {"nodes": [], "links": [], "error": str(e)}
