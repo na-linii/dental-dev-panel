@@ -1,13 +1,12 @@
 /* trace.js — Trace log + animation from Langfuse data */
 
-// Display name → graph node ID mapping
 var NAME_TO_NODE = {
   'Telegram': 'telegram',
   'Chat Gateway': 'chat_gateway',
   'Dental Router': 'router',
   'FAQ Agent': 'faq:agent',
   'Booking Agent': 'booking:agent',
-  'Tier 1+2 Search': 'tool:tier1',  // animates both tier1 and tier2
+  'Tier 1+2 Search': 'tool:tier1',
   'Handoff': 'tool:handoff',
   'CRM Gateway': 'crm_gateway',
   'Google Sheets': 'google_sheets',
@@ -18,17 +17,23 @@ var NAME_TO_NODE = {
   'register_patient': 'tool:register_patient',
 };
 
+// Cache: traceId → { steps, animPath }
+var _traceCache = {};
+
+/* Fetch trace, render log, animate. Called once per message. */
 window.animateFromTrace = async function(traceId) {
+  // If cached — just replay animation, don't fetch or render log again
+  if (_traceCache[traceId]) {
+    if (window.animateFlow && _traceCache[traceId].animPath.length) {
+      window.animateFlow(_traceCache[traceId].animPath, '#7dd3fc');
+    }
+    return;
+  }
+
   try {
     var r = await fetch('/api/trace/' + traceId, { headers: window.authHeaders() });
     var data = await r.json();
     if (!data.flow || !data.flow.length) return;
-
-    var log = document.getElementById('viz-trace-log');
-    var sep = document.createElement('div');
-    sep.style.cssText = 'border-top:1px solid #334155;margin:6px 0 4px;padding-top:3px;color:#7dd3fc;font-size:.65rem';
-    sep.textContent = 'Trace: ' + traceId.substring(0,12) + '...';
-    log.appendChild(sep);
 
     /* Build steps from trace observations */
     var steps = [];
@@ -67,6 +72,12 @@ window.animateFromTrace = async function(traceId) {
     steps.push({ from: 'Chat Gateway', to: 'Telegram', obs: root });
 
     /* Render trace log */
+    var log = document.getElementById('viz-trace-log');
+    var sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid #334155;margin:6px 0 4px;padding-top:3px;color:#7dd3fc;font-size:.65rem';
+    sep.textContent = 'Trace: ' + traceId.substring(0,12) + '...';
+    log.appendChild(sep);
+
     steps.forEach(function(step) {
       var dur = (step.obs && step.obs.startTime && step.obs.endTime)
         ? Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)) + 'ms' : '';
@@ -78,29 +89,38 @@ window.animateFromTrace = async function(traceId) {
 
       var details = document.createElement('div');
       details.className = 'te-details';
-      var btnI = document.createElement('button'); btnI.className = 'te-btn'; btnI.textContent = 'Input';
-      var btnO = document.createElement('button'); btnO.className = 'te-btn'; btnO.textContent = 'Output';
-      var pre = document.createElement('pre'); pre.style.display = 'none';
-      btnI.onclick = function(e) { e.stopPropagation(); pre.textContent = JSON.stringify(step.obs && step.obs.input, null, 2) || '\u2014'; pre.style.display = 'block'; btnI.classList.add('active'); btnO.classList.remove('active'); };
-      btnO.onclick = function(e) { e.stopPropagation(); pre.textContent = JSON.stringify(step.obs && step.obs.output, null, 2) || '\u2014'; pre.style.display = 'block'; btnO.classList.add('active'); btnI.classList.remove('active'); };
-      details.appendChild(btnI); details.appendChild(btnO); details.appendChild(pre);
-      row.onclick = function() { details.classList.toggle('open'); };
-      wrapper.appendChild(row); wrapper.appendChild(details);
+
+      // Input + Output shown together on click, no separate buttons
+      var pre = document.createElement('pre');
+      pre.style.display = 'none';
+      var inputStr = step.obs && step.obs.input ? JSON.stringify(step.obs.input, null, 2) : null;
+      var outputStr = step.obs && step.obs.output ? JSON.stringify(step.obs.output, null, 2) : null;
+      var parts = [];
+      if (inputStr) parts.push('INPUT:\n' + inputStr);
+      if (outputStr) parts.push('OUTPUT:\n' + outputStr);
+      pre.textContent = parts.join('\n\n') || '\u2014';
+
+      details.appendChild(pre);
+      row.onclick = function() {
+        var isOpen = details.classList.contains('open');
+        details.classList.toggle('open');
+        pre.style.display = isOpen ? 'none' : 'block';
+      };
+      wrapper.appendChild(row);
+      wrapper.appendChild(details);
       log.appendChild(wrapper);
     });
     log.scrollTop = log.scrollHeight;
 
-    /* Animate on map — SAME steps as trace log, mapped to node IDs */
+    /* Build animation path */
     var animPath = [];
     steps.forEach(function(step) {
       var fromId = NAME_TO_NODE[step.from];
       var toId = NAME_TO_NODE[step.to];
       if (fromId && toId) {
-        // Tier 1+2: fire both simultaneously as parallel step
         if (toId === 'tool:tier1') {
           animPath.push([[fromId, 'tool:tier1'], [fromId, 'tool:tier2']]);
         } else if (step.from === 'Tier 1+2 Search') {
-          // Return from tier: both return simultaneously
           animPath.push([['tool:tier1', toId], ['tool:tier2', toId]]);
         } else {
           animPath.push([fromId, toId]);
@@ -108,6 +128,10 @@ window.animateFromTrace = async function(traceId) {
       }
     });
 
+    // Cache for replay
+    _traceCache[traceId] = { steps: steps, animPath: animPath };
+
+    // Animate
     if (animPath.length > 0 && window.animateFlow) {
       window.animateFlow(animPath, '#7dd3fc');
     }
