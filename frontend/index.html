@@ -329,16 +329,16 @@ async function initViz() {
     .linkDirectionalParticles(0).linkDirectionalParticleWidth(3)
     .linkDirectionalParticleColor(() => '#7dd3fc').linkDirectionalParticleSpeed(0.012)
     .nodeThreeObject(node => {
-      const s = new SpriteText(node.name);
+      const s = new SpriteText('  ' + node.name);
       s.color = C[node.group] || '#ccc';
       s.textHeight = 2;
       s.material.depthWrite = false;
       s.material.depthTest = false;
       s.renderOrder = 999;
-      // Left-align: anchor at left edge, vertically centered
-      s.center.set(-0.1, 0.5);
-      // Position to the RIGHT of the sphere
-      s.position.set(6, 0, 0);
+      // center in SCREEN SPACE: -1 = text starts far right of anchor
+      // 0.5 = vertically centered on node
+      // Padding spaces + negative center.x = gap between sphere and text
+      s.center.set(-1.2, 0.5);
       return s;
     }).nodeThreeObjectExtend(true);
 
