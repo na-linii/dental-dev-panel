@@ -52,10 +52,16 @@ tr:last-child td{border-bottom:none}
 #viz-iw button{padding:6px 12px;border-radius:5px;border:none;background:#7c3aed;color:white;font-size:.8rem;cursor:pointer}
 
 /* === Trace panel === */
-#viz-trace-panel{height:200px;border-top:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;flex-shrink:0}
+#viz-trace-panel{height:300px;border-top:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;flex-shrink:0}
 #viz-trace-header{padding:4px 12px;font-size:.72rem;color:var(--accent);font-weight:600;border-bottom:1px solid var(--border)}
 #viz-trace-log{flex:1;overflow-y:auto;padding:4px 10px;font-size:.72rem}
-.te-row{padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;display:flex;gap:6px;align-items:baseline}
+.te-msg-row{padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;gap:6px;align-items:baseline;font-size:.75rem}
+.te-msg-row:hover{background:rgba(255,255,255,0.04)}
+.te-msg-agent{color:var(--accent);font-weight:600;min-width:90px}
+.te-msg-arrow{color:#475569}
+.te-msg-text{color:var(--muted)}
+.te-steps{padding-left:12px;border-left:2px solid rgba(255,255,255,0.06);margin-left:6px;margin-bottom:4px}
+.te-row{padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;display:flex;gap:6px;align-items:baseline;font-size:.7rem}
 .te-row:hover{background:rgba(255,255,255,0.03)}
 .te-row .te-time{color:#475569;min-width:45px;font-family:monospace;font-size:.65rem}
 .te-row .te-from{color:var(--accent);min-width:90px}

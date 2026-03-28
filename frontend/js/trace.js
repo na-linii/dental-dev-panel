@@ -17,12 +17,9 @@ var NAME_TO_NODE = {
   'register_patient': 'tool:register_patient',
 };
 
-// Cache: traceId → { steps, animPath }
 var _traceCache = {};
 
-/* Fetch trace, render log, animate. Called once per message. */
 window.animateFromTrace = async function(traceId) {
-  // If cached — just replay animation, don't fetch or render log again
   if (_traceCache[traceId]) {
     if (window.animateFlow && _traceCache[traceId].animPath.length) {
       window.animateFlow(_traceCache[traceId].animPath, '#7dd3fc');
@@ -35,21 +32,18 @@ window.animateFromTrace = async function(traceId) {
     var data = await r.json();
     if (!data.flow || !data.flow.length) return;
 
-    /* Build steps from trace observations */
+    /* Build steps */
     var steps = [];
     var root = data.flow.find(function(o) { return !o.parentId; }) || data.flow[0];
     var routerObs = data.flow.find(function(o) { return o.name === 'router'; });
-    // Find agent: same parent as router (both are children of the graph node)
     var routerParent = routerObs ? routerObs.parentId : null;
     var faqObs = data.flow.find(function(o) { return o.name === 'faq' && o.parentId === routerParent; });
     var bookingObs = data.flow.find(function(o) { return o.name === 'booking' && o.parentId === routerParent; });
     var agentName = faqObs ? 'FAQ Agent' : bookingObs ? 'Booking Agent' : null;
     var agentObs = faqObs || bookingObs;
     var hookObs = data.flow.find(function(o) { return o.name === 'pre_model_hook'; });
-    // Find LLM call that belongs to the agent (not router's classification LLM)
-    var agentInternalId = (agentObs || {}).id;
     var llmObs = data.flow.find(function(o) {
-      return o.name === 'ChatOpenAI' && o.parentId !== routerObs?.id;
+      return o.name === 'ChatOpenAI' && (!routerObs || o.parentId !== routerObs.id);
     }) || data.flow.find(function(o) { return o.name === 'ChatOpenAI'; });
     var toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
 
@@ -77,72 +71,89 @@ window.animateFromTrace = async function(traceId) {
     if (agentName) steps.push({ from: agentName, to: 'Chat Gateway', obs: agentObs });
     steps.push({ from: 'Chat Gateway', to: 'Telegram', obs: root });
 
-    /* Render trace log */
+    /* Calculate total duration */
+    var totalDur = 0;
+    if (root.startTime && root.endTime) {
+      totalDur = Math.round(new Date(root.endTime) - new Date(root.startTime));
+    }
+
+    /* Render: one collapsible row per message, steps inside */
     var log = document.getElementById('viz-trace-log');
-    var sep = document.createElement('div');
-    sep.style.cssText = 'border-top:1px solid #334155;margin:6px 0 4px;padding-top:3px;color:#7dd3fc;font-size:.65rem';
-    sep.textContent = 'Trace: ' + traceId.substring(0,12) + '...';
-    log.appendChild(sep);
+
+    var msgRow = document.createElement('div');
+    msgRow.className = 'te-msg-row';
+    msgRow.innerHTML = '<span class="te-msg-agent">' + (agentName || 'Router') + '</span>'
+      + '<span class="te-msg-arrow">\u2192</span>'
+      + '<span class="te-msg-text">' + steps.length + ' шагов</span>'
+      + (totalDur ? '<span class="te-dur">' + totalDur + 'ms</span>' : '');
+
+    var stepsContainer = document.createElement('div');
+    stepsContainer.className = 'te-steps';
+    stepsContainer.style.display = 'none';
 
     steps.forEach(function(step) {
       var dur = (step.obs && step.obs.startTime && step.obs.endTime)
         ? Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)) + 'ms' : '';
 
-      var wrapper = document.createElement('div');
+      var stepWrapper = document.createElement('div');
+
       var row = document.createElement('div');
       row.className = 'te-row';
       row.innerHTML = '<span class="te-from">' + step.from + '</span><span class="te-arrow">\u2192</span><span class="te-to">' + step.to + '</span>' + (dur ? '<span class="te-dur">' + dur + '</span>' : '');
 
       var details = document.createElement('div');
       details.className = 'te-details';
-
-      // Input + Output shown together on click, no separate buttons
       var pre = document.createElement('pre');
       pre.style.display = 'none';
-      var inputStr = step.obs && step.obs.input ? JSON.stringify(step.obs.input, null, 2) : null;
-      var outputStr = step.obs && step.obs.output ? JSON.stringify(step.obs.output, null, 2) : null;
       var parts = [];
-      if (inputStr) parts.push('INPUT:\n' + inputStr);
-      if (outputStr) parts.push('OUTPUT:\n' + outputStr);
+      if (step.obs && step.obs.input) parts.push('INPUT:\n' + JSON.stringify(step.obs.input, null, 2));
+      if (step.obs && step.obs.output) parts.push('OUTPUT:\n' + JSON.stringify(step.obs.output, null, 2));
       pre.textContent = parts.join('\n\n') || '\u2014';
-
       details.appendChild(pre);
-      row.onclick = function() {
+
+      row.onclick = function(e) {
+        e.stopPropagation();
         var isOpen = details.classList.contains('open');
         details.classList.toggle('open');
         pre.style.display = isOpen ? 'none' : 'block';
       };
-      wrapper.appendChild(row);
-      wrapper.appendChild(details);
-      log.appendChild(wrapper);
+
+      stepWrapper.appendChild(row);
+      stepWrapper.appendChild(details);
+      stepsContainer.appendChild(stepWrapper);
     });
+
+    msgRow.onclick = function() {
+      var isOpen = stepsContainer.style.display !== 'none';
+      stepsContainer.style.display = isOpen ? 'none' : 'block';
+    };
+
+    log.appendChild(msgRow);
+    log.appendChild(stepsContainer);
     log.scrollTop = log.scrollHeight;
 
-    /* Build animation path with real durations */
+    /* Build animation path */
     var animPath = [];
     steps.forEach(function(step) {
       var fromId = NAME_TO_NODE[step.from];
       var toId = NAME_TO_NODE[step.to];
-      // Calculate duration from trace
-      var dur = 500; // default
-      if (step.obs && step.obs.startTime && step.obs.endTime) {
-        dur = Math.max(200, Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)));
-      }
       if (fromId && toId) {
         if (toId === 'tool:tier1') {
-          animPath.push({ links: [[fromId, 'tool:tier1'], [fromId, 'tool:tier2']], dur: dur });
+          animPath.push({ links: [[fromId, 'tool:tier1'], [fromId, 'tool:tier2']], dur: 500 });
         } else if (step.from === 'Tier 1+2 Search') {
-          animPath.push({ links: [['tool:tier1', toId], ['tool:tier2', toId]], dur: dur });
+          animPath.push({ links: [['tool:tier1', toId], ['tool:tier2', toId]], dur: 500 });
         } else {
+          var dur = 500;
+          if (step.obs && step.obs.startTime && step.obs.endTime) {
+            dur = Math.max(200, Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)));
+          }
           animPath.push({ links: [[fromId, toId]], dur: dur });
         }
       }
     });
 
-    // Cache for replay
     _traceCache[traceId] = { steps: steps, animPath: animPath };
 
-    // Animate
     if (animPath.length > 0 && window.animateFlow) {
       window.animateFlow(animPath, '#7dd3fc');
     }
