@@ -50,6 +50,10 @@ window.initArchViz = function() {
     {source:'telegram',target:'chat_gw'}, {source:'chat_gw',target:'postgres'},
     {source:'postgres',target:'chat_gw'}, {source:'chat_gw',target:'router'},
     {source:'chat_gw',target:'telegram'},
+    // Checkpointer: agents save/restore state
+    {source:'router',target:'postgres'}, {source:'faq',target:'postgres'}, {source:'booking',target:'postgres'},
+    // Tier 2 KB search (pgvector)
+    {source:'tier2',target:'postgres'},
     {source:'router',target:'faq'}, {source:'router',target:'booking'},
     {source:'faq',target:'tier1'}, {source:'faq',target:'tier2'},
     {source:'tier1',target:'faq'}, {source:'tier2',target:'faq'},
