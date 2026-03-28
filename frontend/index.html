@@ -209,10 +209,8 @@
   </div>
 </div>
 
-<script type="module">
-import * as THREE from "https://esm.sh/three";
-import SpriteText from "https://esm.sh/three-spritetext";
-
+<!-- Auth script — loads immediately, no CDN dependency -->
+<script>
 const ORG = 'na-linii';
 const CLINICS = [
   { id:'zubatka', name:'Зубатка', env:'yandex', url:'http://158.160.240.47:8080',
@@ -221,7 +219,6 @@ const CLINICS = [
 
 let _activeClinic = null;
 
-// =================== AUTH ===================
 async function verifyToken(token) {
   const r = await fetch('https://api.github.com/user', { headers: { Authorization: 'Bearer ' + token } });
   if (!r.ok) throw new Error('Invalid token');
@@ -229,6 +226,11 @@ async function verifyToken(token) {
   const r2 = await fetch('https://api.github.com/orgs/' + ORG + '/members/' + user.login, { headers: { Authorization: 'Bearer ' + token } });
   if (r2.status !== 204) throw new Error('Not a member of ' + ORG);
   return { login: user.login, avatar: user.avatar_url, name: user.name || user.login };
+}
+
+function authHeaders() {
+  const t = localStorage.getItem('dp_token');
+  return t ? { 'Authorization': 'Bearer ' + atob(t) } : {};
 }
 
 window.doLogin = async function() {
@@ -294,13 +296,8 @@ window.healthCheck = async function(clinicId) {
   } catch(e) { alert('Unreachable: ' + e.message); }
 };
 
-function authHeaders() {
-  const t = localStorage.getItem('dp_token');
-  return t ? { 'Authorization': 'Bearer ' + atob(t) } : {};
-}
-
 // =================== VISUALIZER ===================
-let vizGraph = null;
+window.vizGraph = null;
 
 window.openViz = function(clinicId) {
   _activeClinic = CLINICS.find(c => c.id === clinicId);
@@ -313,17 +310,25 @@ window.openViz = function(clinicId) {
   document.getElementById('viz-msgs').innerHTML = '<div class="vm s">Напиши сообщение для ' + _activeClinic.name + '</div>';
 
   // Reset graph if switching clinics
-  if (vizGraph) {
-    vizGraph._destructor && vizGraph._destructor();
-    vizGraph = null;
+  if (window.vizGraph) {
+    window.vizGraph._destructor && window.vizGraph._destructor();
+    window.vizGraph = null;
     document.getElementById('viz-graph').innerHTML = '';
   }
   showPage('viz');
   setTimeout(() => initViz(), 300);
 };
 
-async function initViz() {
-  if (vizGraph) return;
+// initViz will be set by the module script below
+</script>
+
+<!-- 3D Visualizer — module script (loads THREE.js + SpriteText from CDN) -->
+<script type="module">
+import * as THREE from "https://esm.sh/three";
+import SpriteText from "https://esm.sh/three-spritetext";
+
+window.initViz = async function() {
+  if (window.vizGraph) return;
 
   const C = {
     router:'#7dd3fc',      // Core router — bright cyan
@@ -349,7 +354,7 @@ async function initViz() {
   const gw = graphEl.clientWidth;
   const gh = graphEl.clientHeight;
 
-  vizGraph = new ForceGraph3D(graphEl)
+  window.vizGraph = new ForceGraph3D(graphEl)
     .width(gw)
     .height(gh)
     .graphData({nodes:N, links:L})
@@ -396,29 +401,29 @@ async function initViz() {
       return group;
     }).nodeThreeObjectExtend(false);
 
-  vizGraph.d3Force('charge').strength(-500);
-  vizGraph.d3Force('link').distance(120);
+  window.vizGraph.d3Force('charge').strength(-500);
+  window.vizGraph.d3Force('link').distance(120);
 
   // Resize graph when window changes
   window.addEventListener('resize', () => {
-    if (vizGraph && graphEl.clientWidth > 0) {
-      vizGraph.width(graphEl.clientWidth).height(graphEl.clientHeight);
+    if (window.vizGraph && graphEl.clientWidth > 0) {
+      window.vizGraph.width(graphEl.clientWidth).height(graphEl.clientHeight);
     }
   });
 }
 
 // =================== FLOW ANIMATION ===================
 function animateFlow(path, color) {
-  if (!vizGraph) return;
-  const data = vizGraph.graphData();
+  if (!window.vizGraph) return;
+  const data = window.vizGraph.graphData();
 
   // Clear all previous particles
   data.links.forEach(l => { l._p = 0; });
-  vizGraph.linkDirectionalParticles(l => l._p || 0);
+  window.vizGraph.linkDirectionalParticles(l => l._p || 0);
 
   path.forEach((pair, i) => {
     setTimeout(() => {
-      if (!vizGraph) return;
+      if (!window.vizGraph) return;
       const lk = data.links.find(l => {
         const s = typeof l.source === 'object' ? l.source.id : l.source;
         const t = typeof l.target === 'object' ? l.target.id : l.target;
@@ -426,13 +431,13 @@ function animateFlow(path, color) {
       });
       if (lk) {
         lk._p = 8; lk._c = color;
-        vizGraph.linkDirectionalParticles(l => l._p || 0);
-        vizGraph.linkDirectionalParticleColor(l => l._c || '#7dd3fc');
+        window.vizGraph.linkDirectionalParticles(l => l._p || 0);
+        window.vizGraph.linkDirectionalParticleColor(l => l._c || '#7dd3fc');
         // Fade out this link after a bit
         setTimeout(() => {
-          if (!vizGraph) return;
+          if (!window.vizGraph) return;
           lk._p = 0;
-          vizGraph.linkDirectionalParticles(l => l._p || 0);
+          window.vizGraph.linkDirectionalParticles(l => l._p || 0);
         }, 1200);
       }
     }, i * 800); // 800ms between each step — slow enough to follow
@@ -596,11 +601,11 @@ async function animateFromTrace(traceId) {
 
     const p2delay = inbound.length * 800 + 400;
     if (processing.length) {
-      setTimeout(() => { if (vizGraph) animateFlow(processing, '#f59e0b'); }, p2delay);
+      setTimeout(() => { if (window.vizGraph) animateFlow(processing, '#f59e0b'); }, p2delay);
     }
 
     const p3delay = p2delay + Math.max(processing.length, 1) * 800 + 400;
-    setTimeout(() => { if (vizGraph) animateFlow(outbound, '#10b981'); }, p3delay);
+    setTimeout(() => { if (window.vizGraph) animateFlow(outbound, '#10b981'); }, p3delay);
   } catch(e) {
     console.error('Trace animation failed:', e);
   }
