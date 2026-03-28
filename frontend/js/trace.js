@@ -103,19 +103,24 @@ window.animateFromTrace = async function(traceId) {
 
       var details = document.createElement('div');
       details.className = 'te-details';
-      var pre = document.createElement('pre');
-      pre.style.display = 'none';
-      var parts = [];
-      if (step.obs && step.obs.input) parts.push('INPUT:\n' + JSON.stringify(step.obs.input, null, 2));
-      if (step.obs && step.obs.output) parts.push('OUTPUT:\n' + JSON.stringify(step.obs.output, null, 2));
-      pre.textContent = parts.join('\n\n') || '\u2014';
-      details.appendChild(pre);
+      var preWrap = document.createElement('div');
+      preWrap.style.cssText = 'display:flex;gap:6px';
+      var preIn = document.createElement('pre');
+      preIn.style.display = 'none';
+      preIn.textContent = (step.obs && step.obs.input) ? 'INPUT:\n' + JSON.stringify(step.obs.input, null, 2) : '\u2014';
+      var preOut = document.createElement('pre');
+      preOut.style.display = 'none';
+      preOut.textContent = (step.obs && step.obs.output) ? 'OUTPUT:\n' + JSON.stringify(step.obs.output, null, 2) : '\u2014';
+      preWrap.appendChild(preIn);
+      preWrap.appendChild(preOut);
+      details.appendChild(preWrap);
 
       row.onclick = function(e) {
         e.stopPropagation();
         var isOpen = details.classList.contains('open');
         details.classList.toggle('open');
-        pre.style.display = isOpen ? 'none' : 'block';
+        preIn.style.display = isOpen ? 'none' : 'block';
+        preOut.style.display = isOpen ? 'none' : 'block';
       };
 
       stepWrapper.appendChild(row);

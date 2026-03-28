@@ -73,7 +73,7 @@ tr:last-child td{border-bottom:none}
 .te-details .te-btn{display:inline-block;padding:1px 6px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:.6rem;cursor:pointer;margin-right:4px;margin-bottom:4px}
 .te-details .te-btn:hover{background:var(--border)}
 .te-details .te-btn.active{background:var(--border);color:var(--accent)}
-.te-details pre{background:#0a0a1a;border:1px solid var(--border);border-radius:4px;padding:6px;margin-top:4px;max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:.62rem}
+.te-details pre{flex:1;background:#0a0a1a;border:1px solid var(--border);border-radius:4px;padding:6px;max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:.62rem}
 .vm .replay-btn{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--accent);font-size:.6rem;cursor:pointer;vertical-align:middle}
 .vm .replay-btn:hover{background:var(--border)}
 
