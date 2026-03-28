@@ -99,7 +99,7 @@ window.animateFlow = function(path, color) {
       var lk = data.links.find(function(l) {
         var s = typeof l.source === 'object' ? l.source.id : l.source;
         var t = typeof l.target === 'object' ? l.target.id : l.target;
-        return (s === pair[0] && t === pair[1]) || (s === pair[1] && t === pair[0]);
+        return s === pair[0] && t === pair[1];
       });
       if (lk) {
         lk._p = 8; lk._c = color;
