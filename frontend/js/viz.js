@@ -62,6 +62,7 @@ window.initViz = async function() {
       s.material.depthTest = false;
       s.renderOrder = 999;
       s.center.set(-0.3, 0.5);
+      s._isLabel = true;
       group.add(s);
 
       return group;
@@ -126,5 +127,18 @@ window.animateFlow = function(path, color) {
       var pairs = (Array.isArray(step[0])) ? step : [step];
       lightUp(pairs);
     }, i * 800);
+  });
+};
+
+/* =================== TOGGLE LABELS =================== */
+var _labelsVisible = true;
+window.toggleLabels = function() {
+  _labelsVisible = !_labelsVisible;
+  if (!window._vizGraph) return;
+  var scene = window._vizGraph.scene();
+  scene.traverse(function(obj) {
+    if (obj._isLabel) {
+      obj.visible = _labelsVisible;
+    }
   });
 };
