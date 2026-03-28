@@ -1,4 +1,4 @@
-/* arch-viz.js — Architecture visualization, dynamic from /graph + planned nodes */
+/* arch-viz.js — Architecture visualization, dynamic from /graph */
 import * as THREE from "https://esm.sh/three";
 import SpriteText from "https://esm.sh/three-spritetext";
 
@@ -6,34 +6,15 @@ var TYPE_C = {
   router:'#7dd3fc', agent:'#10b981', tool:'#f59e0b',
   gateway:'#3b82f6', plugin:'#8b5cf6', storage:'#ec4899',
 };
-var WIRE = {
-  router:'#ffffff', agent:'#a7f3d0', tool:'#fef3c7',
-  gateway:'#bfdbfe', plugin:'#e9d5ff', storage:'#fbcfe8',
-};
 var STATUS_C = {done:'#10b981', wip:'#eab308', planned:null};
 var STATUS_OPACITY = {done:0.9, wip:0.7, planned:0.25};
 var LABEL_OPACITY = {done:1, wip:0.8, planned:0.3};
-
-// Planned nodes (not in /graph yet)
-var PLANNED_NODES = [
-  {id:'tg_biz', name:'Telegram Business', type:'plugin', group:'wip', val:7, shape:'tetrahedron'},
-  {id:'ident', name:'IDENT Adapter', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
-  {id:'max_msg', name:'MAX Messenger', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
-  {id:'voice', name:'Voice (LiveKit)', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
-];
-var PLANNED_LINKS = [
-  {source:'chat_gateway',target:'tg_biz'},
-  {source:'crm_gateway',target:'ident'},
-  {source:'chat_gateway',target:'max_msg'},
-  {source:'chat_gateway',target:'voice'},
-];
 
 window.initArchViz = function() {
   if (window._archGraph) return;
   var el = document.getElementById('arch-graph');
   if (!el || el.clientWidth < 50) return;
 
-  // Fetch real graph from first clinic, then merge planned
   var clinics = window.CLINICS || [{id:'zubatka'}];
   var clinicId = clinics[0].id;
 
@@ -41,37 +22,24 @@ window.initArchViz = function() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var N = (data.nodes || []).map(function(n) {
-        n.group = n.group || 'tool';
+        n.type = n.group || 'tool';
         n.shape = n.shape || 'octahedron';
-        n.type = n.group; // for color lookup
-        if (!n.status) n.status = 'done';
+        n.status = n.planned ? 'planned' : 'done';
         return n;
       });
       var L = data.links || [];
-
-      // Add planned nodes (skip if already in graph)
-      var existingIds = new Set(N.map(function(n) { return n.id; }));
-      PLANNED_NODES.forEach(function(pn) {
-        if (!existingIds.has(pn.id)) N.push(pn);
-      });
-      PLANNED_LINKS.forEach(function(pl) {
-        if (existingIds.has(pl.source) || N.find(function(n){return n.id===pl.source;})) {
-          L.push(pl);
-        }
-      });
-
       renderArch(el, N, L);
     })
     .catch(function(e) {
       console.error('Failed to load arch graph:', e);
-      renderArch(el, [{id:'error',name:'Failed to load',group:'router',shape:'dodecahedron',val:15}], []);
+      renderArch(el, [{id:'error',name:'Failed to load',group:'router',shape:'dodecahedron',val:15,status:'done',type:'router'}], []);
     });
 };
 
 function renderArch(el, N, L) {
   function getColor(node) {
-    if (node.group === 'planned') return '#1e293b';
-    return TYPE_C[node.type || node.group] || '#888';
+    if (node.status === 'planned') return '#1e293b';
+    return TYPE_C[node.type] || '#888';
   }
 
   window._archGraph = new ForceGraph3D(el)
@@ -83,8 +51,8 @@ function renderArch(el, N, L) {
     .nodeOpacity(0.85)
     .linkColor(function(l) {
       var t = typeof l.target==='object' ? l.target : N.find(function(x){return x.id===l.target;});
-      if (t && t.group==='planned') return 'rgba(255,255,255,0.04)';
-      if (t && t.group==='wip') return 'rgba(234,179,8,0.15)';
+      if (t && t.status==='planned') return 'rgba(255,255,255,0.04)';
+      if (t && t.status==='wip') return 'rgba(234,179,8,0.15)';
       return 'rgba(255,255,255,0.15)';
     })
     .linkWidth(1)
@@ -92,7 +60,7 @@ function renderArch(el, N, L) {
       var group = new THREE.Group();
       var r = Math.cbrt(node.val||5) * 4.5;
       var fill = getColor(node);
-      var opacity = STATUS_OPACITY[node.group] || STATUS_OPACITY[node.status] || 0.85;
+      var opacity = STATUS_OPACITY[node.status] || 0.85;
 
       var geo;
       switch(node.shape) {
@@ -106,7 +74,7 @@ function renderArch(el, N, L) {
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:fill, transparent:true, opacity:opacity})));
 
       // Status wireframe
-      var wireColor = STATUS_C[node.group] || STATUS_C[node.status];
+      var wireColor = STATUS_C[node.status];
       if (wireColor) {
         var wire = new THREE.LineSegments(
           new THREE.EdgesGeometry(geo),
@@ -117,7 +85,7 @@ function renderArch(el, N, L) {
       }
 
       // Label
-      var la = LABEL_OPACITY[node.group] || LABEL_OPACITY[node.status] || 0.85;
+      var la = LABEL_OPACITY[node.status] || 0.85;
       var s = new SpriteText(node.name);
       s.color = 'rgba(255,255,255,' + la + ')';
       s.textHeight = 4;
