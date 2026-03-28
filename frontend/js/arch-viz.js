@@ -3,8 +3,8 @@ import * as THREE from "https://esm.sh/three";
 import SpriteText from "https://esm.sh/three-spritetext";
 
 var TYPE_C = {
-  router:'#7dd3fc', agent:'#10b981', tool:'#f59e0b',
-  gateway:'#3b82f6', plugin:'#8b5cf6', storage:'#ec4899',
+  router:'#7dd3fc', agent:'#3b82f6', tool:'#8b5cf6',
+  gateway:'#10b981', plugin:'#f59e0b', storage:'#ec4899',
 };
 var STATUS_C = {done:'#10b981', wip:'#eab308', planned:null};
 var STATUS_OPACITY = {done:0.9, wip:0.7, planned:0.25};

@@ -4,10 +4,11 @@ import SpriteText from "https://esm.sh/three-spritetext";
 
 var C = {
   router:'#7dd3fc',
-  agent:'#10b981',
-  tool:'#f59e0b',
-  gateway:'#3b82f6',
-  connector:'#8b5cf6',
+  agent:'#3b82f6',
+  tool:'#8b5cf6',
+  gateway:'#10b981',
+  connector:'#f59e0b',
+  plugin:'#f59e0b',
   storage:'#ec4899',
 };
 
@@ -55,8 +56,8 @@ window.initViz = async function() {
 
       // Wireframe from node data or fallback to group defaults
       var wc = node.wireframe || {
-        router:'#ffffff', agent:'#a7f3d0', tool:'#fef3c7',
-        gateway:'#bfdbfe', connector:'#e9d5ff', plugin:'#e9d5ff', storage:'#fbcfe8',
+        router:'#ffffff', agent:'#bfdbfe', tool:'#e9d5ff',
+        gateway:'#a7f3d0', connector:'#fef3c7', plugin:'#fef3c7', storage:'#fbcfe8',
       }[node.group] || '#ffffff';
       var wire = new THREE.LineSegments(
         new THREE.EdgesGeometry(geo),
