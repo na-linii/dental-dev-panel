@@ -40,7 +40,7 @@ window.initViz = async function() {
     .nodeThreeObject(function(node) {
       var group = new THREE.Group();
       var r = Math.cbrt(node.val || 5) * 5;
-      var color = C[node.group] || '#888';
+      var color = node.color || C[node.group] || '#888';
 
       var geo;
       switch(node.shape) {
@@ -53,16 +53,11 @@ window.initViz = async function() {
       }
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color:color, transparent:true, opacity:0.85 })));
 
-      // Contrasting wireframe
-      var wireColors = {
-        router: '#ffffff',    // white on cyan
-        agent: '#a7f3d0',     // light mint on green
-        tool: '#fef3c7',      // light cream on amber
-        gateway: '#bfdbfe',   // light blue on blue
-        connector: '#e9d5ff', // light purple on purple
-        storage: '#fbcfe8',   // light pink on pink
-      };
-      var wc = wireColors[node.group] || '#ffffff';
+      // Wireframe from node data or fallback to group defaults
+      var wc = node.wireframe || {
+        router:'#ffffff', agent:'#a7f3d0', tool:'#fef3c7',
+        gateway:'#bfdbfe', connector:'#e9d5ff', plugin:'#e9d5ff', storage:'#fbcfe8',
+      }[node.group] || '#ffffff';
       var wire = new THREE.LineSegments(
         new THREE.EdgesGeometry(geo),
         new THREE.LineBasicMaterial({color: wc, transparent: true, opacity: 0.5})
