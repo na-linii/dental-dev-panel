@@ -116,16 +116,26 @@ async def get_trace(trace_id: str, user=Depends(verify_github_token)):
             )
             trace = r.json()
 
-        # Extract flow path from observations
+        # Extract flow with full data
         flow = []
         for obs in trace.get("observations", []):
             name = obs.get("name", "")
-            typ = obs.get("type", "")
-            model = obs.get("model")
+            if not name or name in ("RunnableSequence", "Prompt", "should_continue", "call_model"):
+                continue
+            inp = obs.get("input")
+            out = obs.get("output")
+            # Truncate large values
+            if isinstance(inp, str) and len(inp) > 500: inp = inp[:500] + "..."
+            if isinstance(out, str) and len(out) > 500: out = out[:500] + "..."
             flow.append({
                 "name": name,
-                "type": typ,
-                "model": model,
+                "type": obs.get("type", ""),
+                "model": obs.get("model"),
+                "startTime": obs.get("startTime"),
+                "endTime": obs.get("endTime"),
+                "input": inp,
+                "output": out,
+                "metadata": obs.get("metadata"),
                 "id": obs.get("id", ""),
                 "parentId": obs.get("parentObservationId"),
             })
