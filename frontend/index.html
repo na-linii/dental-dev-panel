@@ -331,15 +331,14 @@ async function initViz() {
     .nodeThreeObject(node => {
       const s = new SpriteText(node.name);
       s.color = C[node.group] || '#ccc';
-      s.textHeight = 2.2;
-      s.backgroundColor = 'rgba(0,0,0,0.4)';
-      s.padding = 0.5;
-      s.borderRadius = 1;
+      s.textHeight = 2;
       s.material.depthWrite = false;
       s.material.depthTest = false;
       s.renderOrder = 999;
-      s.center.set(0.5, 1);
-      s.position.set(0, 5, 0);
+      // Left-align: anchor at left edge, vertically centered
+      s.center.set(-0.1, 0.5);
+      // Position to the RIGHT of the sphere
+      s.position.set(6, 0, 0);
       return s;
     }).nodeThreeObjectExtend(true);
 
