@@ -332,11 +332,11 @@ async function initViz() {
       s.color = C[node.group] || '#ccc';
       s.textHeight = 2.5;
       s.material.depthWrite = false;
-      // Anchor: bottom-center of text sits above the sphere
+      s.material.depthTest = false;
+      s.renderOrder = 999;
       s.center.set(0.5, 1);
-      // Y offset: sphere radius + gap (radius ≈ val * 0.3)
       const radius = Math.cbrt(node.val || 5) * 1.5;
-      s.position.set(0, radius + 1.5, 0);
+      s.position.set(0, radius + 2, 0);
       return s;
     }).nodeThreeObjectExtend(true);
 
