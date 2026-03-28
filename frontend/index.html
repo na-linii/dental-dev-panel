@@ -300,8 +300,13 @@ window.openViz = function(clinicId) {
 async function initViz() {
   if (vizGraph) return;
 
-  const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444',
-             tools_node:'#f59e0b',hook:'#6366f1',system:'#475569'};
+  const C = {
+    router:'#7dd3fc',      // Core router — bright cyan
+    agent:'#10b981',       // Sub-agents — green
+    tool:'#f59e0b',        // Tools — amber
+    gateway:'#3b82f6',     // CRM API / Chat Gateway — blue
+    connector:'#8b5cf6',   // Telegram, Google Sheets, Admin — purple
+  };
 
   // Fetch real graph through Hub API proxy
   let N = [], L = [];
@@ -331,21 +336,32 @@ async function initViz() {
     .linkDirectionalParticleColor(() => '#7dd3fc').linkDirectionalParticleSpeed(0.012)
     .nodeThreeObject(node => {
       const group = new THREE.Group();
+      const r = Math.cbrt(node.val || 5) * 5;
+      const color = C[node.group] || '#888';
 
-      // Low-poly sphere (icosahedron, detail=0 = 20 faces, looks like faceted gem)
-      const r = Math.cbrt(node.val || 5) * 7;
-      const shape = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(r, 0),
-        new THREE.MeshLambertMaterial({ color: C[node.group] || '#888', transparent: true, opacity: 0.85 })
-      );
-      group.add(shape);
+      let geo;
+      switch(node.shape) {
+        case 'dodecahedron': geo = new THREE.DodecahedronGeometry(r*1.3, 0); break;
+        case 'icosahedron':  geo = new THREE.IcosahedronGeometry(r, 0); break;
+        case 'octahedron':   geo = new THREE.OctahedronGeometry(r*0.8, 0); break;
+        case 'box':          geo = new THREE.BoxGeometry(r*1.4, r*0.7, r*0.7); break;
+        case 'tetrahedron':  geo = new THREE.TetrahedronGeometry(r*0.9, 0); break;
+        default:             geo = new THREE.IcosahedronGeometry(r, 0);
+      }
 
-      // Label
+      const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+        color, transparent: true, opacity: 0.85
+      }));
+      const spd = 0.002 + Math.random() * 0.003;
+      const ax = new THREE.Vector3(Math.random()-.5, 1, Math.random()-.5).normalize();
+      (function rot() { mesh.rotateOnAxis(ax, spd); requestAnimationFrame(rot); })();
+      group.add(mesh);
+
       const s = new SpriteText(node.name);
       s.color = '#ffffff';
-      s.textHeight = 6;
-      s.backgroundColor = 'rgba(0,0,0,0.6)';
-      s.padding = 1.5;
+      s.textHeight = 5;
+      s.backgroundColor = 'rgba(0,0,0,0.55)';
+      s.padding = 1.2;
       s.borderRadius = 2;
       s.material.depthWrite = false;
       s.material.depthTest = false;
