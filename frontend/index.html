@@ -323,7 +323,7 @@ async function initViz() {
     .height(gh)
     .graphData({nodes:N, links:L})
     .backgroundColor('#0a0a1a')
-    .nodeVal(n => Math.max(2, (n.val || 5) * 0.3))
+    .nodeVal(n => Math.max(4, (n.val || 5) * 0.6))
     .nodeColor(n => C[n.group] || '#888').nodeOpacity(0.85)
     .linkColor(() => 'rgba(255,255,255,0.1)').linkWidth(0.5)
     .linkDirectionalParticles(0).linkDirectionalParticleWidth(3)
@@ -331,7 +331,7 @@ async function initViz() {
     .nodeThreeObject(node => {
       const s = new SpriteText('  ' + node.name);
       s.color = C[node.group] || '#ccc';
-      s.textHeight = 2;
+      s.textHeight = 6;
       s.material.depthWrite = false;
       s.material.depthTest = false;
       s.renderOrder = 999;
