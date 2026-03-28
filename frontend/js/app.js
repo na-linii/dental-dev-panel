@@ -18,6 +18,9 @@ window.showPage = function(id) {
   if (id === 'roadmap' && window.initRoadmapViz) {
     setTimeout(window.initRoadmapViz, 300);
   }
+  if (id === 'arch' && window.initArchViz) {
+    setTimeout(window.initArchViz, 300);
+  }
 };
 
 /* =================== CLINICS =================== */

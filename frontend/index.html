@@ -22,6 +22,7 @@
   <div class="logo">Dental Hub</div>
   <div class="tabs">
     <div class="tab active" data-page="clinics" onclick="showPage('clinics')">Клиники</div>
+    <div class="tab" data-page="arch" onclick="showPage('arch')">Архитектура</div>
     <div class="tab" data-page="roadmap" onclick="showPage('roadmap')">Roadmap</div>
   </div>
   <div class="user">
@@ -73,6 +74,28 @@
   <div id="viz-trace-panel">
     <div id="viz-trace-header">Trace Log</div>
     <div id="viz-trace-log"></div>
+  </div>
+</div>
+
+<!-- PAGE: ARCHITECTURE -->
+<div class="page" id="page-arch">
+  <div style="display:flex;height:calc(100vh - 48px)">
+    <div style="flex:1;position:relative;overflow:hidden">
+      <div id="arch-graph" style="width:100%;height:100%"></div>
+      <div style="position:absolute;top:.5rem;left:.5rem;font-size:.6rem;color:var(--muted);display:flex;gap:8px;z-index:10">
+        <span style="color:#7dd3fc">● Router</span>
+        <span style="color:#10b981">● Agent</span>
+        <span style="color:#f59e0b">● Tool</span>
+        <span style="color:#3b82f6">● Gateway</span>
+        <span style="color:#8b5cf6">● Plugin</span>
+      </div>
+    </div>
+    <div id="arch-panel" style="width:340px;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:.82rem;color:var(--accent);font-weight:600">Детали компонента</div>
+      <div id="arch-detail" style="padding:10px 14px;font-size:.78rem;color:var(--muted)">
+        Нажми на компонент для просмотра деталей
+      </div>
+    </div>
   </div>
 </div>
 
@@ -150,6 +173,7 @@
 <script type="module" src="js/viz.js"></script>
 <script type="module" src="js/trace.js"></script>
 <script type="module" src="js/roadmap-viz.js"></script>
+<script type="module" src="js/arch-viz.js"></script>
 
 </body>
 </html>
