@@ -330,9 +330,11 @@ async function initViz() {
     .nodeThreeObject(node => {
       const s = new SpriteText(node.name);
       s.color = C[node.group] || '#ccc';
-      s.textHeight = 3;
+      s.textHeight = 2.5;
       s.material.depthWrite = false;
-      s.center.set(0, -0.8);
+      // Position text to the right of the sphere with gap
+      s.center.set(-0.6, 0.5);
+      s.position.set(0, (node.val || 5) * 0.25 + 2, 0);
       return s;
     }).nodeThreeObjectExtend(true);
 
