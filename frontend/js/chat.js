@@ -1,4 +1,23 @@
-/* chat.js — Chat functionality, plain JS */
+/* chat.js — Chat functionality with playground params */
+
+/* Toggle business_connection_id field based on channel */
+document.addEventListener('DOMContentLoaded', function() {
+  var sel = document.getElementById('pg-channel');
+  if (sel) {
+    sel.onchange = function() {
+      var bizRow = document.getElementById('pg-biz-row');
+      if (bizRow) bizRow.style.display = sel.value === 'tg_business' ? 'flex' : 'none';
+    };
+  }
+});
+
+/* Generate default user ID on clinic open */
+window.initPlayground = function() {
+  var uid = document.getElementById('pg-user-id');
+  if (uid && !uid.value) {
+    uid.value = 'hub-' + Math.floor(Math.random() * 900000 + 100000);
+  }
+};
 
 window.vizSend = async function() {
   var inp = document.getElementById('viz-inp');
@@ -13,11 +32,29 @@ window.vizSend = async function() {
   msgs.appendChild(d1);
   msgs.scrollTop = msgs.scrollHeight;
 
+  /* Collect playground params */
+  var channel = (document.getElementById('pg-channel') || {}).value || 'tg_bot';
+  var userId = (document.getElementById('pg-user-id') || {}).value || ('hub-' + Date.now());
+  var bizId = (document.getElementById('pg-biz-id') || {}).value || '';
+  var phone = (document.getElementById('pg-phone') || {}).value || '';
+  var name = (document.getElementById('pg-name') || {}).value || '';
+
+  var body = {
+    message: t,
+    channel: channel,
+    channel_user_id: userId,
+  };
+  if (phone) body.phone = phone;
+  if (name) body.name = name;
+  if (channel === 'tg_business' && bizId) {
+    body.channel_username = bizId; /* pass biz connection through username field for now */
+  }
+
   try {
     var hdrs = Object.assign({'Content-Type': 'application/json'}, window.authHeaders());
     var r = await fetch('/api/clinics/' + window._activeClinic.id + '/chat', {
       method: 'POST', headers: hdrs,
-      body: JSON.stringify({message: t, channel_user_id: 'hub-' + Date.now()})
+      body: JSON.stringify(body)
     });
     var d = await r.json();
     var d2 = document.createElement('div');
@@ -34,7 +71,6 @@ window.vizSend = async function() {
     msgs.appendChild(d2);
     msgs.scrollTop = msgs.scrollHeight;
 
-    /* Auto-animate trace after delay (Langfuse needs time to ingest) */
     if (d.trace_id) {
       setTimeout(function() { window.animateFromTrace(d.trace_id); }, 3000);
     }

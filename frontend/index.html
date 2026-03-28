@@ -64,6 +64,31 @@
     </div>
     <div id="viz-right">
       <div id="viz-chat-header">Chat</div>
+      <div id="viz-playground" style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:.68rem">
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+          <label style="color:var(--muted);min-width:50px">Channel</label>
+          <select id="pg-channel" style="flex:1;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.68rem">
+            <option value="tg_bot">Telegram Bot</option>
+            <option value="tg_business">Telegram Business</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+          <label style="color:var(--muted);min-width:50px">User ID</label>
+          <input id="pg-user-id" type="text" value="" placeholder="telegram_user_id" style="flex:1;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.68rem">
+        </div>
+        <div id="pg-biz-row" style="display:none;gap:4px;align-items:center;margin-bottom:4px">
+          <label style="color:var(--muted);min-width:50px">Biz ID</label>
+          <input id="pg-biz-id" type="text" value="" placeholder="business_connection_id" style="flex:1;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.68rem">
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+          <label style="color:var(--muted);min-width:50px">Phone</label>
+          <input id="pg-phone" type="text" value="" placeholder="+7XXXXXXXXXX (optional)" style="flex:1;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.68rem">
+        </div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <label style="color:var(--muted);min-width:50px">Name</label>
+          <input id="pg-name" type="text" value="" placeholder="Имя (optional)" style="flex:1;padding:2px 4px;border-radius:3px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.68rem">
+        </div>
+      </div>
       <div id="viz-msgs"><div class="vm s">Напиши сообщение</div></div>
       <div id="viz-iw">
         <input id="viz-inp" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')vizSend()">
