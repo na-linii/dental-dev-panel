@@ -552,54 +552,55 @@ async function animateFromTrace(traceId) {
     }
     log.scrollTop = log.scrollHeight;
 
-    // Build graph animation path from real trace
-    const path = [];
-
-    // Inbound: Telegram → Chat Gateway → Router
-    path.push(['telegram', 'chat_gateway']);
-    path.push(['chat_gateway', 'router']);
-
-    // Which agent?
+    // Build animation from real trace — 3 phases
     const hasFaq = data.flow.some(o => o.name === 'faq');
     const hasBooking = data.flow.some(o => o.name === 'booking');
     const agentId = hasFaq ? 'faq:agent' : hasBooking ? 'booking:agent' : null;
 
-    if (agentId) {
-      path.push(['router', agentId]);
+    // Phase 1: INBOUND — Telegram → Gateway → Router → Agent
+    const inbound = [
+      ['telegram', 'chat_gateway'],
+      ['chat_gateway', 'router'],
+    ];
+    if (agentId) inbound.push(['router', agentId]);
 
-      // FAQ: Tier 1+2
-      if (agentId === 'faq:agent') {
-        path.push(['faq:agent', 'tool:tier1']);
-        path.push(['faq:agent', 'tool:tier2']);
+    // Phase 2: PROCESSING — Agent ↔ Tools
+    const processing = [];
+    if (agentId === 'faq:agent') {
+      // Tier 1+2 simultaneously
+      processing.push(['faq:agent', 'tool:tier1']);
+      processing.push(['faq:agent', 'tool:tier2']);
+    }
+    const toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
+    for (const obs of data.flow) {
+      if (obs.name && toolNames.includes(obs.name)) {
+        processing.push([agentId, 'tool:' + obs.name]);
+        processing.push(['tool:' + obs.name, 'crm_gateway']);
+        processing.push(['crm_gateway', 'google_sheets']);
       }
-
-      // Booking tools
-      const toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
-      for (const obs of data.flow) {
-        if (obs.name && toolNames.includes(obs.name)) {
-          path.push([agentId, 'tool:' + obs.name]);
-          path.push(['tool:' + obs.name, 'crm_gateway']);
-          path.push(['crm_gateway', 'google_sheets']);
-        }
-      }
-
-      // Handoff
-      if (data.flow.some(o => o.name && o.name.includes('handoff'))) {
-        path.push([agentId, 'tool:handoff']);
-        path.push(['tool:handoff', 'chat_gateway']);
-      }
-
+    }
+    if (data.flow.some(o => o.name && o.name.includes('handoff'))) {
+      processing.push([agentId, 'tool:handoff']);
+      processing.push(['tool:handoff', 'chat_gateway']);
     }
 
-    // Animate inbound path (cyan)
-    if (path.length > 0) animateFlow(path, '#7dd3fc');
+    // Phase 3: OUTBOUND — Agent → Gateway → Telegram (NOT through router)
+    const outbound = [];
+    if (agentId) {
+      // Real LangGraph: agent → __end__. Visually: agent goes back to gateway
+      outbound.push(['chat_gateway', 'telegram']);
+    }
 
-    // Outbound path after inbound finishes (green, delayed)
-    const outbound = [['router', 'chat_gateway'], ['chat_gateway', 'telegram']];
-    const outDelay = (path.length * 800) + 500;
-    setTimeout(() => {
-      if (vizGraph) animateFlow(outbound, '#10b981');
-    }, outDelay);
+    // Animate sequentially
+    animateFlow(inbound, '#7dd3fc');
+
+    const p2delay = inbound.length * 800 + 400;
+    if (processing.length) {
+      setTimeout(() => { if (vizGraph) animateFlow(processing, '#f59e0b'); }, p2delay);
+    }
+
+    const p3delay = p2delay + Math.max(processing.length, 1) * 800 + 400;
+    setTimeout(() => { if (vizGraph) animateFlow(outbound, '#10b981'); }, p3delay);
   } catch(e) {
     console.error('Trace animation failed:', e);
   }
