@@ -442,107 +442,153 @@ async function animateFromTrace(traceId) {
     const data = await r.json();
     if (!data.flow || !data.flow.length) return;
 
-    // Write trace log as timeline
+    // Build parent-child tree from observations
     const log = document.getElementById('viz-trace-log');
     const sep = document.createElement('div');
     sep.style.cssText = 'border-top:1px solid #334155;margin:6px 0 4px;padding-top:3px;color:#7dd3fc;font-size:.65rem';
     sep.textContent = 'Trace: ' + traceId.substring(0,12) + '...';
     log.appendChild(sep);
 
-    // Build readable timeline: from → to with duration
-    const steps = [];
-    const nameMap = {'LangGraph':'Chat Gateway','router':'Dental Router','faq':'FAQ Agent','booking':'Booking Agent','pre_model_hook':'Tier 1+2 Search','agent':'LLM Think','ChatOpenAI':'LLM Response'};
-
-    let prevName = 'Telegram';
-    for (const obs of data.flow) {
-      const displayName = nameMap[obs.name] || obs.name;
-      if (displayName === prevName) continue;
-      const dur = (obs.startTime && obs.endTime) ? Math.round((new Date(obs.endTime) - new Date(obs.startTime))) + 'ms' : '';
-      steps.push({ from: prevName, to: displayName, dur, input: obs.input, output: obs.output, metadata: obs.metadata });
-      prevName = displayName;
-    }
-
-    for (const step of steps) {
-      const wrapper = document.createElement('div');
-
-      const row = document.createElement('div');
-      row.className = 'te-row';
-      row.innerHTML = '<span class="te-from">' + step.from + '</span><span class="te-arrow">→</span><span class="te-to">' + step.to + '</span>' + (step.dur ? '<span class="te-dur">' + step.dur + '</span>' : '');
-
-      const details = document.createElement('div');
-      details.className = 'te-details';
-
-      const btnInput = document.createElement('button');
-      btnInput.className = 'te-btn';
-      btnInput.textContent = 'Input';
-      const btnOutput = document.createElement('button');
-      btnOutput.className = 'te-btn';
-      btnOutput.textContent = 'Output';
-
-      const pre = document.createElement('pre');
-      pre.style.display = 'none';
-
-      btnInput.onclick = (e) => { e.stopPropagation(); pre.textContent = JSON.stringify(step.input, null, 2) || '—'; pre.style.display = 'block'; btnInput.classList.add('active'); btnOutput.classList.remove('active'); };
-      btnOutput.onclick = (e) => { e.stopPropagation(); pre.textContent = JSON.stringify(step.output, null, 2) || '—'; pre.style.display = 'block'; btnOutput.classList.add('active'); btnInput.classList.remove('active'); };
-
-      details.appendChild(btnInput);
-      details.appendChild(btnOutput);
-      details.appendChild(pre);
-
-      row.onclick = () => details.classList.toggle('open');
-
-      wrapper.appendChild(row);
-      wrapper.appendChild(details);
-      log.appendChild(wrapper);
-    }
-    log.scrollTop = log.scrollHeight;
-
-    // Map observations to graph node IDs
-    const nameToNode = {
-      'router': 'router',
-      'faq': 'faq:agent',
-      'booking': 'booking:agent',
-      'pre_model_hook': 'tool:tier1',
+    const nameMap = {
+      'LangGraph':'Chat Gateway',
+      'router':'Dental Router',
+      'faq':'FAQ Agent',
+      'booking':'Booking Agent',
+      'pre_model_hook':'Tier 1+2 Search',
+      'agent':'Agent Process',
+      'ChatOpenAI':'LLM Call',
+      'call_model':'LLM Call',
     };
 
-    const path = [];
-    const visited = new Set();
-    path.push(['telegram', 'chat_gateway']);
-    path.push(['chat_gateway', 'router']);
+    // Build tree: find root, then children
+    const byId = {};
+    for (const obs of data.flow) { byId[obs.id] = obs; }
 
-    for (const obs of data.flow) {
-      const nodeId = nameToNode[obs.name];
-      if (nodeId && !visited.has(nodeId)) {
-        visited.add(nodeId);
-        if (nodeId !== 'router') {
-          path.push(['router', nodeId]);
-        }
-        if (nodeId === 'faq:agent') {
-          path.push(['faq:agent', 'tool:tier1']);
-          path.push(['faq:agent', 'tool:tier2']);
-        }
-      }
+    // Find the actual execution order using parent-child
+    const root = data.flow.find(o => !o.parentId) || data.flow[0];
+
+    // Build sequential path from tree
+    const realSteps = [];
+
+    // Inbound path
+    realSteps.push({ from: 'Telegram', to: 'Chat Gateway', obs: root });
+
+    // Find router
+    const routerObs = data.flow.find(o => o.name === 'router');
+    if (routerObs) {
+      realSteps.push({ from: 'Chat Gateway', to: 'Dental Router', obs: routerObs });
     }
 
-    // Booking tools
-    const bookingTools = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
+    // Find which agent was called
+    const faqObs = data.flow.find(o => o.name === 'faq' && o.type === 'CHAIN');
+    const bookingObs = data.flow.find(o => o.name === 'booking' && o.type === 'CHAIN');
+    const agentName = faqObs ? 'FAQ Agent' : bookingObs ? 'Booking Agent' : null;
+    const agentObs = faqObs || bookingObs;
+
+    if (agentName && agentObs) {
+      realSteps.push({ from: 'Dental Router', to: agentName, obs: agentObs });
+    }
+
+    // Find pre_model_hook (Tier 1+2)
+    const hookObs = data.flow.find(o => o.name === 'pre_model_hook');
+    if (hookObs && agentName) {
+      realSteps.push({ from: agentName, to: 'Tier 1+2 Search', obs: hookObs });
+      realSteps.push({ from: 'Tier 1+2 → ' + agentName, to: agentName, obs: hookObs });
+    }
+
+    // Find LLM call
+    const llmObs = data.flow.find(o => o.name === 'ChatOpenAI');
+    if (llmObs && agentName) {
+      realSteps.push({ from: agentName, to: 'LLM (' + (llmObs.model || 'gpt-5.4-mini') + ')', obs: llmObs });
+    }
+
+    // Find booking tools
+    const toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
     for (const obs of data.flow) {
-      for (const bt of bookingTools) {
-        if (obs.name && obs.name.includes(bt)) {
-          path.push(['booking:agent', 'tool:' + bt]);
-          path.push(['tool:' + bt, 'crm_gateway']);
-        }
+      if (obs.name && toolNames.includes(obs.name)) {
+        realSteps.push({ from: 'Booking Agent', to: obs.name, obs });
+        realSteps.push({ from: obs.name, to: 'CRM Gateway', obs });
       }
     }
 
     // Handoff
-    if (data.flow.some(o => o.name && o.name.includes('handoff'))) {
-      const agent = visited.has('faq:agent') ? 'faq:agent' : 'booking:agent';
-      path.push([agent, 'tool:handoff']);
-      path.push(['tool:handoff', 'chat_gateway']);
+    const handoffObs = data.flow.find(o => o.name && o.name.includes('handoff'));
+    if (handoffObs) {
+      realSteps.push({ from: agentName || '?', to: 'Handoff', obs: handoffObs });
+      realSteps.push({ from: 'Handoff', to: 'Chat Gateway', obs: handoffObs });
     }
 
-    path.push(['chat_gateway', 'telegram']);
+    // Outbound path
+    if (agentName) {
+      realSteps.push({ from: agentName, to: 'Chat Gateway', obs: agentObs });
+    }
+    realSteps.push({ from: 'Chat Gateway', to: 'Telegram', obs: root });
+
+    // Render steps
+    for (const step of realSteps) {
+      const dur = (step.obs && step.obs.startTime && step.obs.endTime)
+        ? Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)) + 'ms' : '';
+
+      const wrapper = document.createElement('div');
+      const row = document.createElement('div');
+      row.className = 'te-row';
+      row.innerHTML = '<span class="te-from">' + step.from + '</span><span class="te-arrow">→</span><span class="te-to">' + step.to + '</span>' + (dur ? '<span class="te-dur">' + dur + '</span>' : '');
+
+      const details = document.createElement('div');
+      details.className = 'te-details';
+      const btnI = document.createElement('button'); btnI.className = 'te-btn'; btnI.textContent = 'Input';
+      const btnO = document.createElement('button'); btnO.className = 'te-btn'; btnO.textContent = 'Output';
+      const pre = document.createElement('pre'); pre.style.display = 'none';
+      btnI.onclick = (e) => { e.stopPropagation(); pre.textContent = JSON.stringify(step.obs?.input, null, 2) || '—'; pre.style.display = 'block'; btnI.classList.add('active'); btnO.classList.remove('active'); };
+      btnO.onclick = (e) => { e.stopPropagation(); pre.textContent = JSON.stringify(step.obs?.output, null, 2) || '—'; pre.style.display = 'block'; btnO.classList.add('active'); btnI.classList.remove('active'); };
+      details.appendChild(btnI); details.appendChild(btnO); details.appendChild(pre);
+      row.onclick = () => details.classList.toggle('open');
+      wrapper.appendChild(row); wrapper.appendChild(details);
+      log.appendChild(wrapper);
+    }
+    log.scrollTop = log.scrollHeight;
+
+    // Build graph animation path from real trace
+    const path = [];
+
+    // Inbound: Telegram → Chat Gateway → Router
+    path.push(['telegram', 'chat_gateway']);
+    path.push(['chat_gateway', 'router']);
+
+    // Which agent?
+    const hasFaq = data.flow.some(o => o.name === 'faq');
+    const hasBooking = data.flow.some(o => o.name === 'booking');
+    const agentId = hasFaq ? 'faq:agent' : hasBooking ? 'booking:agent' : null;
+
+    if (agentId) {
+      path.push(['router', agentId]);
+
+      // FAQ: Tier 1+2
+      if (agentId === 'faq:agent') {
+        path.push(['faq:agent', 'tool:tier1']);
+        path.push(['faq:agent', 'tool:tier2']);
+      }
+
+      // Booking tools
+      const toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
+      for (const obs of data.flow) {
+        if (obs.name && toolNames.includes(obs.name)) {
+          path.push([agentId, 'tool:' + obs.name]);
+          path.push(['tool:' + obs.name, 'crm_gateway']);
+          path.push(['crm_gateway', 'google_sheets']);
+        }
+      }
+
+      // Handoff
+      if (data.flow.some(o => o.name && o.name.includes('handoff'))) {
+        path.push([agentId, 'tool:handoff']);
+        path.push(['tool:handoff', 'chat_gateway']);
+      }
+
+      // Outbound: Agent → Router → Chat Gateway → Telegram
+      path.push(['router', 'chat_gateway']);
+      path.push(['chat_gateway', 'telegram']);
+    }
 
     const usedModel = data.flow.find(o => o.model);
     const color = usedModel && usedModel.model && usedModel.model.includes('openrouter')
