@@ -96,10 +96,14 @@ window.animateFromTrace = async function(traceId) {
       var fromId = NAME_TO_NODE[step.from];
       var toId = NAME_TO_NODE[step.to];
       if (fromId && toId) {
-        animPath.push([fromId, toId]);
-        // Tier 1+2: also animate tier2 simultaneously
+        // Tier 1+2: fire both simultaneously as parallel step
         if (toId === 'tool:tier1') {
-          animPath.push([fromId, 'tool:tier2']);
+          animPath.push([[fromId, 'tool:tier1'], [fromId, 'tool:tier2']]);
+        } else if (step.from === 'Tier 1+2 Search') {
+          // Return from tier: both return simultaneously
+          animPath.push([['tool:tier1', toId], ['tool:tier2', toId]]);
+        } else {
+          animPath.push([fromId, toId]);
         }
       }
     });

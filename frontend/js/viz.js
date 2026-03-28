@@ -1,16 +1,14 @@
-/* viz.js — 3D visualizer, ES module (imports THREE + SpriteText) */
+/* viz.js — 3D Visualizer, ES module (imports THREE + SpriteText from CDN) */
 import * as THREE from "https://esm.sh/three";
 import SpriteText from "https://esm.sh/three-spritetext";
 
 var C = {
-  router:  '#7dd3fc',  // Core router — bright cyan
-  agent:   '#10b981',  // Sub-agents — green
-  tool:    '#f59e0b',  // Tools — amber
-  gateway: '#3b82f6',  // CRM Gateway / Chat Gateway — blue
-  connector:'#8b5cf6', // Telegram, Google Sheets, Admin — purple
+  router:'#7dd3fc',
+  agent:'#10b981',
+  tool:'#f59e0b',
+  gateway:'#3b82f6',
+  connector:'#8b5cf6',
 };
-
-window._vizGraph = null;
 
 window.initViz = async function() {
   if (window._vizGraph) return;
@@ -22,8 +20,7 @@ window.initViz = async function() {
     N = data.nodes || [];
     L = data.links || [];
   } catch(e) {
-    console.error('Failed to fetch graph:', e);
-    N = [{id:'error', name:'Could not load graph', group:'system', val:15}];
+    N = [{id:'error', name:'Could not load graph', group:'router', shape:'dodecahedron', val:15}];
   }
 
   var graphEl = document.getElementById('viz-graph');
@@ -31,8 +28,7 @@ window.initViz = async function() {
   var gh = graphEl.clientHeight;
 
   window._vizGraph = new ForceGraph3D(graphEl)
-    .width(gw)
-    .height(gh)
+    .width(gw).height(gh)
     .graphData({nodes:N, links:L})
     .backgroundColor('#0a0a1a')
     .nodeVal(function(n) { return Math.max(4, (n.val || 5) * 0.6); })
@@ -54,11 +50,7 @@ window.initViz = async function() {
         case 'tetrahedron':  geo = new THREE.OctahedronGeometry(r*0.9, 0); break;
         default:             geo = new THREE.IcosahedronGeometry(r, 0);
       }
-
-      var mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
-        color: color, transparent: true, opacity: 0.85
-      }));
-      group.add(mesh);
+      group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color:color, transparent:true, opacity:0.85 })));
 
       var s = new SpriteText(node.name);
       s.color = '#ffffff';
@@ -86,40 +78,53 @@ window.initViz = async function() {
 };
 
 /* =================== FLOW ANIMATION =================== */
+/*
+ * path: array of steps. Each step is either:
+ *   [from, to]              — single link animation
+ *   [[from, to1], [from, to2]]  — parallel links (same delay)
+ */
 window.animateFlow = function(path, color) {
   if (!window._vizGraph) return;
   var data = window._vizGraph.graphData();
 
+  // Clear all
   data.links.forEach(function(l) { l._p = 0; });
   window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
 
-  path.forEach(function(pair, i) {
-    setTimeout(function() {
-      if (!window._vizGraph) return;
-      var lk = data.links.find(function(l) {
-        var s = typeof l.source === 'object' ? l.source.id : l.source;
-        var t = typeof l.target === 'object' ? l.target.id : l.target;
-        return s === pair[0] && t === pair[1];
-      });
-      if (!lk) {
-        console.warn('LINK NOT FOUND:', pair[0], '→', pair[1]);
-        // Debug: show what links exist for this source
-        var fromLinks = data.links.filter(function(l) {
-          var s = typeof l.source === 'object' ? l.source.id : l.source;
-          return s === pair[0];
-        }).map(function(l) { return typeof l.target === 'object' ? l.target.id : l.target; });
-        console.warn('  Available from', pair[0], ':', fromLinks.join(', '));
-      }
+  function findLink(from, to) {
+    return data.links.find(function(l) {
+      var s = typeof l.source === 'object' ? l.source.id : l.source;
+      var t = typeof l.target === 'object' ? l.target.id : l.target;
+      return s === from && t === to;
+    });
+  }
+
+  function lightUp(pairs) {
+    pairs.forEach(function(pair) {
+      var lk = findLink(pair[0], pair[1]);
       if (lk) {
         lk._p = 8; lk._c = color;
-        window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
-        window._vizGraph.linkDirectionalParticleColor(function(l) { return l._c || '#7dd3fc'; });
-        setTimeout(function() {
-          if (!window._vizGraph) return;
-          lk._p = 0;
-          window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
-        }, 1200);
       }
+    });
+    window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
+    window._vizGraph.linkDirectionalParticleColor(function(l) { return l._c || '#7dd3fc'; });
+
+    setTimeout(function() {
+      if (!window._vizGraph) return;
+      pairs.forEach(function(pair) {
+        var lk = findLink(pair[0], pair[1]);
+        if (lk) lk._p = 0;
+      });
+      window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
+    }, 1200);
+  }
+
+  path.forEach(function(step, i) {
+    setTimeout(function() {
+      if (!window._vizGraph) return;
+      // Check if parallel step (array of arrays)
+      var pairs = (Array.isArray(step[0])) ? step : [step];
+      lightUp(pairs);
     }, i * 800);
   });
 };
