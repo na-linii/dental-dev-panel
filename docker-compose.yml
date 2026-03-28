@@ -1,0 +1,134 @@
+# Dental Hub — Langfuse + Hub API + ngrok
+services:
+
+  # === Hub API ===
+  hub-api:
+    build:
+      context: .
+      dockerfile: hub/Dockerfile
+    ports: ["8000:8000"]
+    volumes:
+      - hub_data:/data
+      - ./frontend:/app/frontend:ro
+    environment:
+      HUB_DB_PATH: /data/hub.db
+      LANGFUSE_EXTERNAL_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost:3000}
+    depends_on:
+      langfuse-web:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 5s
+
+  # === Langfuse (shared for all clinics) ===
+  langfuse-web:
+    image: langfuse/langfuse:3
+    ports: ["3000:3000"]
+    depends_on:
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_started
+      langfuse-redis:
+        condition: service_started
+      langfuse-minio:
+        condition: service_started
+    environment: &langfuse-env
+      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-hub-secret-change-me}
+      SALT: ${LANGFUSE_SALT:-hub-salt-change-me}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      NEXTAUTH_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost:3000}
+      TELEMETRY_ENABLED: "false"
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: langfuse-ch-pass
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: ""
+      LANGFUSE_S3_EVENT_UPLOAD_ENABLED: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: langfuse-minio-pass
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    depends_on:
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_started
+      langfuse-redis:
+        condition: service_started
+    environment:
+      <<: *langfuse-env
+
+  langfuse-postgres:
+    image: postgres:17
+    volumes: [langfuse_postgres_data:/var/lib/postgresql/data]
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - ./docker/clickhouse/config.xml:/etc/clickhouse-server/config.d/langfuse.xml:ro
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: langfuse-ch-pass
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+
+  langfuse-redis:
+    image: redis:7-alpine
+
+  langfuse-minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    volumes: [langfuse_minio_data:/data]
+    environment:
+      MINIO_ROOT_USER: langfuse
+      MINIO_ROOT_PASSWORD: langfuse-minio-pass
+
+  langfuse-minio-init:
+    image: minio/mc
+    depends_on: [langfuse-minio]
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set minio http://langfuse-minio:9000 langfuse langfuse-minio-pass;
+      mc mb minio/langfuse --ignore-existing;
+      echo 'Bucket created';
+      "
+
+  # === Ngrok tunnel (Langfuse accessible from remote clinics) ===
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http langfuse-web:3000 --log stdout
+    ports: ["4040:4040"]  # ngrok dashboard
+    depends_on:
+      langfuse-web:
+        condition: service_started
+
+volumes:
+  hub_data:
+  langfuse_postgres_data:
+  langfuse_clickhouse_data:
+  langfuse_minio_data:
