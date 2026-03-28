@@ -54,8 +54,8 @@ window.openViz = function(clinicId) {
   if (!clinic) return;
   window._activeClinic = clinic;
 
-  document.getElementById('viz-clinic-name').textContent = clinic.name;
-  document.getElementById('viz-chat-header').textContent = 'Chat — ' + clinic.name;
+  var chatHeader = document.getElementById('viz-chat-header');
+  if (chatHeader) chatHeader.textContent = 'Chat — ' + clinic.name;
   document.getElementById('viz-msgs').innerHTML = '<div class="vm s">Напиши сообщение для ' + clinic.name + '</div>';
 
   /* Reset graph if switching clinics */
