@@ -316,10 +316,13 @@ window.openViz = function(clinicId) {
     document.getElementById('viz-graph').innerHTML = '';
   }
   showPage('viz');
-  setTimeout(() => initViz(), 300);
+  // Wait for module script to define initViz (CDN load)
+  (function tryInit(n) {
+    if (window.initViz) window.initViz();
+    else if (n > 0) setTimeout(() => tryInit(n-1), 300);
+  })(30);
 };
 
-// initViz will be set by the module script below
 </script>
 
 <!-- 3D Visualizer — module script (loads THREE.js + SpriteText from CDN) -->
