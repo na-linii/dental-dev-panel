@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dental Core — Dev Panel</title>
+  <style>
+    :root{--bg:#0a0a1a;--card:#111127;--border:#1e293b;--text:#e0e0e0;--muted:#64748b;--accent:#7dd3fc;--green:#10b981;--blue:#3b82f6;--yellow:#f59e0b;--purple:#8b5cf6;--red:#ef4444}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+    /* NAV */
+    nav{background:var(--card);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;height:48px;gap:1.5rem}
+    nav .logo{font-weight:700;color:var(--accent);font-size:.95rem}
+    nav .tabs{display:flex;gap:0}
+    nav .tab{padding:.6rem 1rem;font-size:.8rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    nav .tab:hover{color:var(--text)}
+    nav .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+    nav .user{margin-left:auto;display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--muted)}
+    nav .user img{width:24px;height:24px;border-radius:50%}
+    nav .user .name{color:var(--text)}
+
+    /* PAGES */
+    .page{display:none;padding:1.5rem}
+    .page.active{display:block}
+
+    /* GRID */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem}
+    .card h3{font-size:.9rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+    .card .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    table{width:100%;border-collapse:collapse;font-size:.78rem}
+    th{text-align:left;padding:.3rem .5rem;color:var(--muted);font-size:.65rem;text-transform:uppercase;border-bottom:1px solid var(--border)}
+    td{padding:.35rem .5rem;border-bottom:1px solid var(--border);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.65rem;font-weight:600}
+    .tag.ok{background:#052e16;color:var(--green)}.tag.wip{background:#422006;color:var(--yellow)}.tag.no{background:#450a0a;color:var(--red)}.tag.skip{background:#1e293b;color:var(--muted)}
+
+    /* ENV EDITOR */
+    .env-grid{display:grid;grid-template-columns:140px 1fr;gap:4px 8px;font-size:.78rem;align-items:center}
+    .env-grid label{color:var(--muted);font-size:.7rem}
+    .env-grid input,.env-grid select{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.78rem;outline:none}
+    .env-grid input:focus{border-color:var(--accent)}
+
+    /* 3D */
+    #viz-wrap{position:relative;width:100%;height:calc(100vh - 48px - 3rem)}
+    #viz-graph{width:calc(100% - 300px);height:100%;display:inline-block;vertical-align:top}
+    #viz-chat{width:300px;height:100%;display:inline-block;vertical-align:top;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;position:absolute;right:0;top:0}
+    #viz-msgs{flex:1;overflow-y:auto;padding:6px 10px;font-size:.78rem}
+    .vm{margin:3px 0;padding:4px 8px;border-radius:6px;max-width:88%;word-wrap:break-word}
+    .vm.u{background:#1e3a5f;color:#bfdbfe;margin-left:auto;text-align:right}
+    .vm.b{background:#14532d;color:#bbf7d0}
+    .vm.s{color:var(--muted);font-size:.68rem;text-align:center;max-width:100%}
+    #viz-iw{padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:4px}
+    #viz-iw input{flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.78rem;outline:none}
+    #viz-iw button{padding:5px 10px;border-radius:5px;border:none;background:#7c3aed;color:white;font-size:.78rem;cursor:pointer}
+
+    /* ROADMAP */
+    .timeline{position:relative;padding-left:1.5rem}
+    .timeline::before{content:'';position:absolute;left:.5rem;top:0;bottom:0;width:2px;background:var(--border)}
+    .tl{position:relative;margin-bottom:1.2rem}
+    .tl::before{content:'';position:absolute;left:-1.2rem;top:.3rem;width:10px;height:10px;border-radius:50%;border:2px solid var(--border);background:var(--bg)}
+    .tl.done::before{background:var(--green);border-color:var(--green)}
+    .tl.wip::before{background:var(--yellow);border-color:var(--yellow)}
+    .tl.todo::before{background:var(--red);border-color:var(--red)}
+    .tl .date{font-size:.65rem;color:var(--muted);font-weight:600}
+    .tl .title{font-weight:600;font-size:.85rem}
+    .tl .desc{font-size:.75rem;color:var(--muted);margin-top:.2rem}
+
+    /* PROGRESS */
+    .progress{height:20px;background:#1e293b;border-radius:5px;overflow:hidden;display:flex;margin:.5rem 0}
+    .progress .seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:600;color:white}
+    .seg.g{background:var(--green)}.seg.y{background:var(--yellow)}.seg.r{background:var(--red)}
+
+    /* LOGIN */
+    #login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+    #login-overlay h1{color:var(--accent);font-size:1.5rem}
+    #login-overlay p{color:var(--muted);font-size:.85rem}
+    #login-overlay button{padding:.6rem 1.5rem;border-radius:8px;border:none;background:var(--card);color:var(--text);font-size:.9rem;cursor:pointer;border:1px solid var(--border)}
+    #login-overlay button:hover{background:#1e293b}
+    #login-overlay.hidden{display:none}
+  </style>
+  <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-overlay">
+  <h1>Dental Core</h1>
+  <p>Dev Panel — только для команды</p>
+  <button onclick="loginGH()">Login with GitHub</button>
+</div>
+
+<!-- NAV -->
+<nav id="main-nav" style="display:none">
+  <div class="logo">Dental Core</div>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage('clinics')">Клиники</div>
+    <div class="tab" onclick="showPage('viz')">Визуализатор</div>
+    <div class="tab" onclick="showPage('roadmap')">Roadmap</div>
+  </div>
+  <div class="user">
+    <img id="user-avatar" src="">
+    <span id="user-name" class="name"></span>
+    <span style="cursor:pointer;color:var(--red)" onclick="logout()">выйти</span>
+  </div>
+</nav>
+
+<!-- PAGE: CLINICS -->
+<div class="page active" id="page-clinics">
+  <h2 style="font-size:1.1rem;margin-bottom:1rem">Клиники</h2>
+  <div class="grid" id="clinics-grid"></div>
+</div>
+
+<!-- PAGE: VISUALIZER -->
+<div class="page" id="page-viz">
+  <div id="viz-wrap">
+    <div id="viz-graph"></div>
+    <div id="viz-chat">
+      <div style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--accent);font-weight:600">
+        Chat — <select id="viz-clinic" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:.75rem;padding:1px 4px" onchange="vizClinicChanged()"></select>
+      </div>
+      <div id="viz-msgs"><div class="vm s">Выбери клинику и напиши сообщение</div></div>
+      <div id="viz-iw">
+        <input id="viz-inp" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')vizSend()">
+        <button onclick="vizSend()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: ROADMAP -->
+<div class="page" id="page-roadmap">
+  <h2 style="font-size:1.1rem;margin-bottom:.5rem">Roadmap</h2>
+  <p style="font-size:.75rem;color:var(--muted);margin-bottom:1rem">Обновлено 28.03.2026</p>
+
+  <div class="progress">
+    <div class="seg g" style="width:50%">Этапы 1-3</div>
+    <div class="seg y" style="width:17%">Этап 4</div>
+    <div class="seg r" style="width:33%">5-6</div>
+  </div>
+
+  <div style="margin:1.5rem 0">
+    <div class="grid">
+      <div class="card">
+        <h3>Архитектура</h3>
+        <table>
+          <tr><td>Telegram Bot</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Chat Gateway + Streaming</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Dental Router</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>FAQ Agent (2-tier KB)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Booking Agent (5 tools)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>CRM Protocol + Google Sheets</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Handoff (operator)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>LLM Fallback (OpenRouter)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>CI/CD (GitHub Actions)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Telegram Business</td><td><span class="tag wip">Parse есть</span></td></tr>
+          <tr><td>Confirmation Agent</td><td><span class="tag wip">Валентин</span></td></tr>
+          <tr><td>IDENT Adapter</td><td><span class="tag no">Нет</span></td></tr>
+          <tr><td>Админ-панель</td><td><span class="tag no">Нет</span></td></tr>
+          <tr><td>WhatsApp / MAX</td><td><span class="tag skip">Потом</span></td></tr>
+          <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Блокеры к понедельнику</h3>
+        <table>
+          <tr><td>Operator handoff</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Confirmation flow</td><td><span class="tag wip">Валентин</span></td></tr>
+          <tr><td>Primary patient block</td><td><span class="tag wip">Тестируем</span></td></tr>
+          <tr><td>Данные Элайнер РФ</td><td><span class="tag no">Нужно</span></td></tr>
+          <tr><td>Red button</td><td><span class="tag no">Нужно</span></td></tr>
+          <tr><td>Persistent checkpointer</td><td><span class="tag no">Желательно</span></td></tr>
+          <tr><td>E2E тесты</td><td><span class="tag wip">Модуль готов</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-size:.95rem;margin:1.5rem 0 .5rem">Таймлайн</h3>
+  <div class="timeline">
+    <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking agents, Identity, pgvector, YAML configs. 50 тестов.</div></div>
+    <div class="tl done"><div class="date">ЭТАП 2 — 28 марта (утро)</div><div class="title">CRM API: Google Sheets</div><div class="desc">Protocol, adapter, registry, 2 клиники, register_patient. 134 теста.</div></div>
+    <div class="tl done"><div class="date">ЭТАП 3 — 28 марта (день)</div><div class="title">Chat Gateway + Telegram + CI/CD</div><div class="desc">Gateway, polling, streaming, handoff, fallback LLM. 143 теста. Auto-deploy.</div></div>
+    <div class="tl wip"><div class="date">ЭТАП 4 — 28-30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Confirmation agent (Валентин), real data, E2E testing, red button.</div></div>
+    <div class="tl todo"><div class="date">ЭТАП 5 — Апрель</div><div class="title">IDENT + Telegram Business + MAX</div></div>
+    <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">Админ-панель + 10 клиник</div></div>
+  </div>
+</div>
+
+<script type="module">
+import SpriteText from "https://esm.sh/three-spritetext";
+
+// =================== CLINICS DATA ===================
+const CLINICS = [
+  {
+    id: 'healthy_rodent', name: 'Здоровый Грызун', env: 'local',
+    url: 'http://localhost:8080', status: 'running',
+    config: {
+      CLINIC_ID: 'healthy_rodent', TELEGRAM_BOT_TOKEN: '(local .env)',
+      CRM: 'Google Sheets (full r/w)', MODEL: 'gpt-5.2',
+      STREAMING: 'true', HANDOFF_COOLDOWN: '30 min',
+    }
+  },
+  {
+    id: 'zubatka', name: 'Зубатка', env: 'yandex',
+    url: 'http://158.160.240.47:8080', status: 'running',
+    config: {
+      CLINIC_ID: 'zubatka', TELEGRAM_BOT_TOKEN: '@shmali_robot',
+      CRM: 'Google Sheets (restricted)', MODEL: 'gpt-5.2',
+      STREAMING: 'true', HANDOFF_COOLDOWN: '30 min',
+    }
+  }
+];
+
+// =================== AUTH ===================
+const ALLOWED_USERS = ['mk-amorson', 'amorson-na-linii', 'valentin-nls'];
+
+window.loginGH = function() {
+  // Simple: check localStorage for saved user, or prompt
+  const user = prompt('GitHub username:');
+  if (!user) return;
+  if (!ALLOWED_USERS.includes(user.toLowerCase()) && !ALLOWED_USERS.some(u => user.toLowerCase().includes(u.split('-')[0]))) {
+    alert('Access denied. Only team members allowed.');
+    return;
+  }
+  localStorage.setItem('dental_user', user);
+  localStorage.setItem('dental_avatar', `https://github.com/${user}.png`);
+  initApp();
+};
+
+window.logout = function() {
+  localStorage.removeItem('dental_user');
+  localStorage.removeItem('dental_avatar');
+  location.reload();
+};
+
+function initApp() {
+  const user = localStorage.getItem('dental_user');
+  if (!user) return;
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('user-name').textContent = user;
+  document.getElementById('user-avatar').src = localStorage.getItem('dental_avatar') || '';
+  renderClinics();
+  showPage('clinics');
+}
+
+// =================== PAGES ===================
+window.showPage = function(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelector(`.tab[onclick*="${id}"]`).classList.add('active');
+  if (id === 'viz') initViz();
+};
+
+// =================== CLINICS PAGE ===================
+function renderClinics() {
+  const grid = document.getElementById('clinics-grid');
+  grid.innerHTML = '';
+  CLINICS.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <h3><div class="dot" style="background:${c.status==='running'?'var(--green)':'var(--red)'}"></div>${c.name} <span style="font-weight:400;color:var(--muted);font-size:.7rem">(${c.env})</span></h3>
+      <table>
+        <tr><td style="color:var(--muted)">URL</td><td><a href="${c.url}/health" target="_blank" style="color:var(--accent);text-decoration:none;font-size:.75rem">${c.url}</a></td></tr>
+        ${Object.entries(c.config).map(([k,v]) => `<tr><td style="color:var(--muted)">${k}</td><td style="font-size:.75rem">${v}</td></tr>`).join('')}
+      </table>
+      <div style="margin-top:.5rem;display:flex;gap:.3rem">
+        <button onclick="checkHealth('${c.url}')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;cursor:pointer">Health Check</button>
+        <button onclick="showPage('viz');document.getElementById('viz-clinic').value='${c.id}';vizClinicChanged()" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;cursor:pointer">Open Chat</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+window.checkHealth = async function(url) {
+  try {
+    const r = await fetch(url + '/health', {mode:'no-cors'});
+    alert('Health: OK (request sent)');
+  } catch(e) {
+    alert('Cannot reach: ' + e.message);
+  }
+};
+
+// =================== VISUALIZER ===================
+let vizGraph = null;
+
+function initViz() {
+  if (vizGraph) return;
+  const sel = document.getElementById('viz-clinic');
+  sel.innerHTML = CLINICS.map(c => `<option value="${c.id}">${c.name} (${c.env})</option>`).join('');
+
+  const N = [
+    {id:'telegram',name:'Telegram Bot',group:'external',val:8},
+    {id:'gateway',name:'Chat Gateway',group:'gateway',val:12},
+    {id:'router',name:'Dental Router',group:'gateway',val:14},
+    {id:'faq',name:'FAQ Agent',group:'agent',val:12},
+    {id:'booking',name:'Booking Agent',group:'agent',val:12},
+    {id:'kb_search',name:'KB Search',group:'tool',val:6},
+    {id:'handoff',name:'Handoff',group:'tool',val:5},
+    {id:'get_avail',name:'get_availability',group:'tool',val:5},
+    {id:'book_appt',name:'book_appointment',group:'tool',val:5},
+    {id:'cancel_appt',name:'cancel_appt',group:'tool',val:5},
+    {id:'get_bookings',name:'get_bookings',group:'tool',val:5},
+    {id:'register_pat',name:'register_patient',group:'tool',val:5},
+    {id:'crm',name:'CRM Protocol',group:'tool',val:8},
+    {id:'sheets',name:'Google Sheets',group:'external',val:7},
+    {id:'llm',name:'GPT-5.2',group:'infra',val:10},
+    {id:'openrouter',name:'OpenRouter',group:'infra',val:7},
+    {id:'postgres',name:'PostgreSQL',group:'infra',val:7},
+    {id:'langfuse',name:'Langfuse',group:'infra',val:6},
+    {id:'identity',name:'Identity',group:'gateway',val:7},
+    {id:'admin',name:'Admin TG',group:'external',val:6},
+  ];
+  const L = [
+    {source:'telegram',target:'gateway'},{source:'gateway',target:'identity'},
+    {source:'identity',target:'postgres'},{source:'gateway',target:'router'},
+    {source:'router',target:'faq'},{source:'router',target:'booking'},
+    {source:'router',target:'llm'},{source:'faq',target:'llm'},
+    {source:'faq',target:'kb_search'},{source:'faq',target:'handoff'},
+    {source:'kb_search',target:'postgres'},{source:'booking',target:'llm'},
+    {source:'booking',target:'get_avail'},{source:'booking',target:'book_appt'},
+    {source:'booking',target:'cancel_appt'},{source:'booking',target:'get_bookings'},
+    {source:'booking',target:'register_pat'},
+    {source:'get_avail',target:'crm'},{source:'book_appt',target:'crm'},
+    {source:'cancel_appt',target:'crm'},{source:'get_bookings',target:'crm'},
+    {source:'register_pat',target:'crm'},{source:'crm',target:'sheets'},
+    {source:'handoff',target:'admin'},{source:'llm',target:'openrouter'},
+    {source:'router',target:'langfuse'},{source:'faq',target:'langfuse'},
+    {source:'booking',target:'langfuse'},
+    {source:'faq',target:'gateway'},{source:'booking',target:'gateway'},{source:'gateway',target:'telegram'},
+  ];
+  const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444'};
+
+  vizGraph = new ForceGraph3D(document.getElementById('viz-graph'))
+    .graphData({nodes:N,links:L})
+    .backgroundColor('#0a0a1a')
+    .nodeVal('val')
+    .nodeColor(n=>C[n.group]||'#888')
+    .nodeOpacity(0.9)
+    .linkColor(()=>'rgba(255,255,255,0.12)')
+    .linkWidth(0.7)
+    .linkDirectionalParticles(0)
+    .linkDirectionalParticleWidth(3)
+    .linkDirectionalParticleColor(()=>'#7dd3fc')
+    .linkDirectionalParticleSpeed(0.012)
+    .nodeThreeObject(node=>{
+      const sprite=new SpriteText(node.name);
+      sprite.color=C[node.group]||'#ccc';
+      sprite.textHeight=3;
+      sprite.material.depthWrite=false;
+      sprite.center.set(0,-0.8);
+      return sprite;
+    })
+    .nodeThreeObjectExtend(true);
+
+  vizGraph.d3Force('charge').strength(-160);
+  vizGraph.d3Force('link').distance(55);
+}
+
+window.vizClinicChanged = function() {};
+
+window.vizSend = async function() {
+  const inp = document.getElementById('viz-inp');
+  const t = inp.value.trim(); if (!t) return; inp.value = '';
+  const msgs = document.getElementById('viz-msgs');
+  const clinicId = document.getElementById('viz-clinic').value;
+  const clinic = CLINICS.find(c => c.id === clinicId);
+  const url = clinic ? clinic.url : '';
+
+  const d1 = document.createElement('div'); d1.className = 'vm u'; d1.textContent = t;
+  msgs.appendChild(d1); msgs.scrollTop = msgs.scrollHeight;
+
+  try {
+    const r = await fetch(url + '/chat', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({message:t, clinic_id:clinicId, channel_user_id:'devpanel-'+Date.now()})
+    });
+    const d = await r.json();
+    const d2 = document.createElement('div'); d2.className = 'vm b'; d2.textContent = d.response || 'No response';
+    msgs.appendChild(d2); msgs.scrollTop = msgs.scrollHeight;
+  } catch(e) {
+    const d3 = document.createElement('div'); d3.className = 'vm s'; d3.textContent = 'Error: ' + e.message;
+    msgs.appendChild(d3);
+  }
+};
+
+// =================== INIT ===================
+if (localStorage.getItem('dental_user')) initApp();
+</script>
+</body>
+</html>
