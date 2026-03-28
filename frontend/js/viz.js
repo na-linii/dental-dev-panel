@@ -52,6 +52,22 @@ window.initViz = async function() {
       }
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color:color, transparent:true, opacity:0.85 })));
 
+      // Contrasting wireframe
+      var wireColors = {
+        router: '#ffffff',    // white on cyan
+        agent: '#a7f3d0',     // light mint on green
+        tool: '#fef3c7',      // light cream on amber
+        gateway: '#bfdbfe',   // light blue on blue
+        connector: '#e9d5ff', // light purple on purple
+      };
+      var wc = wireColors[node.group] || '#ffffff';
+      var wire = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({color: wc, transparent: true, opacity: 0.5})
+      );
+      wire.scale.setScalar(1.03);
+      group.add(wire);
+
       var s = new SpriteText(node.name);
       s.color = '#ffffff';
       s.textHeight = 5;
