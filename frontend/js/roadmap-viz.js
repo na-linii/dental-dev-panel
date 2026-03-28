@@ -101,6 +101,17 @@ window.initRoadmapViz = function() {
       }
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:color, transparent:true, opacity:opacity})));
 
+      // Status outline: green = done, yellow = WIP
+      if (node.group === 'done' || node.group === 'wip') {
+        var outlineColor = node.group === 'done' ? '#10b981' : '#f59e0b';
+        var wireframe = new THREE.LineSegments(
+          new THREE.EdgesGeometry(geo),
+          new THREE.LineBasicMaterial({color: outlineColor, transparent: true, opacity: 0.7})
+        );
+        wireframe.scale.setScalar(1.05);
+        group.add(wireframe);
+      }
+
       var labelAlpha = STATUS_LABEL_ALPHA[node.group] || 0.5;
       var s = new SpriteText(node.name);
       s.color = 'rgba(255,255,255,' + labelAlpha + ')';
