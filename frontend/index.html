@@ -409,8 +409,13 @@ async function initViz() {
 
 // =================== FLOW ANIMATION ===================
 function animateFlow(path, color) {
-  if (!vizGraph) { console.log('vizGraph is null, skip animation'); return; }
+  if (!vizGraph) return;
   const data = vizGraph.graphData();
+
+  // Clear all previous particles
+  data.links.forEach(l => { l._p = 0; });
+  vizGraph.linkDirectionalParticles(l => l._p || 0);
+
   path.forEach((pair, i) => {
     setTimeout(() => {
       if (!vizGraph) return;
@@ -420,18 +425,17 @@ function animateFlow(path, color) {
         return (s === pair[0] && t === pair[1]) || (s === pair[1] && t === pair[0]);
       });
       if (lk) {
-        lk._p = 6; lk._c = color;
+        lk._p = 8; lk._c = color;
         vizGraph.linkDirectionalParticles(l => l._p || 0);
         vizGraph.linkDirectionalParticleColor(l => l._c || '#7dd3fc');
+        // Fade out this link after a bit
         setTimeout(() => {
           if (!vizGraph) return;
           lk._p = 0;
           vizGraph.linkDirectionalParticles(l => l._p || 0);
-        }, 2000);
-      } else {
-        console.log('Link not found:', pair[0], '→', pair[1]);
+        }, 1200);
       }
-    }, i * 500);
+    }, i * 800); // 800ms between each step — slow enough to follow
   });
 }
 
@@ -585,16 +589,17 @@ async function animateFromTrace(traceId) {
         path.push(['tool:handoff', 'chat_gateway']);
       }
 
-      // Outbound: Agent → Router → Chat Gateway → Telegram
-      path.push(['router', 'chat_gateway']);
-      path.push(['chat_gateway', 'telegram']);
     }
 
-    const usedModel = data.flow.find(o => o.model);
-    const color = usedModel && usedModel.model && usedModel.model.includes('openrouter')
-      ? '#ef4444' : '#10b981';
+    // Animate inbound path (cyan)
+    if (path.length > 0) animateFlow(path, '#7dd3fc');
 
-    if (path.length > 0) animateFlow(path, color);
+    // Outbound path after inbound finishes (green, delayed)
+    const outbound = [['router', 'chat_gateway'], ['chat_gateway', 'telegram']];
+    const outDelay = (path.length * 800) + 500;
+    setTimeout(() => {
+      if (vizGraph) animateFlow(outbound, '#10b981');
+    }, outDelay);
   } catch(e) {
     console.error('Trace animation failed:', e);
   }
