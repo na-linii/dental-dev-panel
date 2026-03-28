@@ -188,8 +188,6 @@ import SpriteText from "https://esm.sh/three-spritetext";
 
 const ORG = 'na-linii';
 const CLINICS = [
-  { id:'healthy_rodent', name:'Здоровый Грызун', env:'local', url:'http://localhost:8080',
-    config:{ CLINIC_ID:'healthy_rodent', CRM:'Google Sheets (full r/w)', MODEL:'gpt-5.4-mini', STREAMING:'true' }},
   { id:'zubatka', name:'Зубатка', env:'yandex', url:'http://158.160.240.47:8080',
     config:{ CLINIC_ID:'zubatka', CRM:'Google Sheets', MODEL:'gpt-5.4-mini', STREAMING:'true' }},
 ];
@@ -384,10 +382,11 @@ async function initViz() {
 
 // =================== FLOW ANIMATION ===================
 function animateFlow(path, color) {
-  if (!vizGraph) return;
+  if (!vizGraph) { console.log('vizGraph is null, skip animation'); return; }
   const data = vizGraph.graphData();
   path.forEach((pair, i) => {
     setTimeout(() => {
+      if (!vizGraph) return;
       const lk = data.links.find(l => {
         const s = typeof l.source === 'object' ? l.source.id : l.source;
         const t = typeof l.target === 'object' ? l.target.id : l.target;
@@ -397,7 +396,13 @@ function animateFlow(path, color) {
         lk._p = 6; lk._c = color;
         vizGraph.linkDirectionalParticles(l => l._p || 0);
         vizGraph.linkDirectionalParticleColor(l => l._c || '#7dd3fc');
-        setTimeout(() => { lk._p = 0; vizGraph.linkDirectionalParticles(l => l._p || 0); }, 2000);
+        setTimeout(() => {
+          if (!vizGraph) return;
+          lk._p = 0;
+          vizGraph.linkDirectionalParticles(l => l._p || 0);
+        }, 2000);
+      } else {
+        console.log('Link not found:', pair[0], '→', pair[1]);
       }
     }, i * 500);
   });
