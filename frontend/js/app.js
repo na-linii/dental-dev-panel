@@ -55,8 +55,6 @@ window.openViz = function(clinicId) {
   window._activeClinic = clinic;
 
   document.getElementById('viz-clinic-name').textContent = clinic.name;
-  document.getElementById('viz-server').textContent = clinic.env + ' (' + clinic.url + ')';
-  document.getElementById('viz-crm').textContent = clinic.config.CRM || '—';
   document.getElementById('viz-chat-header').textContent = 'Chat — ' + clinic.name;
   document.getElementById('viz-msgs').innerHTML = '<div class="vm s">Напиши сообщение для ' + clinic.name + '</div>';
 
