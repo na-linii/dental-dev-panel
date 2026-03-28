@@ -37,13 +37,9 @@ window.initRoadmapViz = function() {
     {id:'confirm', name:'Confirmation Agent', type:'agent', group:'wip', val:12, shape:'icosahedron'},
     {id:'tg_biz', name:'Telegram Business', type:'plugin', group:'wip', val:7, shape:'tetrahedron'},
     // PLANNED
-    {id:'reschedule', name:'Reschedule Agent', type:'agent', group:'planned', val:12, shape:'icosahedron'},
-    {id:'admin_agent', name:'Admin Agent', type:'agent', group:'planned', val:12, shape:'icosahedron'},
     {id:'ident', name:'IDENT Adapter', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
-    {id:'whatsapp', name:'WhatsApp', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
     {id:'max_msg', name:'MAX Messenger', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
     {id:'voice', name:'Voice (LiveKit)', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
-    {id:'red_btn', name:'Red Button', type:'tool', group:'planned', val:4, shape:'octahedron'},
   ];
 
   var L = [
@@ -58,10 +54,8 @@ window.initRoadmapViz = function() {
     {source:'cancel_appt',target:'crm_gw'}, {source:'get_bookings',target:'crm_gw'},
     {source:'register_pat',target:'crm_gw'},
     {source:'router',target:'confirm'}, {source:'chat_gw',target:'tg_biz'},
-    {source:'router',target:'reschedule'}, {source:'router',target:'admin_agent'},
-    {source:'admin_agent',target:'red_btn'},
     {source:'crm_gw',target:'ident'},
-    {source:'chat_gw',target:'whatsapp'}, {source:'chat_gw',target:'max_msg'},
+    {source:'chat_gw',target:'max_msg'},
     {source:'chat_gw',target:'voice'},
   ];
 

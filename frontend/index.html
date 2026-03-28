@@ -90,7 +90,7 @@
         <p><b style="color:var(--text)">Dental Core</b> — инстанс клиники. 1 Docker-контейнер = 1 клиника. Содержит: Dental Router → FAQ/Booking Agent → Tools. Два gateway: Chat Gateway (Telegram) и CRM Gateway (Google Sheets). Промпты из Langfuse, модель gpt-5.4-mini + OpenRouter fallback.</p>
         <p style="margin-top:.4rem"><b style="color:var(--text)">Dental Hub</b> — платформа управления. Langfuse (shared для всех клиник), Hub API (управление клиниками, proxy), ngrok (связь с удалёнными серверами). Фронтенд: клиники, визуализатор, roadmap.</p>
         <p style="margin-top:.4rem"><b style="color:var(--text)">Разворачивание клиники:</b> YAML конфиг + env vars → docker compose up → CLINIC_ID выбирает клинику → agent подключается к Langfuse через Hub. 3-4 клиники на один сервер Yandex.</p>
-        <p style="margin-top:.4rem"><b style="color:var(--text)">В планах:</b> добавление новых агентов и настройка через Dental Hub UI. Confirmation Agent (Валентин), Reschedule Agent, Admin Agent (red button). Новые каналы: Telegram Business, WhatsApp, MAX. CRM: IDENT adapter.</p>
+        <p style="margin-top:.4rem"><b style="color:var(--text)">В планах:</b> Confirmation Agent (Валентин) — после него ядро полностью готово. Далее плагины: Telegram Business, IDENT adapter, MAX, Voice. Создание и настройка агентов через Dental Hub UI.</p>
       </div>
 
       <h3 style="font-size:.9rem;margin:1rem 0 .5rem;color:var(--accent)">Компоненты</h3>
@@ -111,10 +111,7 @@
         <div class="card"><h3>В работе / Планируется</h3><table>
           <tr><td>Confirmation Agent</td><td><span class="tag wip">Валентин</span></td></tr>
           <tr><td>Telegram Business</td><td><span class="tag wip">Parse готов</span></td></tr>
-          <tr><td>Reschedule Agent</td><td><span class="tag no">Планируется</span></td></tr>
-          <tr><td>Admin Agent (red button)</td><td><span class="tag no">Планируется</span></td></tr>
           <tr><td>IDENT CRM Adapter</td><td><span class="tag no">Планируется</span></td></tr>
-          <tr><td>WhatsApp (Wazzup)</td><td><span class="tag skip">Потом</span></td></tr>
           <tr><td>MAX Messenger</td><td><span class="tag skip">Потом</span></td></tr>
           <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
           <tr><td>Hub: Deploy по кнопке</td><td><span class="tag no">Планируется</span></td></tr>
@@ -127,9 +124,9 @@
         <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking, Identity, pgvector.</div></div>
         <div class="tl done"><div class="date">ЭТАП 2 — 28 марта</div><div class="title">CRM Gateway + Chat Gateway + CI/CD</div><div class="desc">Google Sheets, Telegram Bot, auto-deploy.</div></div>
         <div class="tl done"><div class="date">ЭТАП 3 — 28 марта</div><div class="title">Dental Hub + Langfuse migration</div><div class="desc">Hub API, визуализатор, trace animation.</div></div>
-        <div class="tl wip"><div class="date">ЭТАП 4 — 29-30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Confirmation agent, real data, Telegram Business.</div></div>
-        <div class="tl todo"><div class="date">ЭТАП 5 — Апрель</div><div class="title">Новые агенты через Hub</div><div class="desc">Reschedule, Admin, создание агентов через UI.</div></div>
-        <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">10 клиник + IDENT + каналы</div><div class="desc">WhatsApp, MAX, IDENT adapter, deploy по кнопке.</div></div>
+        <div class="tl wip"><div class="date">ЭТАП 4 — 29-30 марта</div><div class="title">Confirmation Agent + Элайнер РФ</div><div class="desc">Confirmation agent (Валентин), реальные данные, Telegram Business.</div></div>
+        <div class="tl todo"><div class="date">ЭТАП 5 — Апрель</div><div class="title">Плагины + IDENT</div><div class="desc">Telegram Business, IDENT adapter, MAX, Voice. Deploy через Hub.</div></div>
+        <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">10 клиник + Hub UI</div><div class="desc">Создание агентов через UI, deploy по кнопке, мониторинг.</div></div>
       </div>
     </div>
 
