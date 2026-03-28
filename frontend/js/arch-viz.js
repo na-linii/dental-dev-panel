@@ -42,6 +42,7 @@ window.initArchViz = function() {
     {id:'db_identity', name:'Identity DB', type:'storage', group:'done', val:6, shape:'box'},
     {id:'db_checkpoint', name:'Checkpointer', type:'storage', group:'done', val:6, shape:'box'},
     {id:'db_kb', name:'Knowledge Base', type:'storage', group:'done', val:6, shape:'box'},
+    {id:'db_actions', name:'Action Queue', type:'storage', group:'done', val:6, shape:'box'},
     // PLANNED
     {id:'ident', name:'IDENT Adapter', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
     {id:'max_msg', name:'MAX Messenger', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
@@ -71,6 +72,8 @@ window.initArchViz = function() {
     {source:'handoff',target:'chat_gw'},
     // WIP
     {source:'router',target:'confirm'}, {source:'confirm',target:'confirm_tool'},
+    {source:'confirm',target:'crm_gw'}, {source:'confirm',target:'chat_gw'},
+    {source:'crm_gw',target:'db_actions'},
     {source:'chat_gw',target:'tg_biz'},
     // PLANNED
     {source:'crm_gw',target:'ident'},
