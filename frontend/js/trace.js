@@ -39,12 +39,18 @@ window.animateFromTrace = async function(traceId) {
     var steps = [];
     var root = data.flow.find(function(o) { return !o.parentId; }) || data.flow[0];
     var routerObs = data.flow.find(function(o) { return o.name === 'router'; });
-    var faqObs = data.flow.find(function(o) { return o.name === 'faq' && o.type === 'CHAIN'; });
-    var bookingObs = data.flow.find(function(o) { return o.name === 'booking' && o.type === 'CHAIN'; });
+    // Find agent: same parent as router (both are children of the graph node)
+    var routerParent = routerObs ? routerObs.parentId : null;
+    var faqObs = data.flow.find(function(o) { return o.name === 'faq' && o.parentId === routerParent; });
+    var bookingObs = data.flow.find(function(o) { return o.name === 'booking' && o.parentId === routerParent; });
     var agentName = faqObs ? 'FAQ Agent' : bookingObs ? 'Booking Agent' : null;
     var agentObs = faqObs || bookingObs;
     var hookObs = data.flow.find(function(o) { return o.name === 'pre_model_hook'; });
-    var llmObs = data.flow.find(function(o) { return o.name === 'ChatOpenAI'; });
+    // Find LLM call that belongs to the agent (not router's classification LLM)
+    var agentInternalId = (agentObs || {}).id;
+    var llmObs = data.flow.find(function(o) {
+      return o.name === 'ChatOpenAI' && o.parentId !== routerObs?.id;
+    }) || data.flow.find(function(o) { return o.name === 'ChatOpenAI'; });
     var toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
 
     steps.push({ from: 'Telegram', to: 'Chat Gateway', obs: root });

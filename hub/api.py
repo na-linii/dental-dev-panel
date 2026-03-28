@@ -120,7 +120,7 @@ async def get_trace(trace_id: str, user=Depends(verify_github_token)):
         flow = []
         for obs in trace.get("observations", []):
             name = obs.get("name", "")
-            if not name or name in ("RunnableSequence", "Prompt", "should_continue", "call_model"):
+            if not name or name in ("RunnableSequence", "Prompt", "should_continue", "call_model", "RunnableLambda"):
                 continue
             inp = obs.get("input")
             out = obs.get("output")
