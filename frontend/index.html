@@ -279,7 +279,7 @@ window.openViz = function(clinicId) {
   document.getElementById('viz-msgs').innerHTML = '<div class="vm s">Напиши сообщение для ' + _activeClinic.name + '</div>';
 
   showPage('viz');
-  setTimeout(() => initViz(), 100);
+  setTimeout(() => initViz(), 300);
 };
 
 function initViz() {
@@ -326,7 +326,13 @@ function initViz() {
   ];
   const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444'};
 
-  vizGraph = new ForceGraph3D(document.getElementById('viz-graph'))
+  const graphEl = document.getElementById('viz-graph');
+  const gw = graphEl.clientWidth;
+  const gh = graphEl.clientHeight;
+
+  vizGraph = new ForceGraph3D(graphEl)
+    .width(gw)
+    .height(gh)
     .graphData({nodes:N, links:L})
     .backgroundColor('#0a0a1a')
     .nodeVal('val').nodeColor(n => C[n.group] || '#888').nodeOpacity(0.9)
@@ -344,6 +350,13 @@ function initViz() {
 
   vizGraph.d3Force('charge').strength(-160);
   vizGraph.d3Force('link').distance(55);
+
+  // Resize graph when window changes
+  window.addEventListener('resize', () => {
+    if (vizGraph && graphEl.clientWidth > 0) {
+      vizGraph.width(graphEl.clientWidth).height(graphEl.clientHeight);
+    }
+  });
 }
 
 // =================== CHAT ===================
