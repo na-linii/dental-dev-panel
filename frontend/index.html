@@ -79,6 +79,7 @@
     #login a{color:var(--accent);font-size:.75rem}
     #login.hidden{display:none}
   </style>
+  <script src="//cdn.jsdelivr.net/npm/three@0.169.0/build/three.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
 </head>
 <body>
@@ -329,22 +330,19 @@ async function initViz() {
     .linkDirectionalParticles(0).linkDirectionalParticleWidth(3)
     .linkDirectionalParticleColor(() => '#7dd3fc').linkDirectionalParticleSpeed(0.012)
     .nodeThreeObject(node => {
-      const THREE = window.THREE || vizGraph.scene().constructor;
       const group = new THREE.Group();
 
-      // Hexagonal prism
       const radius = Math.cbrt(node.val || 5) * 1.2;
-      const geo = new THREE.CylinderGeometry(radius, radius, radius * 0.6, 6);
+      const geo = new THREE.CylinderGeometry(radius, radius, radius * 0.5, 6);
       const mat = new THREE.MeshLambertMaterial({
         color: C[node.group] || '#888',
         transparent: true,
         opacity: 0.85,
       });
       const hex = new THREE.Mesh(geo, mat);
-      hex.rotation.x = Math.PI / 2; // face camera
+      hex.rotation.x = Math.PI / 2;
       group.add(hex);
 
-      // Label
       const s = new SpriteText('  ' + node.name);
       s.color = C[node.group] || '#ccc';
       s.textHeight = 6;
