@@ -352,9 +352,6 @@ async function initViz() {
       const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
         color, transparent: true, opacity: 0.85
       }));
-      const spd = 0.002 + Math.random() * 0.003;
-      const ax = new THREE.Vector3(Math.random()-.5, 1, Math.random()-.5).normalize();
-      (function rot() { mesh.rotateOnAxis(ax, spd); requestAnimationFrame(rot); })();
       group.add(mesh);
 
       const s = new SpriteText(node.name);
