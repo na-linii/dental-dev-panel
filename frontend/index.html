@@ -323,20 +323,23 @@ async function initViz() {
     .height(gh)
     .graphData({nodes:N, links:L})
     .backgroundColor('#0a0a1a')
-    .nodeVal('val').nodeColor(n => C[n.group] || '#888').nodeOpacity(0.9)
-    .linkColor(() => 'rgba(255,255,255,0.12)').linkWidth(0.7)
+    .nodeVal(n => Math.max(2, (n.val || 5) * 0.3))
+    .nodeColor(n => C[n.group] || '#888').nodeOpacity(0.85)
+    .linkColor(() => 'rgba(255,255,255,0.1)').linkWidth(0.5)
     .linkDirectionalParticles(0).linkDirectionalParticleWidth(3)
     .linkDirectionalParticleColor(() => '#7dd3fc').linkDirectionalParticleSpeed(0.012)
     .nodeThreeObject(node => {
       const s = new SpriteText(node.name);
       s.color = C[node.group] || '#ccc';
-      s.textHeight = 2.5;
+      s.textHeight = 2.2;
+      s.backgroundColor = 'rgba(0,0,0,0.4)';
+      s.padding = 0.5;
+      s.borderRadius = 1;
       s.material.depthWrite = false;
       s.material.depthTest = false;
       s.renderOrder = 999;
       s.center.set(0.5, 1);
-      const radius = Math.cbrt(node.val || 5) * 1.5;
-      s.position.set(0, radius + 2, 0);
+      s.position.set(0, 5, 0);
       return s;
     }).nodeThreeObjectExtend(true);
 
