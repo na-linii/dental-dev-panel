@@ -82,6 +82,21 @@ async def proxy_health(clinic_id: str, user=Depends(verify_github_token)):
         return {"status": "unreachable", "error": str(e)}
 
 
+@app.get("/api/clinics/{clinic_id}/config")
+async def proxy_config(clinic_id: str, user=Depends(verify_github_token)):
+    """Proxy clinic config from agent."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404)
+    url = f"http://{clinic['server_host']}:{clinic['server_port']}/config"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url)
+            return r.json()
+    except Exception as e:
+        return {"config": {}, "error": str(e)}
+
+
 @app.post("/api/clinics/{clinic_id}/chat")
 async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_github_token)):
     clinic = await get_clinic(clinic_id)

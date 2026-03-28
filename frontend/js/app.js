@@ -31,28 +31,70 @@ function renderClinics() {
     var card = document.createElement('div');
     card.className = 'card';
     card.innerHTML =
-      '<h3><div class="dot" style="background:var(--green)"></div>' + c.name + ' <span style="font-weight:400;color:var(--muted);font-size:.7rem">(' + c.env + ')</span></h3>' +
+      '<h3><div class="dot" id="health-dot-' + c.id + '" style="background:var(--muted)"></div>' + c.name + ' <span style="font-weight:400;color:var(--muted);font-size:.7rem">(' + c.env + ')</span></h3>' +
       '<table>' +
         '<tr><td style="color:var(--muted)">URL</td><td style="font-size:.75rem">' + c.url + '</td></tr>' +
         Object.keys(c.config).map(function(k) {
           return '<tr><td style="color:var(--muted)">' + k + '</td><td style="font-size:.75rem">' + c.config[k] + '</td></tr>';
         }).join('') +
       '</table>' +
-      '<div style="margin-top:.6rem;display:flex;gap:.4rem">' +
-        '<button class="btn" onclick="healthCheck(\'' + c.id + '\')">Health</button>' +
+      '<div style="margin-top:.6rem;display:flex;gap:.4rem;flex-wrap:wrap">' +
         '<button class="btn primary" onclick="openViz(\'' + c.id + '\')">Chat + Визуализатор</button>' +
-      '</div>';
+        '<button class="btn" onclick="showConfig(\'' + c.id + '\')">Конфигурация</button>' +
+      '</div>' +
+      '<div id="config-' + c.id + '" style="display:none;margin-top:.5rem"></div>';
     grid.appendChild(card);
+
+    // Auto health check
+    (function(clinicId) {
+      fetch('/api/clinics/' + clinicId + '/health', { headers: window.authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var dot = document.getElementById('health-dot-' + clinicId);
+          if (dot) dot.style.background = (d.status === 'ok') ? 'var(--green)' : 'var(--red)';
+        })
+        .catch(function() {
+          var dot = document.getElementById('health-dot-' + clinicId);
+          if (dot) dot.style.background = 'var(--red)';
+        });
+    })(c.id);
   });
 }
 
-window.healthCheck = async function(clinicId) {
+window.showConfig = async function(clinicId) {
+  var container = document.getElementById('config-' + clinicId);
+  if (!container) return;
+
+  // Toggle
+  if (container.style.display !== 'none') {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Загрузка...</div>';
+  container.style.display = 'block';
+
   try {
-    var r = await fetch('/api/clinics/' + clinicId + '/health', { headers: window.authHeaders() });
-    var d = await r.json();
-    alert('Health: ' + JSON.stringify(d));
-  } catch(e) { alert('Unreachable: ' + e.message); }
+    var r = await fetch('/api/clinics/' + clinicId + '/config', { headers: window.authHeaders() });
+    var data = await r.json();
+    var cfg = data.config || {};
+
+    var html = '<table style="font-size:.7rem;width:100%">';
+    Object.keys(cfg).forEach(function(key) {
+      var val = cfg[key];
+      if (typeof val === 'object') {
+        val = JSON.stringify(val, null, 1);
+      }
+      html += '<tr><td style="color:var(--accent);padding:2px 6px;vertical-align:top;white-space:nowrap">' + key + '</td>';
+      html += '<td style="padding:2px 6px;word-break:break-all">' + String(val) + '</td></tr>';
+    });
+    html += '</table>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--red);font-size:.7rem">Error: ' + e.message + '</div>';
+  }
 };
+
 
 /* =================== OPEN VISUALIZER =================== */
 window.openViz = function(clinicId) {
