@@ -1,4 +1,22 @@
-/* trace.js — Trace animation, ES module (needs viz.js loaded first for animateFlow) */
+/* trace.js — Trace log + animation from Langfuse data */
+
+// Display name → graph node ID mapping
+var NAME_TO_NODE = {
+  'Telegram': 'telegram',
+  'Chat Gateway': 'chat_gateway',
+  'Dental Router': 'router',
+  'FAQ Agent': 'faq:agent',
+  'Booking Agent': 'booking:agent',
+  'Tier 1+2 Search': 'tool:tier1',  // animates both tier1 and tier2
+  'Handoff': 'tool:handoff',
+  'CRM Gateway': 'crm_gateway',
+  'Google Sheets': 'google_sheets',
+  'get_availability': 'tool:get_availability',
+  'book_appointment': 'tool:book_appointment',
+  'cancel_appointment': 'tool:cancel_appointment',
+  'get_existing_bookings': 'tool:get_existing_bookings',
+  'register_patient': 'tool:register_patient',
+};
 
 window.animateFromTrace = async function(traceId) {
   try {
@@ -12,58 +30,44 @@ window.animateFromTrace = async function(traceId) {
     sep.textContent = 'Trace: ' + traceId.substring(0,12) + '...';
     log.appendChild(sep);
 
-    /* Build sequential path from trace observations */
-    var realSteps = [];
-
+    /* Build steps from trace observations */
+    var steps = [];
     var root = data.flow.find(function(o) { return !o.parentId; }) || data.flow[0];
-    realSteps.push({ from: 'Telegram', to: 'Chat Gateway', obs: root });
-
     var routerObs = data.flow.find(function(o) { return o.name === 'router'; });
-    if (routerObs) {
-      realSteps.push({ from: 'Chat Gateway', to: 'Dental Router', obs: routerObs });
-    }
-
     var faqObs = data.flow.find(function(o) { return o.name === 'faq' && o.type === 'CHAIN'; });
     var bookingObs = data.flow.find(function(o) { return o.name === 'booking' && o.type === 'CHAIN'; });
     var agentName = faqObs ? 'FAQ Agent' : bookingObs ? 'Booking Agent' : null;
     var agentObs = faqObs || bookingObs;
-
-    if (agentName && agentObs) {
-      realSteps.push({ from: 'Dental Router', to: agentName, obs: agentObs });
-    }
-
     var hookObs = data.flow.find(function(o) { return o.name === 'pre_model_hook'; });
-    if (hookObs && agentName) {
-      realSteps.push({ from: agentName, to: 'Tier 1+2 Search', obs: hookObs });
-      realSteps.push({ from: 'Tier 1+2 \u2192 ' + agentName, to: agentName, obs: hookObs });
-    }
-
     var llmObs = data.flow.find(function(o) { return o.name === 'ChatOpenAI'; });
-    if (llmObs && agentName) {
-      realSteps.push({ from: agentName, to: 'LLM (' + (llmObs.model || 'gpt-5.4-mini') + ')', obs: llmObs });
-    }
-
     var toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
+
+    steps.push({ from: 'Telegram', to: 'Chat Gateway', obs: root });
+    if (routerObs) steps.push({ from: 'Chat Gateway', to: 'Dental Router', obs: routerObs });
+    if (agentName) steps.push({ from: 'Dental Router', to: agentName, obs: agentObs });
+    if (hookObs && agentName) {
+      steps.push({ from: agentName, to: 'Tier 1+2 Search', obs: hookObs });
+      steps.push({ from: 'Tier 1+2 Search', to: agentName, obs: hookObs });
+    }
+    if (llmObs && agentName) {
+      steps.push({ from: agentName, to: 'LLM (' + (llmObs.model || 'gpt-5.4-mini') + ')', obs: llmObs });
+    }
     data.flow.forEach(function(obs) {
       if (obs.name && toolNames.indexOf(obs.name) !== -1) {
-        realSteps.push({ from: 'Booking Agent', to: obs.name, obs: obs });
-        realSteps.push({ from: obs.name, to: 'CRM Gateway', obs: obs });
+        steps.push({ from: agentName || 'Booking Agent', to: obs.name, obs: obs });
+        steps.push({ from: obs.name, to: 'CRM Gateway', obs: obs });
       }
     });
-
     var handoffObs = data.flow.find(function(o) { return o.name && o.name.indexOf('handoff') !== -1; });
     if (handoffObs) {
-      realSteps.push({ from: agentName || '?', to: 'Handoff', obs: handoffObs });
-      realSteps.push({ from: 'Handoff', to: 'Chat Gateway', obs: handoffObs });
+      steps.push({ from: agentName || '?', to: 'Handoff', obs: handoffObs });
+      steps.push({ from: 'Handoff', to: 'Chat Gateway', obs: handoffObs });
     }
+    if (agentName) steps.push({ from: agentName, to: 'Chat Gateway', obs: agentObs });
+    steps.push({ from: 'Chat Gateway', to: 'Telegram', obs: root });
 
-    if (agentName) {
-      realSteps.push({ from: agentName, to: 'Chat Gateway', obs: agentObs });
-    }
-    realSteps.push({ from: 'Chat Gateway', to: 'Telegram', obs: root });
-
-    /* Render trace steps in log panel */
-    realSteps.forEach(function(step) {
+    /* Render trace log */
+    steps.forEach(function(step) {
       var dur = (step.obs && step.obs.startTime && step.obs.endTime)
         ? Math.round(new Date(step.obs.endTime) - new Date(step.obs.startTime)) + 'ms' : '';
 
@@ -77,76 +81,32 @@ window.animateFromTrace = async function(traceId) {
       var btnI = document.createElement('button'); btnI.className = 'te-btn'; btnI.textContent = 'Input';
       var btnO = document.createElement('button'); btnO.className = 'te-btn'; btnO.textContent = 'Output';
       var pre = document.createElement('pre'); pre.style.display = 'none';
-      btnI.onclick = function(e) {
-        e.stopPropagation();
-        pre.textContent = JSON.stringify(step.obs && step.obs.input, null, 2) || '\u2014';
-        pre.style.display = 'block';
-        btnI.classList.add('active');
-        btnO.classList.remove('active');
-      };
-      btnO.onclick = function(e) {
-        e.stopPropagation();
-        pre.textContent = JSON.stringify(step.obs && step.obs.output, null, 2) || '\u2014';
-        pre.style.display = 'block';
-        btnO.classList.add('active');
-        btnI.classList.remove('active');
-      };
-      details.appendChild(btnI);
-      details.appendChild(btnO);
-      details.appendChild(pre);
+      btnI.onclick = function(e) { e.stopPropagation(); pre.textContent = JSON.stringify(step.obs && step.obs.input, null, 2) || '\u2014'; pre.style.display = 'block'; btnI.classList.add('active'); btnO.classList.remove('active'); };
+      btnO.onclick = function(e) { e.stopPropagation(); pre.textContent = JSON.stringify(step.obs && step.obs.output, null, 2) || '\u2014'; pre.style.display = 'block'; btnO.classList.add('active'); btnI.classList.remove('active'); };
+      details.appendChild(btnI); details.appendChild(btnO); details.appendChild(pre);
       row.onclick = function() { details.classList.toggle('open'); };
-      wrapper.appendChild(row);
-      wrapper.appendChild(details);
+      wrapper.appendChild(row); wrapper.appendChild(details);
       log.appendChild(wrapper);
     });
     log.scrollTop = log.scrollHeight;
 
-    /* Build animation from real trace -- 3 phases */
-    var hasFaq = data.flow.some(function(o) { return o.name === 'faq'; });
-    var hasBooking = data.flow.some(function(o) { return o.name === 'booking'; });
-    var agentId = hasFaq ? 'faq:agent' : hasBooking ? 'booking:agent' : null;
-
-    /* Phase 1: INBOUND */
-    var inbound = [
-      ['telegram', 'chat_gateway'],
-      ['chat_gateway', 'router'],
-    ];
-    if (agentId) inbound.push(['router', agentId]);
-
-    /* Phase 2: PROCESSING */
-    var processing = [];
-    if (agentId === 'faq:agent') {
-      processing.push(['faq:agent', 'tool:tier1']);
-      processing.push(['faq:agent', 'tool:tier2']);
-    }
-    data.flow.forEach(function(obs) {
-      if (obs.name && toolNames.indexOf(obs.name) !== -1) {
-        processing.push([agentId, 'tool:' + obs.name]);
-        processing.push(['tool:' + obs.name, 'crm_gateway']);
-        processing.push(['crm_gateway', 'google_sheets']);
+    /* Animate on map — SAME steps as trace log, mapped to node IDs */
+    var animPath = [];
+    steps.forEach(function(step) {
+      var fromId = NAME_TO_NODE[step.from];
+      var toId = NAME_TO_NODE[step.to];
+      if (fromId && toId) {
+        animPath.push([fromId, toId]);
+        // Tier 1+2: also animate tier2 simultaneously
+        if (toId === 'tool:tier1') {
+          animPath.push([fromId, 'tool:tier2']);
+        }
       }
     });
-    if (data.flow.some(function(o) { return o.name && o.name.indexOf('handoff') !== -1; })) {
-      processing.push([agentId, 'tool:handoff']);
-      processing.push(['tool:handoff', 'chat_gateway']);
+
+    if (animPath.length > 0 && window.animateFlow) {
+      window.animateFlow(animPath, '#7dd3fc');
     }
-
-    /* Phase 3: OUTBOUND */
-    var outbound = [];
-    if (agentId) {
-      outbound.push(['chat_gateway', 'telegram']);
-    }
-
-    /* Animate sequentially */
-    window.animateFlow(inbound, '#7dd3fc');
-
-    var p2delay = inbound.length * 800 + 400;
-    if (processing.length) {
-      setTimeout(function() { if (window._vizGraph) window.animateFlow(processing, '#f59e0b'); }, p2delay);
-    }
-
-    var p3delay = p2delay + Math.max(processing.length, 1) * 800 + 400;
-    setTimeout(function() { if (window._vizGraph) window.animateFlow(outbound, '#10b981'); }, p3delay);
   } catch(e) {
     console.error('Trace animation failed:', e);
   }
