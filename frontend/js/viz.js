@@ -60,6 +60,7 @@ window.initViz = async function() {
       s.borderRadius = 2;
       s.material.depthWrite = false;
       s.material.depthTest = false;
+      s.material.sizeAttenuation = false;
       s.renderOrder = 999;
       s.center.set(-0.3, 0.5);
       group.add(s);
