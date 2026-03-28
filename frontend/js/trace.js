@@ -3,6 +3,9 @@
 var NAME_TO_NODE = {
   'Telegram': 'telegram',
   'Chat Gateway': 'chat_gateway',
+  'Identity DB': 'db:identity',
+  'Checkpointer': 'db:checkpointer',
+  'Knowledge Base': 'db:kb',
   'Dental Router': 'router',
   'FAQ Agent': 'faq:agent',
   'Booking Agent': 'booking:agent',
@@ -48,11 +51,17 @@ window.animateFromTrace = async function(traceId) {
     var toolNames = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
 
     steps.push({ from: 'Telegram', to: 'Chat Gateway', obs: root });
+    // Identity DB lookup
+    var idMs = window._lastIdentityMs || 0;
+    steps.push({ from: 'Chat Gateway', to: 'Identity DB', obs: {startTime: root.startTime, endTime: root.startTime ? new Date(new Date(root.startTime).getTime() + idMs).toISOString() : null} });
+    steps.push({ from: 'Identity DB', to: 'Chat Gateway', obs: {startTime: root.startTime, endTime: root.startTime ? new Date(new Date(root.startTime).getTime() + idMs).toISOString() : null} });
     if (routerObs) steps.push({ from: 'Chat Gateway', to: 'Dental Router', obs: routerObs });
     if (agentName) steps.push({ from: 'Dental Router', to: agentName, obs: agentObs });
     if (hookObs && agentName) {
       steps.push({ from: agentName, to: 'Tier 1+2 Search', obs: hookObs });
-      steps.push({ from: 'Tier 1+2 Search', to: agentName, obs: hookObs });
+      // Tier 2 → Knowledge Base (pgvector)
+      steps.push({ from: 'Tier 1+2 Search', to: 'Knowledge Base', obs: hookObs });
+      steps.push({ from: 'Knowledge Base', to: agentName, obs: hookObs });
     }
     if (llmObs && agentName) {
       steps.push({ from: agentName, to: 'LLM (' + (llmObs.model || 'gpt-5.4-mini') + ')', obs: llmObs });

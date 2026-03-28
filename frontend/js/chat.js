@@ -72,6 +72,8 @@ window.vizSend = async function() {
     msgs.scrollTop = msgs.scrollHeight;
 
     if (d.trace_id) {
+      // Pass identity_ms for trace display
+      window._lastIdentityMs = d.identity_ms || 0;
       setTimeout(function() { window.animateFromTrace(d.trace_id); }, 3000);
     }
   } catch(e) {
