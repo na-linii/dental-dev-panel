@@ -5,7 +5,7 @@ import SpriteText from "https://esm.sh/three-spritetext";
 // Type colors (for shape fill)
 var TYPE_C = {
   router:'#7dd3fc', agent:'#10b981', tool:'#f59e0b',
-  gateway:'#3b82f6', plugin:'#8b5cf6',
+  gateway:'#3b82f6', plugin:'#8b5cf6', storage:'#ec4899',
 };
 
 // Status outline colors
@@ -39,6 +39,7 @@ window.initArchViz = function() {
     {id:'confirm', name:'Confirmation Agent', type:'agent', group:'wip', val:12, shape:'icosahedron'},
     {id:'confirm_tool', name:'confirm_visit', type:'tool', group:'wip', val:4, shape:'octahedron'},
     {id:'tg_biz', name:'Telegram Business', type:'plugin', group:'wip', val:7, shape:'tetrahedron'},
+    {id:'postgres', name:'PostgreSQL', type:'storage', group:'done', val:7, shape:'box'},
     // PLANNED
     {id:'ident', name:'IDENT Adapter', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
     {id:'max_msg', name:'MAX Messenger', type:'plugin', group:'planned', val:7, shape:'tetrahedron'},
@@ -46,7 +47,8 @@ window.initArchViz = function() {
   ];
 
   var L = [
-    {source:'telegram',target:'chat_gw'}, {source:'chat_gw',target:'router'},
+    {source:'telegram',target:'chat_gw'}, {source:'chat_gw',target:'postgres'},
+    {source:'postgres',target:'chat_gw'}, {source:'chat_gw',target:'router'},
     {source:'chat_gw',target:'telegram'},
     {source:'router',target:'faq'}, {source:'router',target:'booking'},
     {source:'faq',target:'tier1'}, {source:'faq',target:'tier2'},

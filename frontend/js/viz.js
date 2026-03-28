@@ -8,6 +8,7 @@ var C = {
   tool:'#f59e0b',
   gateway:'#3b82f6',
   connector:'#8b5cf6',
+  storage:'#ec4899',
 };
 
 window.initViz = async function() {
@@ -59,6 +60,7 @@ window.initViz = async function() {
         tool: '#fef3c7',      // light cream on amber
         gateway: '#bfdbfe',   // light blue on blue
         connector: '#e9d5ff', // light purple on purple
+        storage: '#fbcfe8',   // light pink on pink
       };
       var wc = wireColors[node.group] || '#ffffff';
       var wire = new THREE.LineSegments(
