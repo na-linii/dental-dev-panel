@@ -98,6 +98,21 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
         raise HTTPException(502, f"Clinic unreachable: {e}")
 
 
+@app.get("/api/clinics/{clinic_id}/graph")
+async def proxy_graph(clinic_id: str, user=Depends(verify_github_token)):
+    """Proxy graph structure from clinic agent."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404)
+    url = f"http://{clinic['server_host']}:{clinic['server_port']}/graph"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url)
+            return r.json()
+    except Exception as e:
+        return {"nodes": [], "links": [], "error": str(e)}
+
+
 # --- Langfuse redirect ---
 
 @app.get("/langfuse")

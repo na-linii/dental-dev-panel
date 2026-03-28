@@ -253,17 +253,25 @@ function renderClinics() {
         ${Object.entries(c.config).map(([k,v]) => `<tr><td style="color:var(--muted)">${k}</td><td style="font-size:.75rem">${v}</td></tr>`).join('')}
       </table>
       <div style="margin-top:.6rem;display:flex;gap:.4rem">
-        <button class="btn" onclick="healthCheck('${c.url}')">Health</button>
+        <button class="btn" onclick="healthCheck('${c.id}')">Health</button>
         <button class="btn primary" onclick="openViz('${c.id}')">Chat + Визуализатор</button>
       </div>`;
     grid.appendChild(card);
   });
 }
 
-window.healthCheck = async function(url) {
-  try { const r = await fetch(url + '/health'); const d = await r.json(); alert('Health: ' + JSON.stringify(d)); }
-  catch(e) { alert('Unreachable: ' + e.message); }
+window.healthCheck = async function(clinicId) {
+  try {
+    const r = await fetch('/api/clinics/' + clinicId + '/health', { headers: authHeaders() });
+    const d = await r.json();
+    alert('Health: ' + JSON.stringify(d));
+  } catch(e) { alert('Unreachable: ' + e.message); }
 };
+
+function authHeaders() {
+  const t = localStorage.getItem('dp_token');
+  return t ? { 'Authorization': 'Bearer ' + atob(t) } : {};
+}
 
 // =================== VISUALIZER ===================
 let vizGraph = null;
@@ -294,10 +302,10 @@ async function initViz() {
   const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444',
              tools_node:'#f59e0b',hook:'#6366f1',system:'#475569'};
 
-  // Fetch real graph from clinic's /graph endpoint
+  // Fetch real graph through Hub API proxy
   let N = [], L = [];
   try {
-    const r = await fetch(_activeClinic.url + '/graph');
+    const r = await fetch('/api/clinics/' + _activeClinic.id + '/graph', { headers: authHeaders() });
     const data = await r.json();
     N = data.nodes || [];
     L = data.links || [];
@@ -349,9 +357,10 @@ window.vizSend = async function() {
   msgs.appendChild(d1); msgs.scrollTop = msgs.scrollHeight;
 
   try {
-    const r = await fetch(_activeClinic.url + '/chat', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: t, clinic_id: _activeClinic.config.CLINIC_ID, channel_user_id: 'hub-' + Date.now()})
+    const hdrs = Object.assign({'Content-Type': 'application/json'}, authHeaders());
+    const r = await fetch('/api/clinics/' + _activeClinic.id + '/chat', {
+      method: 'POST', headers: hdrs,
+      body: JSON.stringify({message: t, channel_user_id: 'hub-' + Date.now()})
     });
     const d = await r.json();
     const d2 = document.createElement('div'); d2.className = 'vm b'; d2.textContent = d.response || 'No response';
