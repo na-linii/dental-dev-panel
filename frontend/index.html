@@ -278,53 +278,33 @@ window.openViz = function(clinicId) {
   document.getElementById('viz-chat-header').textContent = 'Chat — ' + _activeClinic.name;
   document.getElementById('viz-msgs').innerHTML = '<div class="vm s">Напиши сообщение для ' + _activeClinic.name + '</div>';
 
+  // Reset graph if switching clinics
+  if (vizGraph) {
+    vizGraph._destructor && vizGraph._destructor();
+    vizGraph = null;
+    document.getElementById('viz-graph').innerHTML = '';
+  }
   showPage('viz');
   setTimeout(() => initViz(), 300);
 };
 
-function initViz() {
+async function initViz() {
   if (vizGraph) return;
 
-  const N = [
-    {id:'telegram',name:'Telegram Bot',group:'external',val:8},
-    {id:'gateway',name:'Chat Gateway',group:'gateway',val:12},
-    {id:'router',name:'Dental Router',group:'gateway',val:14},
-    {id:'faq',name:'FAQ Agent',group:'agent',val:12},
-    {id:'booking',name:'Booking Agent',group:'agent',val:12},
-    {id:'kb_search',name:'KB Search',group:'tool',val:6},
-    {id:'handoff',name:'Handoff',group:'tool',val:5},
-    {id:'get_avail',name:'get_availability',group:'tool',val:5},
-    {id:'book_appt',name:'book_appointment',group:'tool',val:5},
-    {id:'cancel_appt',name:'cancel_appt',group:'tool',val:5},
-    {id:'get_bookings',name:'get_bookings',group:'tool',val:5},
-    {id:'register_pat',name:'register_patient',group:'tool',val:5},
-    {id:'crm',name:'CRM Protocol',group:'tool',val:8},
-    {id:'sheets',name:'Google Sheets',group:'external',val:7},
-    {id:'llm',name:'GPT-5.4-mini',group:'infra',val:10},
-    {id:'openrouter',name:'OpenRouter',group:'infra',val:7},
-    {id:'postgres',name:'PostgreSQL',group:'infra',val:7},
-    {id:'langfuse',name:'Langfuse',group:'infra',val:6},
-    {id:'identity',name:'Identity',group:'gateway',val:7},
-    {id:'admin',name:'Admin TG',group:'external',val:6},
-  ];
-  const L = [
-    {source:'telegram',target:'gateway'},{source:'gateway',target:'identity'},
-    {source:'identity',target:'postgres'},{source:'gateway',target:'router'},
-    {source:'router',target:'faq'},{source:'router',target:'booking'},
-    {source:'router',target:'llm'},{source:'faq',target:'llm'},
-    {source:'faq',target:'kb_search'},{source:'faq',target:'handoff'},
-    {source:'kb_search',target:'postgres'},{source:'booking',target:'llm'},
-    {source:'booking',target:'get_avail'},{source:'booking',target:'book_appt'},
-    {source:'booking',target:'cancel_appt'},{source:'booking',target:'get_bookings'},
-    {source:'booking',target:'register_pat'},
-    {source:'get_avail',target:'crm'},{source:'book_appt',target:'crm'},
-    {source:'cancel_appt',target:'crm'},{source:'get_bookings',target:'crm'},
-    {source:'register_pat',target:'crm'},{source:'crm',target:'sheets'},
-    {source:'handoff',target:'admin'},{source:'llm',target:'openrouter'},
-    {source:'router',target:'langfuse'},{source:'faq',target:'langfuse'},{source:'booking',target:'langfuse'},
-    {source:'faq',target:'gateway'},{source:'booking',target:'gateway'},{source:'gateway',target:'telegram'},
-  ];
-  const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444'};
+  const C = {gateway:'#3b82f6',agent:'#10b981',tool:'#f59e0b',external:'#8b5cf6',infra:'#ef4444',
+             tools_node:'#f59e0b',hook:'#6366f1',system:'#475569'};
+
+  // Fetch real graph from clinic's /graph endpoint
+  let N = [], L = [];
+  try {
+    const r = await fetch(_activeClinic.url + '/graph');
+    const data = await r.json();
+    N = data.nodes || [];
+    L = data.links || [];
+  } catch(e) {
+    console.error('Failed to fetch graph:', e);
+    N = [{id:'error', name:'Could not load graph', group:'system', val:15}];
+  }
 
   const graphEl = document.getElementById('viz-graph');
   const gw = graphEl.clientWidth;
