@@ -33,9 +33,10 @@
     .btn{padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.7rem;cursor:pointer;transition:.15s}
     .btn:hover{background:#1e293b}.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
 
-    /* Visualizer: full height, graph left + chat right */
-    #page-viz{padding:0!important;height:calc(100vh - 48px);display:none;flex-direction:row}
+    /* Visualizer: top (graph+chat) + bottom (trace log) */
+    #page-viz{padding:0!important;height:calc(100vh - 48px);display:none;flex-direction:column}
     #page-viz.active{display:flex!important}
+    #viz-top{flex:1;display:flex;flex-direction:row;min-height:0}
     #viz-left{flex:1;position:relative;height:100%;overflow:hidden;min-width:0}
     #viz-graph{width:100%;height:100%;position:relative}
     #viz-info{position:absolute;top:.8rem;left:.8rem;z-index:10;background:rgba(10,10,30,.85);border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem;max-width:220px;backdrop-filter:blur(8px);font-size:.72rem}
@@ -54,6 +55,19 @@
     #viz-iw input{flex:1;padding:6px 8px;border-radius:5px;border:1px solid var(--border);background:#1e293b;color:var(--text);font-size:.8rem;outline:none}
     #viz-iw input:focus{border-color:var(--accent)}
     #viz-iw button{padding:6px 12px;border-radius:5px;border:none;background:#7c3aed;color:white;font-size:.8rem;cursor:pointer}
+
+    /* Trace panel */
+    #viz-trace-panel{height:160px;border-top:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;flex-shrink:0}
+    #viz-trace-header{padding:4px 12px;font-size:.72rem;color:var(--accent);font-weight:600;border-bottom:1px solid var(--border)}
+    #viz-trace-log{flex:1;overflow-y:auto;padding:4px 10px;font-family:monospace;font-size:.7rem}
+    .trace-entry{padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;gap:8px;align-items:baseline}
+    .trace-entry .te-time{color:#475569;min-width:55px}
+    .trace-entry .te-type{color:var(--accent);min-width:70px}
+    .trace-entry .te-name{color:var(--green);min-width:120px}
+    .trace-entry .te-model{color:var(--yellow)}
+    .trace-entry .te-data{color:var(--muted);font-size:.65rem}
+    .vm .replay-btn{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--accent);font-size:.6rem;cursor:pointer;vertical-align:middle}
+    .vm .replay-btn:hover{background:var(--border)}
 
     .timeline{position:relative;padding-left:1.5rem}
     .timeline::before{content:'';position:absolute;left:.5rem;top:0;bottom:0;width:2px;background:var(--border)}
@@ -113,25 +127,31 @@
 
 <!-- PAGE: VISUALIZER (opened from clinic card) -->
 <div class="page" id="page-viz">
-  <div id="viz-left">
-    <div id="viz-graph"></div>
-    <div id="viz-info">
-      <h4 id="viz-clinic-name">—</h4>
-      <div class="row">Сервер: <b id="viz-server">—</b></div>
-      <div class="row">Модель: <b>gpt-5.4-mini</b></div>
-      <div class="row">CRM: <b id="viz-crm">—</b></div>
+  <div id="viz-top">
+    <div id="viz-left">
+      <div id="viz-graph"></div>
+      <div id="viz-info">
+        <h4 id="viz-clinic-name">—</h4>
+        <div class="row">Сервер: <b id="viz-server">—</b></div>
+        <div class="row">Модель: <b>gpt-5.4-mini</b></div>
+        <div class="row">CRM: <b id="viz-crm">—</b></div>
+      </div>
+      <div id="viz-back">
+        <button class="btn" onclick="showPage('clinics')">← Назад</button>
+      </div>
     </div>
-    <div id="viz-back">
-      <button class="btn" onclick="showPage('clinics')">← Назад к клиникам</button>
+    <div id="viz-right">
+      <div id="viz-chat-header">Chat</div>
+      <div id="viz-msgs"><div class="vm s">Напиши сообщение</div></div>
+      <div id="viz-iw">
+        <input id="viz-inp" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')vizSend()">
+        <button onclick="vizSend()">Send</button>
+      </div>
     </div>
   </div>
-  <div id="viz-right">
-    <div id="viz-chat-header">Chat</div>
-    <div id="viz-msgs"><div class="vm s">Напиши сообщение</div></div>
-    <div id="viz-iw">
-      <input id="viz-inp" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')vizSend()">
-      <button onclick="vizSend()">Send</button>
-    </div>
+  <div id="viz-trace-panel">
+    <div id="viz-trace-header">Trace Log</div>
+    <div id="viz-trace-log"></div>
   </div>
 </div>
 
@@ -415,25 +435,35 @@ async function animateFromTrace(traceId) {
     const data = await r.json();
     if (!data.flow || !data.flow.length) return;
 
-    // Map Langfuse observation names to graph node IDs
+    // Write trace log
+    const log = document.getElementById('viz-trace-log');
+    const separator = document.createElement('div');
+    separator.style.cssText = 'border-top:1px solid #334155;margin:4px 0;padding-top:2px;color:#7dd3fc;font-size:.65rem';
+    separator.textContent = 'Trace: ' + traceId.substring(0,12) + '...';
+    log.appendChild(separator);
+
+    for (const obs of data.flow) {
+      const entry = document.createElement('div');
+      entry.className = 'trace-entry';
+      entry.innerHTML = [
+        '<span class="te-type">' + (obs.type||'') + '</span>',
+        '<span class="te-name">' + (obs.name||'') + '</span>',
+        obs.model ? '<span class="te-model">[' + obs.model + ']</span>' : '',
+      ].join('');
+      log.appendChild(entry);
+    }
+    log.scrollTop = log.scrollHeight;
+
+    // Map observations to graph node IDs
     const nameToNode = {
       'router': 'router',
       'faq': 'faq:agent',
       'booking': 'booking:agent',
-      'pre_model_hook': 'tool:tier1',  // pre_model_hook = tier1 + tier2
-      'agent': null,  // generic, skip
-      'call_model': null,
-      'should_continue': null,
-      'RunnableSequence': null,
-      'Prompt': null,
-      'ChatOpenAI': null,  // LLM call — color the previous link
-      'LangGraph': null,
+      'pre_model_hook': 'tool:tier1',
     };
 
-    // Build path from observations
     const path = [];
     const visited = new Set();
-    // Always starts with telegram → chat_gateway → router
     path.push(['telegram', 'chat_gateway']);
     path.push(['chat_gateway', 'router']);
 
@@ -441,11 +471,9 @@ async function animateFromTrace(traceId) {
       const nodeId = nameToNode[obs.name];
       if (nodeId && !visited.has(nodeId)) {
         visited.add(nodeId);
-        // Connect from router to this node
         if (nodeId !== 'router') {
           path.push(['router', nodeId]);
         }
-        // If it's an agent, check for tools
         if (nodeId === 'faq:agent') {
           path.push(['faq:agent', 'tool:tier1']);
           path.push(['faq:agent', 'tool:tier2']);
@@ -453,15 +481,7 @@ async function animateFromTrace(traceId) {
       }
     }
 
-    // Check if handoff was triggered
-    const hasHandoff = data.flow.some(o => o.name && o.name.includes('handoff'));
-    if (hasHandoff) {
-      const agent = visited.has('faq:agent') ? 'faq:agent' : 'booking:agent';
-      path.push([agent, 'tool:handoff']);
-      path.push(['tool:handoff', 'chat_gateway']);
-    }
-
-    // Check if booking tools were called
+    // Booking tools
     const bookingTools = ['get_availability','book_appointment','cancel_appointment','get_existing_bookings','register_patient'];
     for (const obs of data.flow) {
       for (const bt of bookingTools) {
@@ -472,16 +492,19 @@ async function animateFromTrace(traceId) {
       }
     }
 
-    // Response back
+    // Handoff
+    if (data.flow.some(o => o.name && o.name.includes('handoff'))) {
+      const agent = visited.has('faq:agent') ? 'faq:agent' : 'booking:agent';
+      path.push([agent, 'tool:handoff']);
+      path.push(['tool:handoff', 'chat_gateway']);
+    }
+
     path.push(['chat_gateway', 'telegram']);
 
-    // Determine color by model
     const usedModel = data.flow.find(o => o.model);
     const color = usedModel && usedModel.model && usedModel.model.includes('openrouter')
-      ? '#ef4444'   // red = fallback
-      : '#10b981';  // green = primary
+      ? '#ef4444' : '#10b981';
 
-    console.log('Animate path:', path, 'color:', color);
     if (path.length > 0) animateFlow(path, color);
   } catch(e) {
     console.error('Trace animation failed:', e);
@@ -504,15 +527,20 @@ window.vizSend = async function() {
       body: JSON.stringify({message: t, channel_user_id: 'hub-' + Date.now()})
     });
     const d = await r.json();
-    const d2 = document.createElement('div'); d2.className = 'vm b'; d2.textContent = d.response || 'No response';
+    const d2 = document.createElement('div'); d2.className = 'vm b';
+    d2.innerHTML = (d.response || 'No response').replace(/</g,'&lt;');
+    if (d.trace_id) {
+      const btn = document.createElement('button');
+      btn.className = 'replay-btn';
+      btn.textContent = '▶ replay';
+      btn.onclick = () => animateFromTrace(d.trace_id);
+      d2.appendChild(btn);
+    }
     msgs.appendChild(d2); msgs.scrollTop = msgs.scrollHeight;
 
     // Fetch real trace from Langfuse and animate flow
     if (d.trace_id) {
-      console.log('Trace ID:', d.trace_id);
       setTimeout(() => animateFromTrace(d.trace_id), 3000);
-    } else {
-      console.log('No trace_id in response');
     }
   } catch(e) {
     const d3 = document.createElement('div'); d3.className = 'vm s'; d3.textContent = 'Error: ' + e.message;
