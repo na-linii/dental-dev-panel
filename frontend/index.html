@@ -476,7 +476,8 @@ async function animateFromTrace(traceId) {
       ? '#ef4444'   // red = fallback
       : '#10b981';  // green = primary
 
-    animateFlow(path, color);
+    console.log('Animate path:', path, 'color:', color);
+    if (path.length > 0) animateFlow(path, color);
   } catch(e) {
     console.error('Trace animation failed:', e);
   }
@@ -503,7 +504,10 @@ window.vizSend = async function() {
 
     // Fetch real trace from Langfuse and animate flow
     if (d.trace_id) {
-      setTimeout(() => animateFromTrace(d.trace_id), 500);
+      console.log('Trace ID:', d.trace_id);
+      setTimeout(() => animateFromTrace(d.trace_id), 3000);
+    } else {
+      console.log('No trace_id in response');
     }
   } catch(e) {
     const d3 = document.createElement('div'); d3.className = 'vm s'; d3.textContent = 'Error: ' + e.message;
