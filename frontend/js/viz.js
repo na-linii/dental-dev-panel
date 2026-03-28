@@ -101,6 +101,15 @@ window.animateFlow = function(path, color) {
         var t = typeof l.target === 'object' ? l.target.id : l.target;
         return s === pair[0] && t === pair[1];
       });
+      if (!lk) {
+        console.warn('LINK NOT FOUND:', pair[0], '→', pair[1]);
+        // Debug: show what links exist for this source
+        var fromLinks = data.links.filter(function(l) {
+          var s = typeof l.source === 'object' ? l.source.id : l.source;
+          return s === pair[0];
+        }).map(function(l) { return typeof l.target === 'object' ? l.target.id : l.target; });
+        console.warn('  Available from', pair[0], ':', fromLinks.join(', '));
+      }
       if (lk) {
         lk._p = 8; lk._c = color;
         window._vizGraph.linkDirectionalParticles(function(l) { return l._p || 0; });
