@@ -105,23 +105,27 @@
 
 <!-- PAGE: ARCHITECTURE -->
 <div class="page" id="page-arch">
-  <div style="height:calc(100vh - 48px);position:relative">
-    <div id="arch-graph" style="width:100%;height:100%"></div>
-    <div id="arch-sidebar" style="display:none;flex-direction:column;position:absolute;top:0;right:0;width:320px;height:100%;background:rgba(10,10,30,.95);border-left:1px solid var(--border);padding:12px;overflow-y:auto;backdrop-filter:blur(12px);font-size:.75rem;z-index:20"></div>
-    <div style="position:absolute;top:.8rem;left:.8rem;z-index:10;background:rgba(10,10,30,.85);border:1px solid var(--border);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px)">
-      <div style="display:flex;flex-direction:column;gap:3px">
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#7dd3fc"></div>Router</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>Agent</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#8b5cf6;transform:rotate(45deg)"></div>Tool</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#10b981"></div>Gateway</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#f59e0b;transform:rotate(45deg)"></div>Plugin</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#ec4899"></div>Storage</div>
-        <div style="border-top:1px solid var(--border);margin:2px 0;padding-top:3px"></div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border:2px solid #10b981;border-radius:2px;background:transparent"></div>Готово</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border:2px solid #eab308;border-radius:2px;background:transparent"></div>В работе</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#334155"></div>Планируется</div>
+  <div style="height:calc(100vh - 48px);display:flex">
+    <div id="arch-graph-wrap" style="flex:1;height:100%;position:relative;min-width:0">
+      <div id="arch-graph" style="width:100%;height:100%"></div>
+      <!-- Legend -->
+      <div style="position:absolute;top:.8rem;left:.8rem;z-index:10;background:rgba(10,10,30,.85);border:1px solid var(--border);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px)">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#7dd3fc"></div>Router</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#3b82f6"></div>Agent</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#8b5cf6;transform:rotate(45deg)"></div>Tool</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#10b981"></div>Gateway</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#f59e0b;transform:rotate(45deg)"></div>Plugin</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:50%;background:#ec4899"></div>Storage</div>
+          <div style="border-top:1px solid var(--border);margin:2px 0;padding-top:3px"></div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border:2px solid #10b981;border-radius:2px;background:transparent"></div>Готово</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border:2px solid #eab308;border-radius:2px;background:transparent"></div>В работе</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:.6rem"><div style="width:8px;height:8px;border-radius:2px;background:#334155"></div>Планируется</div>
+        </div>
       </div>
     </div>
+    <!-- Sidebar: appears on node click, pushes graph area -->
+    <div id="arch-sidebar" style="display:none;width:320px;height:100%;background:var(--card);border-left:1px solid var(--border);padding:12px;overflow-y:auto;font-size:.75rem;flex-shrink:0"></div>
   </div>
 </div>
 

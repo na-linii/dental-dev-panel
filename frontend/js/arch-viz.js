@@ -111,8 +111,9 @@ function renderArch(el, N, L) {
   window._archGraph.d3Force('link').distance(80);
 
   window.addEventListener('resize', function() {
-    if (window._archGraph && el.clientWidth > 50) {
-      window._archGraph.width(el.clientWidth).height(el.clientHeight);
+    var wrap = document.getElementById('arch-graph-wrap') || el;
+    if (window._archGraph && wrap.clientWidth > 50) {
+      window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
     }
   });
 }
@@ -122,7 +123,14 @@ function renderArch(el, N, L) {
 function showSidebar(node, N, L) {
   var sb = document.getElementById('arch-sidebar');
   if (!sb) return;
-  sb.style.display = 'flex';
+  sb.style.display = 'block';
+  // Resize graph to fit remaining space
+  setTimeout(function() {
+    var wrap = document.getElementById('arch-graph-wrap');
+    if (window._archGraph && wrap && wrap.clientWidth > 50) {
+      window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
+    }
+  }, 50);
 
   var color = TYPE_C[node.type] || '#888';
   var typeName = TYPE_LABELS[node.type] || node.type;
@@ -134,7 +142,7 @@ function showSidebar(node, N, L) {
   html += '<div style="width:10px;height:10px;border-radius:50%;background:' + color + '"></div>';
   html += '<span style="font-size:.65rem;color:' + color + '">' + typeName + statusLabel + '</span>';
   html += '</div>';
-  html += '<button onclick="document.getElementById(\'arch-sidebar\').style.display=\'none\'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">&times;</button>';
+  html += '<button onclick="window._closeArchSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">&times;</button>';
   html += '</div>';
 
   html += '<h3 style="font-size:.9rem;margin:0 0 6px;color:#fff">' + node.name + '</h3>';
@@ -219,6 +227,17 @@ function showSidebar(node, N, L) {
 
   sb.innerHTML = html;
 }
+
+window._closeArchSidebar = function() {
+  var sb = document.getElementById('arch-sidebar');
+  if (sb) sb.style.display = 'none';
+  setTimeout(function() {
+    var wrap = document.getElementById('arch-graph-wrap');
+    if (window._archGraph && wrap && wrap.clientWidth > 50) {
+      window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
+    }
+  }, 50);
+};
 
 window._archClickNode = function(nodeId) {
   if (!window._archGraph) return;
