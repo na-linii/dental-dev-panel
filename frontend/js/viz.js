@@ -75,16 +75,19 @@ window.initViz = async function() {
   window._vizGraph.d3Force('charge').strength(-500);
   window._vizGraph.d3Force('link').distance(120);
 
-  // Auto-rotation until first mouse click
+  // Auto-rotation until first mouse click (scroll zooms during rotation)
   var _autoRotate = true;
   var _angle = 0;
   var _dist = 350;
 
   function animate() {
     if (!_autoRotate || !window._vizGraph) return;
-    _angle += 0.003;
+    _angle += 0.0015;
+    var cam = window._vizGraph.cameraPosition();
+    _dist = Math.sqrt(cam.x*cam.x + cam.z*cam.z) || _dist;
     window._vizGraph.cameraPosition({
       x: _dist * Math.sin(_angle),
+      y: cam.y,
       z: _dist * Math.cos(_angle),
     });
     requestAnimationFrame(animate);
