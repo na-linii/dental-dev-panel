@@ -45,22 +45,30 @@ export function VisualizerPage() {
   )
 
   // Animate trace on graph
-  const animateTrace = useCallback(async (tid: string) => {
+  const animateTrace = useCallback(async (tid: string, isReplay = false) => {
     if (!graphRef.current) return
 
     // Check cache first
     let path = tracePathsRef.current.get(tid)
     if (!path) {
+      // Wait for Langfuse to finish writing trace (async ingestion)
+      if (!isReplay) {
+        await new Promise((r) => setTimeout(r, 3000))
+      }
       try {
         const data = await traceApi.get(tid)
         path = buildAnimPath(data.flow)
-        tracePathsRef.current.set(tid, path)
+        if (path.length > 0) {
+          tracePathsRef.current.set(tid, path)
+        }
       } catch {
         return
       }
     }
 
-    graphRef.current.animateFlow(path, speed)
+    if (path && path.length > 0) {
+      graphRef.current.animateFlow(path, speed)
+    }
   }, [speed])
 
   // When new trace received: load into TraceLog + animate
@@ -69,9 +77,9 @@ export function VisualizerPage() {
     animateTrace(tid)
   }, [animateTrace])
 
-  // Replay without re-sending
+  // Replay without re-sending (use cached path)
   const handleReplayTrace = useCallback((tid: string) => {
-    animateTrace(tid)
+    animateTrace(tid, true)
   }, [animateTrace])
 
   return (

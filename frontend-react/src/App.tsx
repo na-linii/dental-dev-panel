@@ -8,6 +8,7 @@ import { EdgeCasesPage } from './pages/EdgeCasesPage'
 import { VisualizerPage } from './pages/VisualizerPage'
 import { ArchitecturePage } from './pages/ArchitecturePage'
 import { RoadmapPage } from './pages/RoadmapPage'
+import { TestAnimPage } from './pages/TestAnimPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="/architecture" element={<ArchitecturePage />} />
               <Route path="/edge-cases" element={<EdgeCasesPage />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
+              <Route path="/test-anim" element={<TestAnimPage />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>
           </Routes>

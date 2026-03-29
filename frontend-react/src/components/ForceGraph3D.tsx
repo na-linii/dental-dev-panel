@@ -7,7 +7,7 @@ import type { GraphData, GraphNode } from '../types'
 
 export interface AnimStep {
   links: [string, string][]
-  dur: number
+  dur: number  // ms in real time
 }
 
 export interface ForceGraph3DHandle {
@@ -64,8 +64,9 @@ function buildNodeObject(node: GraphNode): THREE.Group {
   return group
 }
 
+// Find link object from graphData by source/target IDs
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findLink(graph: any, srcId: string, tgtId: string) {
+function findLink(graph: any, srcId: string, tgtId: string): any | null {
   const gd = graph.graphData()
   if (!gd?.links) return null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,6 +75,12 @@ function findLink(graph: any, srcId: string, tgtId: string) {
     const t = typeof l.target === 'object' ? l.target.id : l.target
     return (s === srcId && t === tgtId) || (s === tgtId && t === srcId)
   }) || null
+}
+
+// Refresh particle display on graph
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function refreshParticles(graph: any) {
+  graph.linkDirectionalParticles(graph.linkDirectionalParticles())
 }
 
 export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
@@ -85,6 +92,7 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
     const angleRef = useRef(0)
     const distRef = useRef(350)
     const animFrameRef = useRef(0)
+    const animTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
     const stopRotation = useCallback(() => {
       autoRotateRef.current = false
@@ -95,20 +103,38 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
         const g = graphRef.current
         if (!g) return
 
+        // Clear previous animation
+        animTimeoutsRef.current.forEach(clearTimeout)
+        animTimeoutsRef.current = []
+        const gd = g.graphData()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        gd.links.forEach((l: any) => { l._active = false })
+        refreshParticles(g)
+
         let delay = 0
         for (const step of path) {
-          const stepDur = Math.max(step.dur / speed, 60)
-          for (const [src, tgt] of step.links) {
-            setTimeout(() => {
+          const stepDur = Math.max(step.dur / speed, 100)
+
+          // Turn ON particles for this step's links
+          const tOn = setTimeout(() => {
+            for (const [src, tgt] of step.links) {
               const link = findLink(g, src, tgt)
-              if (link) {
-                // Emit multiple particles for visibility
-                g.emitParticle(link)
-                setTimeout(() => g.emitParticle(link), 80)
-                setTimeout(() => g.emitParticle(link), 160)
-              }
-            }, delay)
-          }
+              if (link) link._active = true
+            }
+            refreshParticles(g)
+          }, delay)
+          animTimeoutsRef.current.push(tOn)
+
+          // Turn OFF after step duration
+          const tOff = setTimeout(() => {
+            for (const [src, tgt] of step.links) {
+              const link = findLink(g, src, tgt)
+              if (link) link._active = false
+            }
+            refreshParticles(g)
+          }, delay + stepDur)
+          animTimeoutsRef.current.push(tOff)
+
           delay += stepDur
         }
       },
@@ -129,11 +155,12 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
           .nodeOpacity(0.85)
           .linkColor(() => 'rgba(255,255,255,0.25)')
           .linkWidth(1.2)
-          // Particle setup — no continuous particles, only emitParticle
+          // Electron stream — controlled per-link via _active flag
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .linkDirectionalParticles((link: any) => link._active ? 10 : 0)
+          .linkDirectionalParticleWidth(3)
           .linkDirectionalParticleColor(() => '#7dd3fc')
-          .linkDirectionalParticleWidth(6)
-          .linkDirectionalParticleSpeed(0.015)
-          .linkHoverPrecision(10)
+          .linkDirectionalParticleSpeed(0.004)  // slow stream (half of test page 0.008)
           .nodeThreeObject((node: GraphNode) => buildNodeObject(node))
           .nodeThreeObjectExtend(false)
           .onNodeClick((node: GraphNode) => {
@@ -172,6 +199,7 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
         ro.observe(el)
 
         return () => {
+          animTimeoutsRef.current.forEach(clearTimeout)
           cancelAnimationFrame(animFrameRef.current)
           el.removeEventListener('mousedown', stopRotation)
           el.removeEventListener('contextmenu', stopRotation)
@@ -188,7 +216,13 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
 
     useEffect(() => {
       if (graphRef.current && data) {
-        graphRef.current.graphData({ nodes: data.nodes, links: data.links })
+        // Add _active flag to all links
+        const enriched = {
+          nodes: data.nodes,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          links: data.links.map((l: any) => ({ ...l, _active: false })),
+        }
+        graphRef.current.graphData(enriched)
       }
     }, [data])
 
