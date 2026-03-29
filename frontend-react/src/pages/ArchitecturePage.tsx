@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import ForceGraph3D from '3d-force-graph'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
-import { clinicsApi } from '../api/client'
+import { architectureApi } from '../api/client'
 import {
   COLORS, WIREFRAME, LABELS, HUB_VERSION,
   getColor, getOpacity, getLabelOpacity, getLinkColor,
@@ -38,8 +38,7 @@ export function ArchitecturePage() {
 
   // Load graph data
   useEffect(() => {
-    const clinicId = new URLSearchParams(window.location.search).get('clinic') || 'zubatka'
-    clinicsApi.graph(clinicId, { include_planned: 'true' })
+    architectureApi.graph()
       .then((data) => {
         const runtimeNodes: RuntimeNode[] = (data.nodes || []).map((n) => ({
           ...n,
@@ -230,16 +229,26 @@ export function ArchitecturePage() {
     if (node) selectNode(node as RuntimeNode)
   }, [selectNode])
 
-  // Compute connections for selected node
-  const connsOut: string[] = []
-  const connsIn: string[] = []
+  // Compute connections for selected node (outgoing, incoming, bidirectional)
+  const connsOutOnly: string[] = []
+  const connsInOnly: string[] = []
+  const connsBidi: string[] = []
   if (selected) {
+    const outSet = new Set<string>()
+    const inSet = new Set<string>()
     links.forEach((l) => {
       const src = resolveId(l.source)
       const tgt = resolveId(l.target)
-      if (src === selected.id) connsOut.push(tgt)
-      if (tgt === selected.id) connsIn.push(src)
+      if (src === selected.id) outSet.add(tgt)
+      if (tgt === selected.id) inSet.add(src)
     })
+    // Bidirectional = appears in both outgoing and incoming
+    for (const id of outSet) {
+      if (inSet.has(id)) { connsBidi.push(id) } else { connsOutOnly.push(id) }
+    }
+    for (const id of inSet) {
+      if (!outSet.has(id)) connsInOnly.push(id)
+    }
   }
 
   const findNode = (id: string) => nodes.find((n) => n.id === id)
@@ -324,38 +333,65 @@ export function ArchitecturePage() {
             {selected.inputs && selected.inputs.length > 0 && (
               <div className="my-2">
                 <div className="text-[0.65rem] text-[#7dd3fc] mb-0.5">Inputs</div>
-                {selected.inputs.map((inp, i) => (
-                  <div key={i} className="text-[0.68rem] text-[#94a3b8] py-0.5">
-                    <code className="text-[#7dd3fc]">
-                      {typeof inp === 'string' ? inp : (inp as { name: string }).name}
-                    </code>
-                  </div>
-                ))}
+                {selected.inputs.map((inp, i) => {
+                  const port = typeof inp === 'string' ? { name: inp } : inp as { name: string; type?: string; required?: boolean; description?: string }
+                  return (
+                    <div key={i} className="text-[0.68rem] text-[#94a3b8] py-0.5">
+                      <code className="text-[#7dd3fc]">{port.name}</code>
+                      {port.type && <span className="text-[#64748b] ml-1 text-[0.6rem]">{port.type}</span>}
+                      {port.required === false && <span className="text-[#475569] ml-1 text-[0.55rem] italic">optional</span>}
+                      {port.description && <div className="text-[0.58rem] text-[#475569] ml-2">{port.description}</div>}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
             {/* Outputs */}
             {selected.outputs && selected.outputs.length > 0 && (
               <div className="my-2">
-                <div className="text-[0.65rem] text-[#7dd3fc] mb-0.5">Outputs</div>
-                {selected.outputs.map((out, i) => (
-                  <div key={i} className="text-[0.68rem] text-[#94a3b8] py-0.5">
-                    <code className="text-[#34d399]">
-                      {typeof out === 'string' ? out : (out as { name: string }).name}
-                    </code>
-                  </div>
-                ))}
+                <div className="text-[0.65rem] text-[#34d399] mb-0.5">Outputs</div>
+                {selected.outputs.map((out, i) => {
+                  const port = typeof out === 'string' ? { name: out } : out as { name: string; type?: string; required?: boolean; description?: string }
+                  return (
+                    <div key={i} className="text-[0.68rem] text-[#94a3b8] py-0.5">
+                      <code className="text-[#34d399]">{port.name}</code>
+                      {port.type && <span className="text-[#64748b] ml-1 text-[0.6rem]">{port.type}</span>}
+                      {port.required === false && <span className="text-[#475569] ml-1 text-[0.55rem] italic">optional</span>}
+                      {port.description && <div className="text-[0.58rem] text-[#475569] ml-2">{port.description}</div>}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
             {/* Connections */}
-            {(connsOut.length > 0 || connsIn.length > 0) && (
+            {(connsOutOnly.length > 0 || connsInOnly.length > 0 || connsBidi.length > 0) && (
               <div className="mt-2.5 border-t border-[#1e293b] pt-2">
                 <div className="text-[0.65rem] text-[#7dd3fc] mb-1">Connections</div>
-                {connsOut.length > 0 && (
+                {connsBidi.length > 0 && (
                   <>
-                    <div className="text-[0.65rem] text-[#64748b] mb-0.5">Outgoing:</div>
-                    {connsOut.map((c) => {
+                    <div className="text-[0.65rem] text-[#64748b] mb-0.5">Bidirectional:</div>
+                    {connsBidi.map((c) => {
+                      const node = findNode(c)
+                      const nc = node ? (COLORS[node.type] || '#888') : '#888'
+                      return (
+                        <div
+                          key={c}
+                          className="text-[0.68rem] py-0.5 cursor-pointer hover:opacity-80"
+                          onClick={() => handleConnectionClick(c)}
+                        >
+                          <span style={{ color: nc }}>&#9664;&#9654;</span>{' '}
+                          <span className="text-[#cbd5e1]">{node?.name || c}</span>
+                        </div>
+                      )
+                    })}
+                  </>
+                )}
+                {connsOutOnly.length > 0 && (
+                  <>
+                    <div className="text-[0.65rem] text-[#64748b] mt-1 mb-0.5">Outgoing:</div>
+                    {connsOutOnly.map((c) => {
                       const target = findNode(c)
                       const tc = target ? (COLORS[target.type] || '#888') : '#888'
                       return (
@@ -371,10 +407,10 @@ export function ArchitecturePage() {
                     })}
                   </>
                 )}
-                {connsIn.length > 0 && (
+                {connsInOnly.length > 0 && (
                   <>
                     <div className="text-[0.65rem] text-[#64748b] mt-1 mb-0.5">Incoming:</div>
-                    {connsIn.map((c) => {
+                    {connsInOnly.map((c) => {
                       const source = findNode(c)
                       const sc = source ? (COLORS[source.type] || '#888') : '#888'
                       return (

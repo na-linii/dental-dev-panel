@@ -1,16 +1,13 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { clinicsApi } from '../api/client'
 import type { Clinic } from '../types'
 
 interface Props {
   clinic: Clinic
-  onOpenViz: (clinicId: string) => void
+  onClick: () => void
 }
 
-export function ClinicCard({ clinic, onOpenViz }: Props) {
-  const [showConfig, setShowConfig] = useState(false)
-
+export function ClinicCard({ clinic, onClick }: Props) {
   const { data: health } = useQuery({
     queryKey: ['health', clinic.id],
     queryFn: () => clinicsApi.health(clinic.id),
@@ -18,16 +15,13 @@ export function ClinicCard({ clinic, onOpenViz }: Props) {
     retry: 1,
   })
 
-  const { data: config } = useQuery({
-    queryKey: ['config', clinic.id],
-    queryFn: () => clinicsApi.config(clinic.id),
-    enabled: showConfig,
-  })
-
   const isOnline = health?.status === 'ok'
 
   return (
-    <div className="bg-[#111127] border border-[#1e293b] rounded-xl p-4">
+    <div
+      onClick={onClick}
+      className="bg-[#111127] border border-[#1e293b] rounded-xl p-4 cursor-pointer hover:border-[#7dd3fc]/40 transition-colors"
+    >
       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
         <span
           className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#4ade80]' : 'bg-[#f87171]'}`}
@@ -61,27 +55,6 @@ export function ClinicCard({ clinic, onOpenViz }: Props) {
           </tr>
         </tbody>
       </table>
-
-      <div className="flex gap-1.5 mt-3">
-        <button
-          onClick={() => setShowConfig(!showConfig)}
-          className="px-2.5 py-1 rounded border border-[#1e293b] bg-[#111127] text-white text-[11px] cursor-pointer hover:bg-[#1e293b]"
-        >
-          {showConfig ? 'Hide Config' : 'Config'}
-        </button>
-        <button
-          onClick={() => onOpenViz(clinic.id)}
-          className="px-2.5 py-1 rounded bg-[#7dd3fc] text-[#0a0a1a] text-[11px] font-semibold cursor-pointer border border-[#7dd3fc]"
-        >
-          Open Visualizer
-        </button>
-      </div>
-
-      {showConfig && config && (
-        <pre className="mt-2 p-2 bg-[#0a0a1a] border border-[#1e293b] rounded text-[10px] text-[#94a3b8] overflow-auto max-h-48">
-          {JSON.stringify(config, null, 2)}
-        </pre>
-      )}
     </div>
   )
 }

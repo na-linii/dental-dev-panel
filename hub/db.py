@@ -107,3 +107,31 @@ async def remove_clinic(clinic_id: str):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM hub.clinics WHERE id = $1", clinic_id)
+
+
+async def get_clinic_admins(clinic_id: str):
+    """Get admin users for a clinic (+ admins with no clinic = global)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, username, full_name, role, clinic_id, created_at FROM hub.admin_users WHERE clinic_id = $1 OR clinic_id IS NULL ORDER BY created_at",
+            clinic_id)
+        return [dict(r) for r in rows]
+
+
+async def create_clinic_admin(username: str, password: str, full_name: str, role: str, clinic_id: str):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        try:
+            row = await conn.fetchrow(
+                "INSERT INTO hub.admin_users (username, password_hash, full_name, role, clinic_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, full_name, role, clinic_id, created_at",
+                username, _hash_password(password), full_name, role, clinic_id)
+            return dict(row) if row else None
+        except asyncpg.UniqueViolationError:
+            return None
+
+
+async def delete_admin_user(admin_id: int):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM hub.admin_users WHERE id = $1", admin_id)

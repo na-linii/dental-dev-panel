@@ -46,8 +46,10 @@ export interface GraphNode {
   description?: string
   connects_to?: string[]
   prompt_name?: string
-  inputs?: string[]
-  outputs?: string[]
+  inputs?: Array<{ name: string; type: string; required?: boolean; description?: string }>
+  outputs?: Array<{ name: string; type: string; required?: boolean; description?: string }>
+  requires?: string[]
+  conflicts_with?: string[]
 }
 
 export interface GraphLink {
@@ -109,4 +111,13 @@ export interface User {
   login: string
   avatar: string
   name: string
+}
+
+export interface AdminUser {
+  id: number
+  username: string
+  full_name: string
+  role: string
+  clinic_id: string | null
+  created_at: string
 }
