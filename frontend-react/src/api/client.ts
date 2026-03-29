@@ -73,6 +73,11 @@ export const traceApi = {
     api.get<{ flow: TraceFlow[]; trace_id: string }>(`/trace/${traceId}`).then((r) => r.data),
 }
 
+export const architectureApi = {
+  graph: () =>
+    api.get<GraphData>('/architecture/graph').then((r) => r.data),
+}
+
 export const langfuseApi = {
   url: () =>
     api.get<{ url: string }>('/langfuse-url').then((r) => r.data.url),

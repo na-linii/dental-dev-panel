@@ -266,6 +266,32 @@ async def proxy_graph(clinic_id: str, request: Request, user=Depends(verify_gith
         return {"nodes": [], "links": [], "error": str(e)}
 
 
+# --- Architecture (source of truth = GitHub repo) ---
+
+GRAPH_JSON_URL = "https://api.github.com/repos/na-linii/dental-core/contents/agent/graph.json"
+
+@app.get("/api/architecture/graph")
+async def architecture_graph(authorization: str = Header(default=""), user=Depends(verify_github_token)):
+    """Module architecture graph — reads from GitHub repo (single source of truth).
+
+    Unlike /clinics/{id}/graph which proxies to a running agent,
+    this always reflects the latest code in the repo.
+    """
+    gh_token = authorization.replace("Bearer ", "").strip()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            headers = {
+                "Accept": "application/vnd.github.raw+json",
+                "Authorization": f"Bearer {gh_token}",
+            }
+            r = await client.get(GRAPH_JSON_URL, headers=headers, params={"ref": "main"})
+            if r.status_code == 200:
+                return r.json()
+            return {"nodes": [], "links": [], "error": f"GitHub API: {r.status_code}"}
+    except Exception as e:
+        return {"nodes": [], "links": [], "error": str(e)}
+
+
 # --- Edge Cases (from Langfuse dataset) ---
 
 @app.get("/api/edge-cases")

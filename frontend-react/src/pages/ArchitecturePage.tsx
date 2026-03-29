@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import ForceGraph3D from '3d-force-graph'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
-import { clinicsApi } from '../api/client'
+import { architectureApi } from '../api/client'
 import {
   COLORS, WIREFRAME, LABELS,
   getColor, getOpacity, getLabelOpacity, getLinkColor,
@@ -38,8 +38,7 @@ export function ArchitecturePage() {
 
   // Load graph data
   useEffect(() => {
-    const clinicId = new URLSearchParams(window.location.search).get('clinic') || 'zubatka'
-    clinicsApi.graph(clinicId, { include_planned: 'true' })
+    architectureApi.graph()
       .then((data) => {
         const runtimeNodes: RuntimeNode[] = (data.nodes || []).map((n) => ({
           ...n,
