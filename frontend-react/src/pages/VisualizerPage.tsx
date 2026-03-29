@@ -27,6 +27,7 @@ export function VisualizerPage() {
 
   const graphRef = useRef<ForceGraph3DHandle>(null)
   const lastAnimatedRef = useRef<Set<string>>(new Set())
+  const initialLoadDoneRef = useRef(false)
 
   const clinicId = searchParams.get('clinic') || ''
 
@@ -57,9 +58,18 @@ export function VisualizerPage() {
     enabled: !!clinicId && mode === 'live',
   })
 
-  // LIVE mode: animate new traces automatically
+  // LIVE mode: animate only NEW traces (not existing ones on page load)
   useEffect(() => {
     if (mode !== 'live' || !traces || !graphRef.current) return
+
+    // First load: mark all existing traces as "seen", don't animate them
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true
+      for (const trace of traces) {
+        lastAnimatedRef.current.add(trace.id)
+      }
+      return
+    }
 
     for (const trace of traces) {
       if (lastAnimatedRef.current.has(trace.id)) continue
