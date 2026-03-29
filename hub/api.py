@@ -108,6 +108,8 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(url, json=body)
+            if r.status_code >= 400:
+                return {"response": "Сервис временно недоступен. Попробуйте позже.", "error": True}
             return r.json()
     except Exception as e:
         raise HTTPException(502, f"Clinic unreachable: {e}")
