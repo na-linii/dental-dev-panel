@@ -6,8 +6,8 @@ import { COLORS, WIREFRAME } from '../config/viz'
 import type { GraphData, GraphNode } from '../types'
 
 export interface AnimStep {
-  links: [string, string][]  // [[source, target], ...]
-  dur: number                // ms in real time
+  links: [string, string][]
+  dur: number
 }
 
 export interface ForceGraph3DHandle {
@@ -73,43 +73,61 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
     const angleRef = useRef(0)
     const distRef = useRef(350)
     const animFrameRef = useRef(0)
+    // Track which links are currently "active" for particle animation
+    const activeLinkSetRef = useRef<Set<string>>(new Set())
 
     const stopRotation = useCallback(() => {
       autoRotateRef.current = false
     }, [])
 
-    // Expose animateFlow to parent
+    function linkKey(src: string, tgt: string) {
+      return `${src}__${tgt}`
+    }
+
     useImperativeHandle(ref, () => ({
       animateFlow(path: AnimStep[], speed: number) {
         const g = graphRef.current
         if (!g) return
 
-        // Reset all particles
-        g.linkDirectionalParticles(0)
+        // Clear previous animation
+        activeLinkSetRef.current.clear()
+        g.linkDirectionalParticles((/* link */) => 0)
 
         let delay = 0
+        const allTimeouts: ReturnType<typeof setTimeout>[] = []
+
         for (const step of path) {
-          const stepDur = step.dur / speed
+          const stepDur = Math.max(step.dur / speed, 80)
           for (const [src, tgt] of step.links) {
-            setTimeout(() => {
-              // Find link and emit particles
-              const gd = g.graphData()
+            const t = setTimeout(() => {
+              activeLinkSetRef.current.add(linkKey(src, tgt))
+              activeLinkSetRef.current.add(linkKey(tgt, src)) // both directions
+              // Update particle count for active links
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const link = gd.links.find((l: any) => {
-                const s = typeof l.source === 'object' ? l.source.id : l.source
-                const t = typeof l.target === 'object' ? l.target.id : l.target
-                return (s === src && t === tgt) || (s === tgt && t === src)
+              g.linkDirectionalParticles((link: any) => {
+                const s = typeof link.source === 'object' ? link.source.id : link.source
+                const t2 = typeof link.target === 'object' ? link.target.id : link.target
+                return activeLinkSetRef.current.has(linkKey(s, t2)) ? 4 : 0
               })
-              if (link) g.emitParticle(link)
             }, delay)
+            allTimeouts.push(t)
+
+            // Turn off this link's particles after stepDur
+            const t2 = setTimeout(() => {
+              activeLinkSetRef.current.delete(linkKey(src, tgt))
+              activeLinkSetRef.current.delete(linkKey(tgt, src))
+            }, delay + stepDur)
+            allTimeouts.push(t2)
           }
           delay += stepDur
         }
 
-        // Stop particles after animation completes
-        setTimeout(() => {
+        // Final cleanup
+        const tFinal = setTimeout(() => {
+          activeLinkSetRef.current.clear()
           g.linkDirectionalParticles(0)
-        }, delay + 500)
+        }, delay + 300)
+        allTimeouts.push(tFinal)
       },
     }), [])
 
@@ -129,9 +147,9 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
           .linkColor(() => 'rgba(255,255,255,0.35)')
           .linkWidth(1.5)
           .linkDirectionalParticles(0)
-          .linkDirectionalParticleWidth(4)
+          .linkDirectionalParticleWidth(5)
           .linkDirectionalParticleColor(() => '#7dd3fc')
-          .linkDirectionalParticleSpeed(0.02)
+          .linkDirectionalParticleSpeed(0.025)
           .nodeThreeObject((node: GraphNode) => buildNodeObject(node))
           .nodeThreeObjectExtend(false)
           .onNodeClick((node: GraphNode) => {
@@ -140,10 +158,8 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
 
         graph.d3Force('charge')?.strength(-500)
         graph.d3Force('link')?.distance(120)
-
         graphRef.current = graph
 
-        // Auto-rotation
         autoRotateRef.current = true
         angleRef.current = 0
 
@@ -164,7 +180,6 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
         el.addEventListener('mousedown', stopRotation)
         el.addEventListener('contextmenu', stopRotation)
 
-        // Resize
         const ro = new ResizeObserver(() => {
           if (graphRef.current && el.clientWidth > 0) {
             graphRef.current.width(el.clientWidth).height(el.clientHeight)
@@ -187,7 +202,6 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
       }
     }, [onNodeClick, stopRotation])
 
-    // Update data
     useEffect(() => {
       if (graphRef.current && data) {
         graphRef.current.graphData({ nodes: data.nodes, links: data.links })

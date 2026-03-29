@@ -43,7 +43,7 @@ const TOOL_NAMES = [
   'register_patient',
 ]
 
-function buildSteps(flow: TraceFlow[]): { steps: TraceStep[]; agentName: string | null; totalDur: number } {
+function buildSteps(flow: TraceFlow[]): { steps: TraceStep[]; agentName: string | null; totalDur: number; startTime: string | null; endTime: string | null } {
   const root = flow.find((o) => !o.parentId) || flow[0]
   const routerObs = flow.find((o) => o.name === 'router')
   const routerParent = routerObs?.parentId
@@ -101,7 +101,10 @@ function buildSteps(flow: TraceFlow[]): { steps: TraceStep[]; agentName: string 
     totalDur = Math.round(new Date(root.endTime).getTime() - new Date(root.startTime).getTime())
   }
 
-  return { steps, agentName, totalDur }
+  const startTime = root?.startTime || null
+  const endTime = root?.endTime || null
+
+  return { steps, agentName, totalDur, startTime, endTime }
 }
 
 interface TraceEntry {
@@ -110,6 +113,15 @@ interface TraceEntry {
   stepCount: number
   totalDur: number
   steps: TraceStep[]
+  startTime: string | null
+  endTime: string | null
+}
+
+function fmtTime(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    + '.' + String(d.getMilliseconds()).padStart(3, '0')
 }
 
 function StepRow({ step }: { step: TraceStep }) {
@@ -154,11 +166,14 @@ function TraceEntryRow({ entry }: { entry: TraceEntry }) {
         className="flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-[#1e293b]/60 border-b border-[#1e293b]"
         onClick={() => setOpen(!open)}
       >
+        <span className="text-[#475569]">{open ? '▾' : '▸'}</span>
         <span className="text-[#7dd3fc] font-semibold">{entry.agentName || 'Router'}</span>
-        <span className="text-[#475569]">&rarr;</span>
         <span className="text-[#94a3b8]">{entry.stepCount} steps</span>
+        <span className="text-[#475569] text-[10px]">
+          {fmtTime(entry.startTime)} → {fmtTime(entry.endTime)}
+        </span>
         {entry.totalDur > 0 && (
-          <span className="text-[#64748b] ml-auto">{entry.totalDur}ms</span>
+          <span className="text-[#64748b] ml-auto font-mono">{entry.totalDur}ms</span>
         )}
       </div>
       {open && (
@@ -185,10 +200,10 @@ export function TraceLog({ traceId }: TraceLogProps) {
       try {
         const data = await traceApi.get(id)
         if (!data.flow?.length) return
-        const { steps, agentName, totalDur } = buildSteps(data.flow)
+        const { steps, agentName, totalDur, startTime, endTime } = buildSteps(data.flow)
         setEntries((prev) => [
           ...prev,
-          { traceId: id, agentName, stepCount: steps.length, totalDur, steps },
+          { traceId: id, agentName, stepCount: steps.length, totalDur, steps, startTime, endTime },
         ])
       } catch {
         // silently ignore trace fetch errors

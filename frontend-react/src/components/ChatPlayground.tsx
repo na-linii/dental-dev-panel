@@ -123,7 +123,7 @@ export function ChatPlayground({ clinicId, onTraceReceived, onReplayTrace }: Cha
         {messages.map((m, i) => (
           <div key={i}>
             <div
-              className={`text-xs px-2.5 py-1.5 rounded-lg max-w-[95%] whitespace-pre-wrap ${
+              className={`relative text-xs px-2.5 py-1.5 rounded-lg max-w-[95%] whitespace-pre-wrap group ${
                 m.role === 'user'
                   ? 'bg-[#1e3a5f] text-white ml-auto'
                   : m.role === 'bot'
@@ -132,24 +132,16 @@ export function ChatPlayground({ clinicId, onTraceReceived, onReplayTrace }: Cha
               }`}
             >
               {m.text}
-            </div>
-            {m.traceId && (
-              <div className="flex items-center gap-2 mt-0.5 ml-1">
-                <button
-                  onClick={() => onTraceReceived?.(m.traceId!)}
-                  className="text-[10px] text-[#7dd3fc] hover:underline"
-                >
-                  trace: {m.traceId.slice(0, 8)}...
-                </button>
+              {m.traceId && (
                 <button
                   onClick={() => onReplayTrace?.(m.traceId!)}
-                  className="text-[10px] text-[#facc15] hover:underline"
-                  title="Replay animation on graph"
+                  className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-black/30 text-[#facc15] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  title="Replay trace animation"
                 >
-                  ▶ Replay
+                  ▶
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
         <div ref={msgsEndRef} />
