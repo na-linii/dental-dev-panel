@@ -8,7 +8,13 @@ import type { GraphData, GraphNode } from '../types'
 export interface AnimStep {
   links: [string, string][]
   dur: number
+  llmNodes?: Record<string, 'openai' | 'openrouter'>
 }
+
+const LLM_COLORS = {
+  openai: '#fb923c',    // orange
+  openrouter: '#f472b6', // pink
+} as const
 
 export interface ForceGraph3DHandle {
   animateFlow: (path: AnimStep[], speed: number, color?: string) => void
@@ -95,10 +101,37 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
     const distRef = useRef(350)
     const animFrameRef = useRef(0)
     const animTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+    // Track which nodes are "thinking" (LLM call) — nodeId → color
+    const glowingNodesRef = useRef<Map<string, string>>(new Map())
 
     const stopRotation = useCallback(() => {
       autoRotateRef.current = false
     }, [])
+
+    // Update wireframe color for glowing nodes
+    function updateNodeGlows() {
+      const g = graphRef.current
+      if (!g) return
+      const gd = g.graphData()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      gd.nodes.forEach((node: any) => {
+        const obj = node.__threeObj as THREE.Group | undefined
+        if (!obj) return
+        const glowColor = glowingNodesRef.current.get(node.id)
+        obj.children.forEach((child: THREE.Object3D) => {
+          if (child instanceof THREE.LineSegments) {
+            const mat = child.material as THREE.LineBasicMaterial
+            if (glowColor) {
+              mat.color.set(glowColor)
+              mat.opacity = 0.9
+            } else {
+              mat.color.set(WIREFRAME)
+              mat.opacity = 0.5
+            }
+          }
+        })
+      })
+    }
 
     useImperativeHandle(ref, () => ({
       animateFlow(path: AnimStep[], speed: number, color?: string) {
@@ -122,24 +155,37 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
         for (const step of path) {
           const stepDur = Math.max(step.dur / speed, 100)
 
-          // Turn ON
+          // Turn ON links + node glows
           const tOn = setTimeout(() => {
             for (const [src, tgt] of step.links) {
-              // Try exact direction first, then reverse
               let link = findDirectedLink(g, src, tgt)
               if (!link) link = findDirectedLink(g, tgt, src)
               if (link) link._active = true
+            }
+            // Set LLM node glows
+            if (step.llmNodes) {
+              for (const [nodeId, provider] of Object.entries(step.llmNodes)) {
+                glowingNodesRef.current.set(nodeId, LLM_COLORS[provider])
+              }
+              updateNodeGlows()
             }
             refreshParticles(g)
           }, delay)
           animTimeoutsRef.current.push(tOn)
 
-          // Turn OFF
+          // Turn OFF links + node glows
           const tOff = setTimeout(() => {
             for (const [src, tgt] of step.links) {
               let link = findDirectedLink(g, src, tgt)
               if (!link) link = findDirectedLink(g, tgt, src)
               if (link) link._active = false
+            }
+            // Clear LLM node glows for this step
+            if (step.llmNodes) {
+              for (const nodeId of Object.keys(step.llmNodes)) {
+                glowingNodesRef.current.delete(nodeId)
+              }
+              updateNodeGlows()
             }
             refreshParticles(g)
           }, delay + stepDur)

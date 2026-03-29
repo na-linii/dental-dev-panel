@@ -7,6 +7,8 @@ import type { TraceSummary, TraceFlow } from '../types'
 export interface AnimStep {
   links: [string, string][]
   dur: number
+  /** Nodes that are "thinking" (LLM call) during this step. nodeId → 'openai' | 'openrouter' */
+  llmNodes?: Record<string, 'openai' | 'openrouter'>
 }
 
 // Name → graph node ID mapping
@@ -58,6 +60,21 @@ export function buildAnimPath(flow: TraceFlow[]): AnimStep[] {
   const bookingObs = flow.find((o) => o.name === 'booking' && o.parentId === routerParent)
   const agentName = faqObs ? 'FAQ Agent' : bookingObs ? 'Booking Agent' : null
   const agentObs = faqObs || bookingObs
+
+  // Detect LLM provider from ChatOpenAI observations
+  const llmObservations = flow.filter((o) => o.name === 'ChatOpenAI')
+  function detectProvider(obs?: TraceFlow): 'openai' | 'openrouter' {
+    if (!obs?.model) return 'openai'
+    const model = obs.model.toLowerCase()
+    if (model.includes('openrouter') || model.includes('anthropic') || model.includes('mistral')) return 'openrouter'
+    return 'openai'
+  }
+  // Router's LLM
+  const routerLlm = llmObservations.find((o) => routerObs && o.parentId === routerObs.id)
+  const routerProvider = detectProvider(routerLlm)
+  // Agent's LLM (any ChatOpenAI not belonging to router)
+  const agentLlm = llmObservations.find((o) => !routerObs || o.parentId !== routerObs.id)
+  const agentProvider = detectProvider(agentLlm)
   const hookObs = flow.find((o) => o.name === 'pre_model_hook')
 
   const path: AnimStep[] = []
@@ -70,7 +87,14 @@ export function buildAnimPath(flow: TraceFlow[]): AnimStep[] {
   add('Telegram', 'Chat Gateway', root)
   add('Chat Gateway', 'Identity DB')
   add('Identity DB', 'Chat Gateway')
-  if (routerObs) add('Chat Gateway', 'Dental Router', routerObs)
+  if (routerObs) {
+    // Router is "thinking" — LLM call for intent classification
+    path.push({
+      links: [[toNodeId('Chat Gateway'), toNodeId('Dental Router')]],
+      dur: obsDur(routerObs),
+      llmNodes: { [toNodeId('Dental Router')]: routerProvider },
+    })
+  }
   if (agentName && agentObs) add('Dental Router', agentName, agentObs)
 
   // Knowledge lookup: agent → tool:tier1, then tool:tier2 → db:kb (real graph links)
@@ -82,6 +106,14 @@ export function buildAnimPath(flow: TraceFlow[]): AnimStep[] {
     // Return: db:kb → tool:tier2 → faq:agent (reverse of real links)
     path.push({ links: [[toNodeId('Knowledge Base'), 'tool:tier2']], dur: obsDur(hookObs) / 2 })
     path.push({ links: [['tool:tier2', toNodeId(agentName)]], dur: obsDur(hookObs) / 2 })
+    // Agent "thinking" — LLM generates response
+    if (agentLlm) {
+      path.push({
+        links: [],  // no link animation, just node glow
+        dur: obsDur(agentLlm),
+        llmNodes: { [toNodeId(agentName)]: agentProvider },
+      })
+    }
   }
 
   // CRM tools: agent → tool → crm_gateway (real graph links)
