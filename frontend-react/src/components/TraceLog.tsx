@@ -66,29 +66,45 @@ export function buildAnimPath(flow: TraceFlow[]): AnimStep[] {
     path.push({ links: [[toNodeId(from), toNodeId(to)]], dur: obsDur(obs as { startTime?: string; endTime?: string }) })
   }
 
+  // Forward path: Telegram → Gateway → Router → Agent
   add('Telegram', 'Chat Gateway', root)
   add('Chat Gateway', 'Identity DB')
   add('Identity DB', 'Chat Gateway')
   if (routerObs) add('Chat Gateway', 'Dental Router', routerObs)
   if (agentName && agentObs) add('Dental Router', agentName, agentObs)
+
+  // Knowledge lookup: agent → tool:tier1, then tool:tier2 → db:kb (real graph links)
   if (hookObs && agentName) {
-    add(agentName, 'Tier 1+2 Search', hookObs)
-    add('Tier 1+2 Search', 'Knowledge Base', hookObs)
-    add('Knowledge Base', agentName, hookObs)
+    add(agentName, 'Tier 1+2 Search', hookObs)    // faq:agent → tool:tier1
+    // tier2 → db:kb is the real link in graph
+    path.push({ links: [[toNodeId('Tier 1+2 Search'), 'tool:tier2']], dur: obsDur(hookObs) / 2 })
+    path.push({ links: [['tool:tier2', toNodeId('Knowledge Base')]], dur: obsDur(hookObs) / 2 })
+    // Return: db:kb → tool:tier2 → faq:agent (reverse of real links)
+    path.push({ links: [[toNodeId('Knowledge Base'), 'tool:tier2']], dur: obsDur(hookObs) / 2 })
+    path.push({ links: [['tool:tier2', toNodeId(agentName)]], dur: obsDur(hookObs) / 2 })
   }
+
+  // CRM tools: agent → tool → crm_gateway (real graph links)
   flow.forEach((obs) => {
     if (obs.name && TOOL_NAMES.includes(obs.name)) {
       add(agentName || 'Booking Agent', obs.name, obs)
       add(obs.name, 'CRM Gateway', obs)
     }
   })
+
+  // Handoff: agent → tool:handoff → chat_gateway (real graph links)
   const handoffObs = flow.find((o) => o.name?.includes('handoff'))
   if (handoffObs) {
     add(agentName || '?', 'Handoff', handoffObs)
     add('Handoff', 'Chat Gateway', handoffObs)
   }
-  if (agentName && agentObs) add(agentName, 'Chat Gateway', agentObs)
-  add('Chat Gateway', 'Telegram', root)
+
+  // Return path: agent → router → chat_gateway → telegram (reverse of real links)
+  if (agentName && agentObs) {
+    add(agentName, 'Dental Router', agentObs)        // faq:agent → router (reverse of router→faq:agent)
+    add('Dental Router', 'Chat Gateway', agentObs)    // router → chat_gateway (reverse of chat_gateway→router)
+  }
+  add('Chat Gateway', 'Telegram', root)               // chat_gateway → telegram (reverse of telegram→chat_gateway)
 
   return path
 }
