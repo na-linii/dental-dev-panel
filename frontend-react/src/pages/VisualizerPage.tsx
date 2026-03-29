@@ -13,7 +13,7 @@ export function VisualizerPage() {
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [traceId, setTraceId] = useState<string | null>(null)
   const [graphError, setGraphError] = useState<string | null>(null)
-  const [playgroundOpen, setPlaygroundOpen] = useState(true)
+  const [playgroundOpen, setPlaygroundOpen] = useState(false)
 
   const clinicId = searchParams.get('clinic') || ''
 
@@ -93,10 +93,12 @@ export function VisualizerPage() {
         )}
       </div>
 
-      {/* Trace Log — always visible */}
-      <div className="h-[280px] flex-shrink-0 border-t border-[#1e293b]">
-        <TraceLog traceId={traceId} />
-      </div>
+      {/* Trace Log — visible when playground is open */}
+      {playgroundOpen && (
+        <div className="h-[280px] flex-shrink-0 border-t border-[#1e293b]">
+          <TraceLog traceId={traceId} />
+        </div>
+      )}
     </div>
   )
 }
