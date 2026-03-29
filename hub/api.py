@@ -203,7 +203,7 @@ async def get_edge_cases(user=Depends(verify_github_token)):
             dataset = r.json()
 
             r2 = await client.get(
-                f"{lf_host}/api/public/v2/dataset-items?datasetName=dental-edge-cases&limit=100",
+                f"{lf_host}/api/public/dataset-items?datasetName=dental-edge-cases&limit=100",
                 auth=(lf_pk, lf_sk),
             )
             items_data = r2.json()

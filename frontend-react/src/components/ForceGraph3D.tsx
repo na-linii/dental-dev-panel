@@ -97,7 +97,10 @@ export function ForceGraph3D({ data, className, onNodeClick }: ForceGraph3DProps
     if (!el) return
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const graph = (ForceGraph3DLib as any)()(el)
+    let graph: any = null
+    try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    graph = (ForceGraph3DLib as any)()(el)
       .backgroundColor('#0a0a1a')
       .nodeVal((n: GraphNode) => Math.max(4, (n.val || 5) * 0.6))
       .nodeColor((n: GraphNode) => C[n.group] || '#888')
@@ -158,6 +161,9 @@ export function ForceGraph3D({ data, className, onNodeClick }: ForceGraph3DProps
       if (renderer) renderer.dispose()
       graphRef.current?._destructor?.()
       graphRef.current = null
+    }
+    } catch (e) {
+      console.error('3D graph init failed:', e)
     }
   }, [onNodeClick, stopRotation])
 

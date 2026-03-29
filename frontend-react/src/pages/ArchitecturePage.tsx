@@ -80,7 +80,10 @@ export function ArchitecturePage() {
 
     const el = graphRef.current
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fg = (ForceGraph3D as any)()(el)
+    let fg: any = null
+    try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fg = (ForceGraph3D as any)()(el)
       .graphData({ nodes: [...nodes], links: [...links] })
       .backgroundColor('#0a0a1a')
       .nodeVal((n: object) => Math.max(3, ((n as RuntimeNode).val || 5) * 0.5))
@@ -193,6 +196,9 @@ export function ArchitecturePage() {
         fgRef.current._destructor?.()
         fgRef.current = null
       }
+    }
+    } catch (e) {
+      console.error('3D graph init failed:', e)
     }
   }, [nodes, links, selectNode])
 
