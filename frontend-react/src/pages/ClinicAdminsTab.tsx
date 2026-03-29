@@ -10,6 +10,7 @@ export function ClinicAdminsTab() {
   const [showAdd, setShowAdd] = useState(false)
   const [error, setError] = useState('')
   const [newAdmin, setNewAdmin] = useState({ username: '', full_name: '', password: '', role: 'operator' })
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const loadAdmins = useCallback(async () => {
     if (!clinicId) return
@@ -45,12 +46,16 @@ export function ClinicAdminsTab() {
 
   const handleDelete = async (adminId: number) => {
     if (!clinicId) return
-    if (!confirm('Remove this administrator?')) return
+    if (confirmDeleteId !== adminId) {
+      setConfirmDeleteId(adminId)
+      return
+    }
     try {
       await clinicsApi.deleteAdmin(clinicId, adminId)
+      setConfirmDeleteId(null)
       loadAdmins()
     } catch {
-      // ignore
+      setConfirmDeleteId(null)
     }
   }
 
@@ -138,7 +143,9 @@ export function ClinicAdminsTab() {
         ) : (
           <div className="divide-y divide-[#1e293b]">
             {admins.map((a) => (
-              <div key={a.id} className="flex items-center justify-between px-4 py-3">
+              <div key={a.id} className={`flex items-center justify-between px-4 py-3 transition-colors ${
+                confirmDeleteId === a.id ? 'bg-[#dc2626]/5' : ''
+              }`}>
                 <div>
                   <span className="text-xs text-white font-medium">{a.full_name || a.username}</span>
                   <span className="text-[10px] text-[#64748b] ml-2">@{a.username}</span>
@@ -154,13 +161,29 @@ export function ClinicAdminsTab() {
                   }`}>
                     {a.role}
                   </span>
-                  <button
-                    onClick={() => handleDelete(a.id)}
-                    className="text-[#475569] hover:text-[#f87171] text-xs cursor-pointer"
-                    title="Remove"
-                  >
-                    ✕
-                  </button>
+                  {confirmDeleteId === a.id ? (
+                    <>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-2 py-0.5 text-[10px] text-[#64748b] hover:text-white cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleDelete(a.id)}
+                        className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-[#dc2626] text-white cursor-pointer animate-pulse"
+                      >
+                        Confirm Remove
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleDelete(a.id)}
+                      className="px-2 py-0.5 rounded text-[10px] text-[#64748b] hover:text-[#fca5a5] hover:bg-[#991b1b]/30 cursor-pointer transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
