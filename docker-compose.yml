@@ -18,10 +18,9 @@ services:
       context: .
       dockerfile: hub/Dockerfile
     volumes:
-      - hub_data:/data
       - ./frontend:/app/frontend:ro
     environment:
-      HUB_DB_PATH: /data/hub.db
+      HUB_DATABASE_URL: postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse
       LANGFUSE_EXTERNAL_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost/langfuse}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
@@ -29,6 +28,8 @@ services:
     depends_on:
       langfuse-web:
         condition: service_started
+      langfuse-postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
       interval: 30s
@@ -140,7 +141,6 @@ services:
         condition: service_started
 
 volumes:
-  hub_data:
   langfuse_postgres_data:
   langfuse_clickhouse_data:
   langfuse_minio_data:

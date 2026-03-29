@@ -1,68 +1,76 @@
-"""Hub database — clinic registry."""
+"""Hub database — clinic registry (PostgreSQL)."""
 import os
 import json
-import aiosqlite
+import asyncpg
 
-DB_PATH = os.environ.get("HUB_DB_PATH", "/data/hub.db")
+DATABASE_URL = os.environ.get("HUB_DATABASE_URL",
+    "postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse")
+
+_pool = None
+
+
+async def get_pool():
+    global _pool
+    if _pool is None:
+        _pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+    return _pool
 
 
 async def init_db():
-    """Create tables if not exist."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS clinics (
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("CREATE SCHEMA IF NOT EXISTS hub")
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS hub.clinics (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 server_host TEXT NOT NULL,
                 server_port INTEGER DEFAULT 8080,
-                server_ssh_user TEXT DEFAULT '',
                 clinic_id TEXT NOT NULL,
                 status TEXT DEFAULT 'active',
-                config TEXT DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                config JSONB DEFAULT '{}',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
-        await db.commit()
 
 
 async def get_clinics():
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute("SELECT * FROM clinics ORDER BY created_at")
-        rows = await cursor.fetchall()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM hub.clinics ORDER BY created_at")
         return [dict(r) for r in rows]
 
 
 async def get_clinic(clinic_id: str):
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        cursor = await db.execute("SELECT * FROM clinics WHERE id = ?", (clinic_id,))
-        row = await cursor.fetchone()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM hub.clinics WHERE id = $1", clinic_id)
         return dict(row) if row else None
 
 
 async def add_clinic(data: dict):
-    clinic = {
-        "id": data["id"],
-        "name": data["name"],
-        "server_host": data["server_host"],
-        "server_port": data.get("server_port", 8080),
-        "server_ssh_user": data.get("server_ssh_user", ""),
-        "clinic_id": data.get("clinic_id", data["id"]),
-        "status": "active",
-        "config": json.dumps(data.get("config", {})),
-    }
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT OR REPLACE INTO clinics (id, name, server_host, server_port, server_ssh_user, clinic_id, status, config) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (clinic["id"], clinic["name"], clinic["server_host"], clinic["server_port"],
-             clinic["server_ssh_user"], clinic["clinic_id"], clinic["status"], clinic["config"]),
-        )
-        await db.commit()
-    return clinic
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO hub.clinics (id, name, server_host, server_port, clinic_id, status, config)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+            ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                server_host = EXCLUDED.server_host,
+                server_port = EXCLUDED.server_port,
+                clinic_id = EXCLUDED.clinic_id,
+                config = EXCLUDED.config,
+                updated_at = NOW()
+        """, data["id"], data["name"], data["server_host"],
+            data.get("server_port", 8080),
+            data.get("clinic_id", data["id"]),
+            "active",
+            json.dumps(data.get("config", {})))
+    return data
 
 
 async def remove_clinic(clinic_id: str):
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM clinics WHERE id = ?", (clinic_id,))
-        await db.commit()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM hub.clinics WHERE id = $1", clinic_id)

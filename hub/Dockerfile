@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 WORKDIR /app
-RUN pip install fastapi uvicorn httpx aiosqlite
+RUN pip install fastapi uvicorn httpx asyncpg
 COPY hub/ /app/hub/
 COPY frontend/ /app/frontend/
 RUN mkdir -p /data
