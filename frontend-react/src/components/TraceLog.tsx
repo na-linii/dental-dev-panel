@@ -199,7 +199,7 @@ function StepDetail({ step }: { step: StepData }) {
         {step.model && <span className="text-[#fb923c] text-[9px]">{step.model}</span>}
         <span className="text-[#64748b] ml-auto font-mono">{Math.round(step.dur)}ms</span>
       </div>
-      {open && (step.input || step.output) && (
+      {open && (step.input !== undefined || step.output !== undefined) && (
         <div className="flex gap-2 px-3 pb-2">
           <div className="flex-1 min-w-0">
             <div className="text-[9px] text-[#7dd3fc] mb-0.5">Input</div>
