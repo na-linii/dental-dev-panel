@@ -62,9 +62,12 @@ export function ArchitecturePage() {
   const selectNode = useCallback((node: RuntimeNode) => {
     selectedIdRef.current = node.id
     setSelected(node)
-    if (fgRef.current) {
-      // Force re-render of node objects to update glow/wireframe
-      fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
+    try {
+      if (fgRef.current) {
+        fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
+      }
+    } catch {
+      // 3D re-render may fail in some environments
     }
   }, [])
 
