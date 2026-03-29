@@ -2,6 +2,8 @@
  * Ported from frontend/js/viz-config.js
  */
 
+export const HUB_VERSION = '0.1.0'
+
 export const COLORS: Record<string, string> = {
   router: '#facc15',
   agent: '#22d3ee',

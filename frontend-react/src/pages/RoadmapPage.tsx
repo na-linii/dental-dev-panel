@@ -57,11 +57,11 @@ const sections: ComponentSection[] = [
   {
     title: 'Gateways',
     rows: [
-      { name: 'Chat Gateway + Streaming', status: 'ok', label: 'Готово' },
+      { name: 'Identity (resolve + session + save)', status: 'ok', label: 'Готово' },
+      { name: 'Chat Gateway (delivery only)', status: 'ok', label: 'Готово' },
       { name: 'CRM Gateway + Protocol', status: 'ok', label: 'Готово' },
       { name: 'Scheduler (confirmation)', status: 'ok', label: 'Готово' },
-      { name: 'Debounce Manager', status: 'ok', label: 'Готово' },
-      { name: 'Operator Cooldown', status: 'ok', label: 'Готово' },
+      { name: 'Debounce + Operator Cooldown', status: 'ok', label: 'Готово' },
       { name: 'ChatSession (state machine)', status: 'ok', label: 'Готово' },
     ],
   },
@@ -104,7 +104,8 @@ const sections: ComponentSection[] = [
       { name: 'Dental Hub + Langfuse', status: 'ok', label: 'Готово' },
       { name: 'Hub: конфигурация клиник', status: 'ok', label: 'Готово' },
       { name: 'Langfuse prompt sync', status: 'ok', label: 'Готово' },
-      { name: 'Parallel status tracks', status: 'ok', label: 'Готово' },
+      { name: 'Module registry (34 модуля)', status: 'ok', label: 'Готово' },
+      { name: 'K8s architecture (Helm chart)', status: 'ok', label: 'Готово' },
       { name: 'Admin Panel', status: 'no', label: 'Планируется' },
       { name: 'Metabase analytics', status: 'skip', label: 'Потом' },
     ],
@@ -114,33 +115,51 @@ const sections: ComponentSection[] = [
 const timeline: TimelineItem[] = [
   {
     state: 'done',
-    date: 'ЭТАП 1 -- 25-27 марта',
-    title: 'Ядро: LangGraph + Langfuse',
-    desc: 'Router, FAQ, Booking, Identity, pgvector. 50 тестов.',
+    date: '26 марта, 18:46',
+    title: 'Старт проекта',
+    desc: 'Инициализация: LangGraph + Langfuse self-hosted. Базовая структура агента.',
   },
   {
     state: 'done',
-    date: 'ЭТАП 2 -- 28 марта',
-    title: 'CRM + Chat Gateway + CI/CD',
-    desc: 'Google Sheets, Telegram Bot, Handoff, streaming, auto-deploy.',
+    date: '27 марта, 10:10 — 15:21',
+    title: 'Ядро: Router, Agents, Identity, Knowledge Base',
+    desc: 'Dental Router (LLM), FAQ Agent + pgvector, Booking Agent + 7 CRM tools. Identity resolution (6-step flow). Клинические конфиги YAML. Параллельная работа двух разработчиков.',
   },
   {
     state: 'done',
-    date: 'ЭТАП 3 -- 28 марта',
-    title: 'Dental Hub + Langfuse migration',
-    desc: 'Hub API, 3D визуализатор, trace animation, ngrok.',
+    date: '28 марта, 22:00 — 23:55',
+    title: 'CRM + Channels + Confirmation',
+    desc: 'PostgreSQL storage (3 модуля), Confirmation Agent + Action Queue, Chat Gateway + Telegram Bot + streaming. Удалены ВСЕ хардкод-keywords — только LLM-роутинг. Self-describing modules, /config endpoint.',
   },
   {
     state: 'done',
-    date: 'ЭТАП 4 -- 29 марта',
-    title: 'Промпты в Langfuse + оптимизация агентов',
-    desc: 'Все промпты в Langfuse (zero hardcode), sanitized tool output, patient identity, error handling. 213 тестов.',
+    date: '29 марта, 00:00 — 00:10',
+    title: 'Dental Hub: 3D-визуализация',
+    desc: 'Подбор цветов, форм, wireframes для 3D-графа. Единый viz-config.',
   },
   {
     state: 'done',
-    date: 'ЭТАП 5 -- 29 марта',
-    title: 'ChatSession + Cooldown + Debounce',
-    desc: 'Chat Sessions DB, operator cooldown (per-clinic), message debouncing (per-channel), chat message history, confirmation reply flow (LLM), parallel status tracks.',
+    date: '29 марта, 13:32 — 14:33',
+    title: 'Оптимизация агентов + ChatSession',
+    desc: 'Все промпты в Langfuse (zero hardcode), sanitized tool output, patient identity. ChatSession state machine, operator cooldown (per-clinic), message debouncing (per-channel), confirmation reply flow. 213 тестов.',
+  },
+  {
+    state: 'done',
+    date: '29 марта, 20:08 — 22:56',
+    title: 'Модульная архитектура',
+    desc: '34 модуля с типизированными I/O схемами. Registry-driven tool binding — tools привязываются к агентам через реестр. Graph.json генерируется из registry автоматически.',
+  },
+  {
+    state: 'done',
+    date: '29 марта, 23:08',
+    title: 'K8s deployment architecture',
+    desc: 'Helm chart, CI update. Подготовка к Kubernetes.',
+  },
+  {
+    state: 'done',
+    date: '29 марта, 23:47',
+    title: 'Линейный message pipeline',
+    desc: 'Рефакторинг: Plugin -> Identity -> Debounce -> Router -> Agent. Debounce + operator cooldown объединены (два таймера тишины). Chat Gateway облегчён до транспорта. 216 тестов.',
   },
   {
     state: 'wip',
@@ -165,15 +184,15 @@ const timeline: TimelineItem[] = [
 const systemCards = [
   {
     title: 'Dental Core',
-    text: 'Инстанс клиники. 1 Docker = 1 клиника. Dental Router (LLM) \u2192 FAQ / Booking / Confirmation Agent \u2192 Tools \u2192 CRM Gateway (Google Sheets) + Chat Gateway (Telegram). PostgreSQL: Identity DB, Checkpointer, Knowledge Base, Action Queue. Модель gpt-5.4-mini + OpenRouter fallback. Промпты из Langfuse.',
+    text: 'Инстанс клиники. 1 Docker = 1 клиника. Pipeline: Plugin \u2192 Identity \u2192 Debounce \u2192 Router (LLM) \u2192 FAQ / Booking / Confirmation Agent \u2192 CRM Gateway. 34 модуля, registry-driven tool binding. PostgreSQL: Identity DB, Checkpointer, Knowledge Base, Action Queue. gpt-5.4-mini + OpenRouter fallback.',
   },
   {
     title: 'Dental Hub',
-    text: 'Платформа управления. Langfuse (shared), Hub API (proxy, управление клиниками), ngrok (связь с серверами). 3D визуализатор, trace animation, конфигурация клиник. Архитектура строится динамически из /graph endpoint.',
+    text: 'Платформа управления. Langfuse (shared), Hub API (proxy, управление клиниками). 3D визуализатор, live trace animation, конфигурация клиник. Архитектура строится из graph.json (GitHub API, main branch). Промпты из Langfuse.',
   },
   {
     title: 'Разворачивание клиники',
-    text: 'YAML конфиг + env vars \u2192 docker compose up \u2192 CLINIC_ID выбирает клинику \u2192 agent подключается к Langfuse через Hub. 3-4 клиники на один сервер Yandex. CI/CD: push в main \u2192 pytest \u2192 auto-deploy.',
+    text: 'YAML конфиг + env vars \u2192 docker compose up \u2192 CLINIC_ID выбирает клинику \u2192 agent подключается к Langfuse через Hub. 3-4 клиники на один сервер Yandex. CI/CD: push в main \u2192 pytest \u2192 auto-deploy. Готовится K8s.',
   },
 ]
 
@@ -207,7 +226,7 @@ export function RoadmapPage() {
     <div className="overflow-y-auto p-6" style={{ height: 'calc(100vh - 48px)' }}>
       <div className="max-w-[1100px] mx-auto">
         <h2 className="text-lg font-semibold mb-1">Roadmap</h2>
-        <p className="text-xs text-[#64748b] mb-4">Обновлено 29.03.2026</p>
+        <p className="text-xs text-[#64748b] mb-4">v0.1.0 — Обновлено 29.03.2026</p>
 
         {/* Progress bar */}
         <div className="flex h-3 rounded-full overflow-hidden mb-6 bg-[#1e293b]">

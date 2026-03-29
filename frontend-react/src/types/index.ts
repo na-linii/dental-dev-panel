@@ -55,9 +55,17 @@ export interface GraphLink {
   target: string
 }
 
+export interface GraphMeta {
+  version?: string
+  model?: string
+  clinic_id?: string
+  fallback_model?: string
+}
+
 export interface GraphData {
   nodes: GraphNode[]
   links: GraphLink[]
+  meta?: GraphMeta
 }
 
 export interface EdgeCaseItem {
