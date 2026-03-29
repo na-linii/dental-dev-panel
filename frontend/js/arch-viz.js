@@ -1,15 +1,11 @@
-/* arch-viz.js — Architecture visualization with sidebar + orbit animation */
+/* arch-viz.js — Architecture visualization with sidebar */
 import * as THREE from "https://esm.sh/three";
 import SpriteText from "https://esm.sh/three-spritetext";
 import { COLORS, WIREFRAME, LABELS, getColor, getOpacity, getLabelOpacity, getLinkColor } from "./viz-config.js";
 
 var _allNodes = [];
 var _allLinks = [];
-var _selectedId = 'router'; // default selection
-var _orbitActive = true;
-var _orbitAngle = 0;
-var _orbitDist = 300;
-var _orbitCenter = {x:0, y:0, z:0}; // center of orbit (selected node position)
+var _selectedId = 'router';
 
 window.initArchViz = function() {
   if (window._archGraph) return;
@@ -30,9 +26,9 @@ window.initArchViz = function() {
       });
       _allLinks = data.links || [];
       renderArch(el, wrap, _allNodes, _allLinks);
-      // Select Router by default
+      // Show Router in sidebar by default
       var router = _allNodes.find(function(n) { return n.id === 'router'; });
-      if (router) selectNode(router);
+      if (router) showSidebar(router, _allNodes, _allLinks);
     })
     .catch(function(e) { console.error('Failed to load arch graph:', e); });
 };
@@ -51,8 +47,6 @@ function renderArch(el, wrap, N, L) {
     })
     .linkWidth(1)
     .onNodeClick(function(node) { selectNode(node); })
-    .onNodeDoubleClick(function(node) { selectNode(node); startOrbit(); })
-    .onBackgroundClick(function() { deselectNode(); startOrbit(); })
     .nodeThreeObject(function(node) {
       var group = new THREE.Group();
       var r = Math.cbrt(node.val||5) * 4.5;
@@ -71,7 +65,6 @@ function renderArch(el, wrap, N, L) {
       }
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:fill, transparent:true, opacity:opacity})));
 
-      // Wireframe — colored + bright when selected, white otherwise
       var wire = new THREE.LineSegments(
         new THREE.EdgesGeometry(geo),
         new THREE.LineBasicMaterial({
@@ -83,7 +76,6 @@ function renderArch(el, wrap, N, L) {
       wire.scale.setScalar(1.04);
       group.add(wire);
 
-      // Glow sphere for selected node
       if (isActive) {
         var glowGeo = new THREE.IcosahedronGeometry(r * 1.8, 1);
         group.add(new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({
@@ -91,7 +83,6 @@ function renderArch(el, wrap, N, L) {
         })));
       }
 
-      // Label
       var la = getLabelOpacity(node.planned);
       var s = new SpriteText(node.name);
       s.color = 'rgba(255,255,255,' + (isActive ? 1 : la) + ')';
@@ -111,21 +102,6 @@ function renderArch(el, wrap, N, L) {
   window._archGraph.d3Force('charge').strength(-400);
   window._archGraph.d3Force('link').distance(80);
 
-  // Start orbit animation
-  startOrbit();
-
-  // Stop orbit on manual mouse drag (not on node click which we handle separately)
-  var _mouseDownForDrag = false;
-  el.addEventListener('mousedown', function(e) {
-    _mouseDownForDrag = true;
-    setTimeout(function() {
-      // If mouse is still down after 150ms, it's a drag — stop orbit
-      if (_mouseDownForDrag) _orbitActive = false;
-    }, 150);
-  });
-  el.addEventListener('mouseup', function() { _mouseDownForDrag = false; });
-  el.addEventListener('contextmenu', function() { _orbitActive = false; });
-
   window.addEventListener('resize', function() {
     if (window._archGraph && wrap.clientWidth > 50) {
       window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
@@ -133,70 +109,15 @@ function renderArch(el, wrap, N, L) {
   });
 }
 
-/* === ORBIT ANIMATION === */
-
-function startOrbit() {
-  if (_orbitActive) return; // already running
-  _orbitActive = true;
-  _orbitAngle = 0;
-  // Get current camera distance
-  if (window._archGraph) {
-    var cam = window._archGraph.cameraPosition();
-    var dx = cam.x - _orbitCenter.x;
-    var dz = cam.z - _orbitCenter.z;
-    _orbitDist = Math.sqrt(dx*dx + dz*dz) || 300;
-    _orbitAngle = Math.atan2(dx, dz);
-  }
-  animateOrbit();
-}
-
-function animateOrbit() {
-  if (!_orbitActive || !window._archGraph) return;
-  _orbitAngle += 0.0015;
-  // Read current distance from camera (zoom may have changed)
-  var cam = window._archGraph.cameraPosition();
-  var dx = cam.x - _orbitCenter.x;
-  var dz = cam.z - _orbitCenter.z;
-  _orbitDist = Math.sqrt(dx*dx + dz*dz) || _orbitDist;
-
-  window._archGraph.cameraPosition({
-    x: _orbitCenter.x + _orbitDist * Math.sin(_orbitAngle),
-    y: cam.y,
-    z: _orbitCenter.z + _orbitDist * Math.cos(_orbitAngle),
-  }, _orbitCenter, 0);
-
-  requestAnimationFrame(animateOrbit);
-}
-
-/* === SELECTION === */
-
 function selectNode(node) {
   _selectedId = node.id;
-  // Update orbit center to selected node position
-  _orbitCenter = {x: node.x || 0, y: node.y || 0, z: node.z || 0};
-  refreshNodes();
-  showSidebar(node, _allNodes, _allLinks);
-}
-
-function deselectNode() {
-  _selectedId = null;
-  _orbitCenter = {x:0, y:0, z:0};
-  refreshNodes();
-  clearSidebar();
-}
-
-function refreshNodes() {
   if (window._archGraph) {
     window._archGraph.nodeThreeObject(window._archGraph.nodeThreeObject());
   }
+  showSidebar(node, _allNodes, _allLinks);
 }
 
 /* === SIDEBAR === */
-
-function clearSidebar() {
-  var sb = document.getElementById('arch-sidebar');
-  if (sb) sb.innerHTML = '<div style="color:var(--muted);font-size:.7rem;padding:20px 0;text-align:center">Click a node to see details</div>';
-}
 
 function showSidebar(node, N, L) {
   var sb = document.getElementById('arch-sidebar');
