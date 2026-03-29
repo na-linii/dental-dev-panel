@@ -3,8 +3,9 @@ import os
 import logging
 from contextlib import asynccontextmanager
 
+import secrets
 import httpx
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -18,6 +19,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    from hub.db import create_admin_user
+    await create_admin_user("admin", "admin", "Администратор", "admin")
     yield
 
 
@@ -238,6 +241,43 @@ async def langfuse_url(user=Depends(verify_github_token)):
 async def langfuse_redirect():
     host = os.environ.get("LANGFUSE_EXTERNAL_URL", "http://localhost:3000")
     return RedirectResponse(host)
+
+
+# --- Admin Panel API ---
+
+@app.post("/admin/api/login")
+async def admin_login(request: Request):
+    data = await request.json()
+    username = data.get("username", "")
+    password = data.get("password", "")
+    if not username or not password:
+        raise HTTPException(400, "Username and password required")
+
+    from hub.db import authenticate_admin
+    user = await authenticate_admin(username, password)
+    if not user:
+        raise HTTPException(401, "Invalid credentials")
+
+    token = secrets.token_urlsafe(32)
+    # Simple token storage (in-memory for now, will be replaced with proper sessions)
+    if not hasattr(app, '_admin_tokens'):
+        app._admin_tokens = {}
+    app._admin_tokens[token] = {
+        "user_id": user["id"],
+        "username": user["username"],
+        "full_name": user["full_name"],
+        "role": user["role"],
+        "clinic_id": user["clinic_id"],
+    }
+    return {"token": token, "user": app._admin_tokens[token]}
+
+
+@app.get("/admin/api/me")
+async def admin_me(authorization: str = Header(default="")):
+    token = authorization.replace("Bearer ", "").strip()
+    if not hasattr(app, '_admin_tokens') or token not in app._admin_tokens:
+        raise HTTPException(401, "Not authenticated")
+    return app._admin_tokens[token]
 
 
 # --- Frontend (React SPA) ---

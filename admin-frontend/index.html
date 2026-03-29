@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dental Admin</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, system-ui, sans-serif; background: #0a0a1a; color: #e0e0e0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-box { max-width: 360px; width: 100%; padding: 2rem; }
+  h1 { color: #7dd3fc; font-size: 1.5rem; text-align: center; margin-bottom: 0.5rem; }
+  p { color: #64748b; font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem; }
+  input { width: 100%; padding: 0.5rem 0.8rem; margin-bottom: 0.75rem; border-radius: 6px; border: 1px solid #1e293b; background: #111127; color: white; font-size: 0.85rem; outline: none; }
+  input:focus { border-color: #7dd3fc; }
+  button { width: 100%; padding: 0.5rem; border-radius: 8px; border: none; background: #7dd3fc; color: #0a0a1a; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.5; }
+  .error { color: #f87171; font-size: 0.8rem; text-align: center; min-height: 1.2rem; margin-bottom: 0.5rem; }
+  .dashboard { text-align: center; padding: 3rem; }
+  .dashboard h1 { margin-bottom: 1rem; }
+  .dashboard .construction { font-size: 3rem; margin-bottom: 1rem; }
+  .dashboard .logout { color: #7dd3fc; font-size: 0.75rem; cursor: pointer; background: none; border: none; width: auto; padding: 0; font-weight: normal; }
+  .dashboard .user-info { color: #64748b; font-size: 0.8rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function() {
+  var token = localStorage.getItem('admin_token');
+  var user = null;
+  try { user = JSON.parse(localStorage.getItem('admin_user')); } catch(e) {}
+
+  function render() {
+    var app = document.getElementById('app');
+    if (token && user) {
+      app.innerHTML = '<div class="dashboard">' +
+        '<div class="construction">&#x1F6A7;</div>' +
+        '<h1>Admin Panel</h1>' +
+        '<div class="user-info">' + (user.full_name || user.username) + ' (' + user.role + ')</div>' +
+        '<p>Under Construction</p>' +
+        '<button class="logout" onclick="doLogout()">&#x0412;&#x044B;&#x0439;&#x0442;&#x0438;</button>' +
+        '</div>';
+    } else {
+      app.innerHTML = '<div class="login-box">' +
+        '<h1>Dental Admin</h1>' +
+        '<p>&#x041F;&#x0430;&#x043D;&#x0435;&#x043B;&#x044C; &#x0443;&#x043F;&#x0440;&#x0430;&#x0432;&#x043B;&#x0435;&#x043D;&#x0438;&#x044F; &#x043A;&#x043B;&#x0438;&#x043D;&#x0438;&#x043A;&#x043E;&#x0439;</p>' +
+        '<input id="username" placeholder="&#x041B;&#x043E;&#x0433;&#x0438;&#x043D;" />' +
+        '<input id="password" type="password" placeholder="&#x041F;&#x0430;&#x0440;&#x043E;&#x043B;&#x044C;" />' +
+        '<div class="error" id="error"></div>' +
+        '<button onclick="doLogin()">&#x0412;&#x043E;&#x0439;&#x0442;&#x0438;</button>' +
+        '</div>';
+    }
+  }
+
+  window.doLogin = async function() {
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value.trim();
+    var err = document.getElementById('error');
+    if (!username || !password) { err.textContent = '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043B\u043E\u0433\u0438\u043D \u0438 \u043F\u0430\u0440\u043E\u043B\u044C'; return; }
+    err.textContent = '\u041F\u0440\u043E\u0432\u0435\u0440\u044F\u044E...';
+    try {
+      var r = await fetch('/admin/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      });
+      if (!r.ok) { var d = await r.json(); throw new Error(d.detail || 'Auth failed'); }
+      var data = await r.json();
+      token = data.token;
+      user = data.user;
+      localStorage.setItem('admin_token', token);
+      localStorage.setItem('admin_user', JSON.stringify(user));
+      render();
+    } catch(e) { err.textContent = e.message; }
+  };
+
+  window.doLogout = function() {
+    token = null; user = null;
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    render();
+  };
+
+  // Verify token on load
+  if (token) {
+    fetch('/admin/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function(u) { user = u; localStorage.setItem('admin_user', JSON.stringify(u)); render(); })
+      .catch(function() { token = null; user = null; localStorage.removeItem('admin_token'); localStorage.removeItem('admin_user'); render(); });
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>

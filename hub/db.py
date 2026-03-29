@@ -1,6 +1,7 @@
 """Hub database — clinic registry (PostgreSQL)."""
 import os
 import json
+import hashlib
 import asyncpg
 
 DATABASE_URL = os.environ.get("HUB_DATABASE_URL",
@@ -33,6 +34,38 @@ async def init_db():
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS hub.admin_users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                full_name TEXT DEFAULT '',
+                role TEXT DEFAULT 'operator',
+                clinic_id TEXT REFERENCES hub.clinics(id),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+async def authenticate_admin(username: str, password: str):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM hub.admin_users WHERE username = $1 AND password_hash = $2",
+            username, _hash_password(password))
+        return dict(row) if row else None
+
+
+async def create_admin_user(username: str, password: str, full_name: str = '', role: str = 'operator', clinic_id: str = None):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO hub.admin_users (username, password_hash, full_name, role, clinic_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (username) DO NOTHING",
+            username, _hash_password(password), full_name, role, clinic_id)
 
 
 async def get_clinics():
