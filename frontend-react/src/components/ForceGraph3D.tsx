@@ -64,6 +64,18 @@ function buildNodeObject(node: GraphNode): THREE.Group {
   return group
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findLink(graph: any, srcId: string, tgtId: string) {
+  const gd = graph.graphData()
+  if (!gd?.links) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return gd.links.find((l: any) => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source
+    const t = typeof l.target === 'object' ? l.target.id : l.target
+    return (s === srcId && t === tgtId) || (s === tgtId && t === srcId)
+  }) || null
+}
+
 export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
   function ForceGraph3D({ data, className, onNodeClick }, ref) {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -73,61 +85,32 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
     const angleRef = useRef(0)
     const distRef = useRef(350)
     const animFrameRef = useRef(0)
-    // Track which links are currently "active" for particle animation
-    const activeLinkSetRef = useRef<Set<string>>(new Set())
 
     const stopRotation = useCallback(() => {
       autoRotateRef.current = false
     }, [])
-
-    function linkKey(src: string, tgt: string) {
-      return `${src}__${tgt}`
-    }
 
     useImperativeHandle(ref, () => ({
       animateFlow(path: AnimStep[], speed: number) {
         const g = graphRef.current
         if (!g) return
 
-        // Clear previous animation
-        activeLinkSetRef.current.clear()
-        g.linkDirectionalParticles((/* link */) => 0)
-
         let delay = 0
-        const allTimeouts: ReturnType<typeof setTimeout>[] = []
-
         for (const step of path) {
-          const stepDur = Math.max(step.dur / speed, 80)
+          const stepDur = Math.max(step.dur / speed, 60)
           for (const [src, tgt] of step.links) {
-            const t = setTimeout(() => {
-              activeLinkSetRef.current.add(linkKey(src, tgt))
-              activeLinkSetRef.current.add(linkKey(tgt, src)) // both directions
-              // Update particle count for active links
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              g.linkDirectionalParticles((link: any) => {
-                const s = typeof link.source === 'object' ? link.source.id : link.source
-                const t2 = typeof link.target === 'object' ? link.target.id : link.target
-                return activeLinkSetRef.current.has(linkKey(s, t2)) ? 4 : 0
-              })
+            setTimeout(() => {
+              const link = findLink(g, src, tgt)
+              if (link) {
+                // Emit multiple particles for visibility
+                g.emitParticle(link)
+                setTimeout(() => g.emitParticle(link), 80)
+                setTimeout(() => g.emitParticle(link), 160)
+              }
             }, delay)
-            allTimeouts.push(t)
-
-            // Turn off this link's particles after stepDur
-            const t2 = setTimeout(() => {
-              activeLinkSetRef.current.delete(linkKey(src, tgt))
-              activeLinkSetRef.current.delete(linkKey(tgt, src))
-            }, delay + stepDur)
-            allTimeouts.push(t2)
           }
           delay += stepDur
         }
-
-        // Final cleanup
-        const tFinal = setTimeout(() => {
-          activeLinkSetRef.current.clear()
-          g.linkDirectionalParticles(0)
-        }, delay + 300)
-        allTimeouts.push(tFinal)
       },
     }), [])
 
@@ -144,12 +127,13 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
           .nodeVal((n: GraphNode) => Math.max(4, (n.val || 5) * 0.6))
           .nodeColor((n: GraphNode) => C[n.group] || '#888')
           .nodeOpacity(0.85)
-          .linkColor(() => 'rgba(255,255,255,0.35)')
-          .linkWidth(1.5)
-          .linkDirectionalParticles(0)
-          .linkDirectionalParticleWidth(5)
+          .linkColor(() => 'rgba(255,255,255,0.25)')
+          .linkWidth(1.2)
+          // Particle setup — no continuous particles, only emitParticle
           .linkDirectionalParticleColor(() => '#7dd3fc')
-          .linkDirectionalParticleSpeed(0.025)
+          .linkDirectionalParticleWidth(6)
+          .linkDirectionalParticleSpeed(0.015)
+          .linkHoverPrecision(10)
           .nodeThreeObject((node: GraphNode) => buildNodeObject(node))
           .nodeThreeObjectExtend(false)
           .onNodeClick((node: GraphNode) => {
