@@ -48,7 +48,10 @@ function renderArch(el, wrap, N, L) {
       return getLinkColor(t);
     })
     .linkWidth(1)
-    .onNodeClick(function(node) { showSidebar(node, N, L); })
+    .onNodeClick(function(node) {
+      highlightNode(node);
+      showSidebar(node, N, L);
+    })
     .nodeThreeObject(function(node) {
       var group = new THREE.Group();
       var r = Math.cbrt(node.val||5) * 4.5;
@@ -67,12 +70,22 @@ function renderArch(el, wrap, N, L) {
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:fill, transparent:true, opacity:opacity})));
 
       // White wireframe for all nodes
+      var isActive = node.id === _selectedId;
+      var wireOpacity = node.planned ? 0.25 : (isActive ? 0.9 : 0.5);
       var wire = new THREE.LineSegments(
         new THREE.EdgesGeometry(geo),
-        new THREE.LineBasicMaterial({color:WIREFRAME, transparent:true, opacity: node.planned ? 0.25 : 0.5})
+        new THREE.LineBasicMaterial({color: isActive ? fill : WIREFRAME, transparent:true, opacity: wireOpacity})
       );
       wire.scale.setScalar(1.04);
       group.add(wire);
+
+      // Glow for selected node
+      if (isActive) {
+        var glowGeo = new THREE.IcosahedronGeometry(r * 1.8, 1);
+        group.add(new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({
+          color: fill, transparent: true, opacity: 0.12,
+        })));
+      }
 
       // Label
       var la = getLabelOpacity(node.planned);
@@ -121,6 +134,18 @@ function renderArch(el, wrap, N, L) {
       window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
     }
   });
+}
+
+/* === NODE HIGHLIGHT === */
+
+var _selectedId = null;
+
+function highlightNode(node) {
+  _selectedId = node ? node.id : null;
+  // Force re-render of all node objects
+  if (window._archGraph) {
+    window._archGraph.nodeThreeObject(window._archGraph.nodeThreeObject());
+  }
 }
 
 /* === SIDEBAR === */
@@ -228,6 +253,7 @@ window._archClickNode = function(nodeId) {
   var data = window._archGraph.graphData();
   var node = data.nodes.find(function(n){return n.id===nodeId;});
   if (node) {
+    highlightNode(node);
     showSidebar(node, data.nodes, data.links);
   }
 };
