@@ -34,7 +34,7 @@ window.initViz = async function() {
     .nodeThreeObject(function(node) {
       var group = new THREE.Group();
       var r = Math.cbrt(node.val || 5) * 5;
-      var color = node.color || C[node.group] || '#888';
+      var color = C[node.group] || '#888';
 
       var geo;
       switch(node.shape) {

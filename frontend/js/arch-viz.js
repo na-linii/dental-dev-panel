@@ -12,13 +12,6 @@ window.initArchViz = function() {
   var el = document.getElementById('arch-graph');
   if (!el || !wrap || wrap.clientWidth < 50) return;
 
-  // Show sidebar immediately
-  var sb = document.getElementById('arch-sidebar');
-  if (sb) {
-    sb.style.display = 'flex';
-    sb.innerHTML = '<div style="color:var(--muted);font-size:.7rem;padding:20px 0;text-align:center">Click a node to see details</div>';
-  }
-
   var clinics = window.CLINICS || [{id:'zubatka'}];
   var clinicId = clinics[0].id;
 
@@ -33,6 +26,9 @@ window.initArchViz = function() {
       _allNodes = N;
       _allLinks = data.links || [];
       renderArch(el, wrap, N, _allLinks);
+      // Show Router info by default
+      var router = N.find(function(n) { return n.id === 'router'; });
+      if (router) showSidebar(router, N, _allLinks);
     })
     .catch(function(e) {
       console.error('Failed to load arch graph:', e);
@@ -110,7 +106,6 @@ function renderArch(el, wrap, N, L) {
 function showSidebar(node, N, L) {
   var sb = document.getElementById('arch-sidebar');
   if (!sb) return;
-  sb.style.display = 'flex';
 
   var color = COLORS[node.type] || '#888';
   var typeName = LABELS[node.type] || node.type;

@@ -3,15 +3,15 @@
  */
 
 export var COLORS = {
-  router:  '#f472b6',  // pink — central, must stand out
-  agent:   '#60a5fa',  // blue
-  tool:    '#a78bfa',  // purple
-  gateway: '#34d399',  // green
-  plugin:  '#fbbf24',  // yellow
-  storage: '#f87171',  // red
+  router:  '#f472b6',  // pink — central node
+  agent:   '#38bdf8',  // sky blue
+  tool:    '#c084fc',  // purple
+  gateway: '#4ade80',  // lime green
+  plugin:  '#fb923c',  // orange
+  storage: '#facc15',  // yellow
 };
 
-export var WIREFRAME = '#ffffff';  // white for all modules
+export var WIREFRAME = '#ffffff';
 
 export var SHAPES = {
   router:  'dodecahedron',
