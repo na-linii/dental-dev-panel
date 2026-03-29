@@ -1,33 +1,61 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-
-interface AdminUser {
-  id: string
-  username: string
-  full_name: string
-  role: string
-  clinic_id: string
-}
+import { clinicsApi } from '../api/client'
+import type { AdminUser } from '../types'
 
 export function ClinicAdminsTab() {
   const { clinicId } = useParams<{ clinicId: string }>()
   const [admins, setAdmins] = useState<AdminUser[]>([])
+  const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
+  const [error, setError] = useState('')
   const [newAdmin, setNewAdmin] = useState({ username: '', full_name: '', password: '', role: 'operator' })
 
-  const handleAdd = () => {
-    if (!newAdmin.username || !newAdmin.password) return
-    // TODO: call Hub API to create admin
-    const admin: AdminUser = {
-      id: crypto.randomUUID(),
-      username: newAdmin.username,
-      full_name: newAdmin.full_name || newAdmin.username,
-      role: newAdmin.role,
-      clinic_id: clinicId || '',
+  const loadAdmins = useCallback(async () => {
+    if (!clinicId) return
+    try {
+      const list = await clinicsApi.admins(clinicId)
+      setAdmins(list)
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false)
     }
-    setAdmins([...admins, admin])
-    setNewAdmin({ username: '', full_name: '', password: '', role: 'operator' })
-    setShowAdd(false)
+  }, [clinicId])
+
+  useEffect(() => { loadAdmins() }, [loadAdmins])
+
+  const handleAdd = async () => {
+    if (!newAdmin.username || !newAdmin.password || !clinicId) return
+    setError('')
+    try {
+      await clinicsApi.createAdmin(clinicId, {
+        username: newAdmin.username,
+        password: newAdmin.password,
+        full_name: newAdmin.full_name || newAdmin.username,
+        role: newAdmin.role,
+      })
+      setNewAdmin({ username: '', full_name: '', password: '', role: 'operator' })
+      setShowAdd(false)
+      loadAdmins()
+    } catch (e: any) {
+      setError(e.response?.data?.detail || 'Failed to create admin')
+    }
+  }
+
+  const handleDelete = async (adminId: number) => {
+    if (!clinicId) return
+    if (!confirm('Remove this administrator?')) return
+    try {
+      await clinicsApi.deleteAdmin(clinicId, adminId)
+      loadAdmins()
+    } catch {
+      // ignore
+    }
+  }
+
+  if (loading) {
+    return <div className="p-6 text-[#64748b] text-sm">Loading...</div>
   }
 
   return (
@@ -80,6 +108,9 @@ export function ClinicAdminsTab() {
               <option value="superadmin">Superadmin</option>
             </select>
           </div>
+          {error && (
+            <div className="text-xs text-[#f87171] mb-2">{error}</div>
+          )}
           <div className="flex gap-2">
             <button
               onClick={handleAdd}
@@ -89,7 +120,7 @@ export function ClinicAdminsTab() {
               Create
             </button>
             <button
-              onClick={() => setShowAdd(false)}
+              onClick={() => { setShowAdd(false); setError('') }}
               className="px-3 py-1.5 text-xs text-[#64748b] hover:text-white cursor-pointer"
             >
               Cancel
@@ -111,14 +142,26 @@ export function ClinicAdminsTab() {
                 <div>
                   <span className="text-xs text-white font-medium">{a.full_name || a.username}</span>
                   <span className="text-[10px] text-[#64748b] ml-2">@{a.username}</span>
+                  {!a.clinic_id && (
+                    <span className="text-[9px] text-[#facc15] ml-2">global</span>
+                  )}
                 </div>
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                  a.role === 'superadmin' ? 'bg-[#7dd3fc]/10 text-[#7dd3fc]' :
-                  a.role === 'admin' ? 'bg-[#a855f7]/10 text-[#a855f7]' :
-                  'bg-[#1e293b] text-[#94a3b8]'
-                }`}>
-                  {a.role}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    a.role === 'superadmin' ? 'bg-[#7dd3fc]/10 text-[#7dd3fc]' :
+                    a.role === 'admin' ? 'bg-[#a855f7]/10 text-[#a855f7]' :
+                    'bg-[#1e293b] text-[#94a3b8]'
+                  }`}>
+                    {a.role}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(a.id)}
+                    className="text-[#475569] hover:text-[#f87171] text-xs cursor-pointer"
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>

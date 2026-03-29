@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type {
   Clinic, ChatRequest, ChatResponse, GraphData,
-  EdgeCaseItem, HealthResponse, TraceFlow, TraceSummary,
+  EdgeCaseItem, HealthResponse, TraceFlow, TraceSummary, AdminUser,
 } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -40,6 +40,15 @@ export const clinicsApi = {
 
   graph: (id: string, params?: Record<string, string>) =>
     api.get<GraphData>(`/clinics/${id}/graph`, { params }).then((r) => r.data),
+
+  admins: (id: string) =>
+    api.get<{ admins: AdminUser[] }>(`/clinics/${id}/admins`).then((r) => r.data.admins),
+
+  createAdmin: (id: string, data: { username: string; password: string; full_name: string; role: string }) =>
+    api.post<{ admin: AdminUser }>(`/clinics/${id}/admins`, data).then((r) => r.data.admin),
+
+  deleteAdmin: (clinicId: string, adminId: number) =>
+    api.delete(`/clinics/${clinicId}/admins/${adminId}`),
 }
 
 export const edgeCasesApi = {

@@ -366,6 +366,42 @@ async def admin_me(authorization: str = Header(default="")):
     return app._admin_tokens[token]
 
 
+# --- Clinic Admin Users API (used by Hub frontend) ---
+
+@app.get("/api/clinics/{clinic_id}/admins")
+async def list_clinic_admins(clinic_id: str, user=Depends(verify_github_token)):
+    from hub.db import get_clinic_admins
+    admins = await get_clinic_admins(clinic_id)
+    return {"admins": admins}
+
+
+@app.post("/api/clinics/{clinic_id}/admins")
+async def add_clinic_admin(clinic_id: str, request: Request, user=Depends(verify_github_token)):
+    data = await request.json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    full_name = data.get("full_name", "").strip()
+    role = data.get("role", "operator")
+
+    if not username or not password:
+        raise HTTPException(400, "username and password required")
+    if role not in ("operator", "admin", "superadmin"):
+        raise HTTPException(400, "role must be operator, admin, or superadmin")
+
+    from hub.db import create_clinic_admin
+    admin = await create_clinic_admin(username, password, full_name, role, clinic_id)
+    if not admin:
+        raise HTTPException(409, f"Username '{username}' already exists")
+    return {"admin": admin}
+
+
+@app.delete("/api/clinics/{clinic_id}/admins/{admin_id}")
+async def remove_clinic_admin(clinic_id: str, admin_id: int, user=Depends(verify_github_token)):
+    from hub.db import delete_admin_user
+    await delete_admin_user(admin_id)
+    return {"ok": True}
+
+
 # --- Frontend (React SPA with fallback) ---
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")

@@ -104,3 +104,12 @@ export interface User {
   avatar: string
   name: string
 }
+
+export interface AdminUser {
+  id: number
+  username: string
+  full_name: string
+  role: string
+  clinic_id: string | null
+  created_at: string
+}
