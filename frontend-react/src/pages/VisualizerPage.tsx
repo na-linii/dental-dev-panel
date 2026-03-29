@@ -179,6 +179,15 @@ export function VisualizerPage() {
             {mode === 'live' ? '🟢 LIVE' : `▶ REPLAY ${replayTraceId?.slice(0, 8)}...`}
           </div>
 
+          {/* Version badge */}
+          {graphData?.meta?.version && (
+            <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
+              style={{ background: 'rgba(0,0,0,0.7)', color: '#64748b', border: '1px solid rgba(100,116,139,0.2)' }}
+            >
+              DentalCORE v{graphData.meta.version}
+            </div>
+          )}
+
           {graphError && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-red-400 z-10">
               {graphError}
