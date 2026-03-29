@@ -148,36 +148,60 @@
 
       <h3 style="font-size:.9rem;margin:1.5rem 0 .5rem;color:var(--accent)">Компоненты</h3>
       <div class="grid">
-        <div class="card"><h3>Core</h3><table>
+        <div class="card"><h3>Router + Agents</h3><table>
           <tr><td>Dental Router (LLM intent)</td><td><span class="tag ok">Готово</span></td></tr>
           <tr><td>FAQ Agent + Tier 1/2 KB</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Booking Agent + 6 tools</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Confirmation Agent + scheduler</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Handoff tool</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Booking Agent + 7 CRM tools</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Confirmation Agent (LLM)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Confirmation reply handling</td><td><span class="tag ok">Готово</span></td></tr>
         </table></div>
-        <div class="card"><h3>Gateways + Storage</h3><table>
+        <div class="card"><h3>Tools</h3><table>
+          <tr><td>CRM: get_availability, book, cancel</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>CRM: get_bookings, register_patient</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>CRM: update_status, get_tomorrow</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Chat: send_message, handoff</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Action: create_action</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Knowledge: Tier 1 YAML, Tier 2 pgvector</td><td><span class="tag ok">Готово</span></td></tr>
+        </table></div>
+        <div class="card"><h3>Gateways</h3><table>
           <tr><td>Chat Gateway + Streaming</td><td><span class="tag ok">Готово</span></td></tr>
           <tr><td>CRM Gateway + Protocol</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Identity DB</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Checkpointer (PostgreSQL)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Knowledge Base (pgvector)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Action Queue</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Scheduler (confirmation)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Debounce Manager</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Operator Cooldown</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>ChatSession (state machine)</td><td><span class="tag ok">Готово</span></td></tr>
         </table></div>
-        <div class="card"><h3>Plugins</h3><table>
+        <div class="card"><h3>Storage (PostgreSQL)</h3><table>
+          <tr><td>Identity DB (users + channels)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Chat Sessions (controller, status)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Chat Messages (audit trail)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Checkpointer (LangGraph state)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Knowledge Base (pgvector)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Action Queue (manual ops)</td><td><span class="tag ok">Готово</span></td></tr>
+        </table></div>
+        <div class="card"><h3>Plugins (channels + CRM)</h3><table>
           <tr><td>Telegram Bot (polling)</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Google Sheets adapter</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Google Sheets CRM adapter</td><td><span class="tag ok">Готово</span></td></tr>
           <tr><td>Telegram Business</td><td><span class="tag wip">Parse готов</span></td></tr>
           <tr><td>IDENT CRM Adapter</td><td><span class="tag no">Планируется</span></td></tr>
           <tr><td>MAX Messenger</td><td><span class="tag skip">Потом</span></td></tr>
           <tr><td>Voice (LiveKit)</td><td><span class="tag skip">Потом</span></td></tr>
+        </table></div>
+        <div class="card"><h3>Prompts (Langfuse)</h3><table>
+          <tr><td>dental-router (intent classification)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>dental-booking (запись + guardrails)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>dental-faq (консультация)</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>dental-confirmation (подтверждение)</td><td><span class="tag ok">Готово</span></td></tr>
         </table></div>
         <div class="card"><h3>Infra + Platform</h3><table>
           <tr><td>LLM Fallback (OpenRouter)</td><td><span class="tag ok">Готово</span></td></tr>
           <tr><td>CI/CD (GitHub Actions)</td><td><span class="tag ok">Готово</span></td></tr>
           <tr><td>Dental Hub + Langfuse</td><td><span class="tag ok">Готово</span></td></tr>
           <tr><td>Hub: конфигурация клиник</td><td><span class="tag ok">Готово</span></td></tr>
-          <tr><td>Hub: Deploy по кнопке</td><td><span class="tag no">Планируется</span></td></tr>
-          <tr><td>Hub: создание агентов UI</td><td><span class="tag no">Планируется</span></td></tr>
+          <tr><td>Langfuse prompt sync</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Parallel status tracks</td><td><span class="tag ok">Готово</span></td></tr>
+          <tr><td>Admin Panel</td><td><span class="tag no">Планируется</span></td></tr>
+          <tr><td>Metabase analytics</td><td><span class="tag skip">Потом</span></td></tr>
         </table></div>
       </div>
 
@@ -186,9 +210,11 @@
         <div class="tl done"><div class="date">ЭТАП 1 — 25-27 марта</div><div class="title">Ядро: LangGraph + Langfuse</div><div class="desc">Router, FAQ, Booking, Identity, pgvector. 50 тестов.</div></div>
         <div class="tl done"><div class="date">ЭТАП 2 — 28 марта</div><div class="title">CRM + Chat Gateway + CI/CD</div><div class="desc">Google Sheets, Telegram Bot, Handoff, streaming, auto-deploy.</div></div>
         <div class="tl done"><div class="date">ЭТАП 3 — 28 марта</div><div class="title">Dental Hub + Langfuse migration</div><div class="desc">Hub API, 3D визуализатор, trace animation, ngrok.</div></div>
-        <div class="tl done"><div class="date">ЭТАП 4 — 29 марта</div><div class="title">Confirmation Agent + оптимизация</div><div class="desc">Confirmation, Action Queue, PostgreSQL checkpointer, промпты без хардкода. 215 тестов.</div></div>
-        <div class="tl wip"><div class="date">ЭТАП 5 — 30 марта</div><div class="title">Подключение Элайнер РФ</div><div class="desc">Telegram Business, реальные данные, E2E тесты.</div></div>
-        <div class="tl todo"><div class="date">ЭТАП 6 — Апрель</div><div class="title">Плагины + IDENT + 10 клиник</div><div class="desc">IDENT adapter, MAX, Voice. Deploy через Hub, создание агентов через UI.</div></div>
+        <div class="tl done"><div class="date">ЭТАП 4 — 29 марта</div><div class="title">Промпты в Langfuse + оптимизация агентов</div><div class="desc">Все промпты в Langfuse (zero hardcode), sanitized tool output, patient identity, error handling. 213 тестов.</div></div>
+        <div class="tl done"><div class="date">ЭТАП 5 — 29 марта</div><div class="title">ChatSession + Cooldown + Debounce</div><div class="desc">Chat Sessions DB, operator cooldown (per-clinic), message debouncing (per-channel), chat message history, confirmation reply flow (LLM), parallel status tracks.</div></div>
+        <div class="tl wip"><div class="date">ЭТАП 6 — 30 марта</div><div class="title">E2E тестирование + подключение Зубатка</div><div class="desc">Полный цикл: запись, перенос, отмена, подтверждение. Telegram Bot + Google Sheets CRM.</div></div>
+        <div class="tl todo"><div class="date">ЭТАП 7 — Апрель</div><div class="title">Admin Panel + IDENT + 10 клиник</div><div class="desc">Admin panel, IDENT CRM adapter, blocked patients, Telegram Business full flow. Metabase analytics.</div></div>
+        <div class="tl todo"><div class="date">ЭТАП 8 — Апрель-Май</div><div class="title">Multi-channel + Voice</div><div class="desc">MAX Messenger, Voice (LiveKit), multi-clinic deploy через Hub.</div></div>
       </div>
     </div>
   </div>
