@@ -5,8 +5,8 @@
 export const HUB_VERSION = '0.1.0'
 
 export const COLORS: Record<string, string> = {
-  router: '#facc15',
-  agent: '#22d3ee',
+  router: '#22d3ee',
+  agent: '#facc15',
   tool: '#a855f7',
   gateway: '#22c55e',
   plugin: '#f97316',
