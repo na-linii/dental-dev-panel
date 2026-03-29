@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { tracesApi } from '../api/client'
 import type { TraceSummary, TraceFlow } from '../types'
@@ -212,32 +212,90 @@ function TraceRow({ trace, clinicId, onReplay }: { trace: TraceSummary; clinicId
   )
 }
 
+const INITIAL_LIMIT = 25
+const LOAD_MORE = 10
+
 export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
-  const { data: traces, isLoading } = useQuery({
-    queryKey: ['traces', clinicId],
-    queryFn: () => tracesApi.list(clinicId),
+  const [traces, setTraces] = useState<TraceSummary[]>([])
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [limit, setLimit] = useState(INITIAL_LIMIT)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const seenIdsRef = useRef<Set<string>>(new Set())
+
+  // Poll for new traces (top of list)
+  useQuery({
+    queryKey: ['traces-poll', clinicId],
+    queryFn: async () => {
+      const fresh = await tracesApi.list(clinicId, undefined, limit)
+      // Merge: keep existing order, prepend new ones
+      setTraces((prev) => {
+        const newTraces: TraceSummary[] = []
+        for (const t of fresh) {
+          if (!seenIdsRef.current.has(t.id)) {
+            seenIdsRef.current.add(t.id)
+            newTraces.push(t)
+          }
+        }
+        if (newTraces.length > 0) return [...newTraces, ...prev]
+        // Update existing traces (latency may have appeared)
+        return fresh.length > 0 ? fresh : prev
+      })
+      return fresh
+    },
     refetchInterval: 5000,
     enabled: !!clinicId,
   })
+
+  // Initial load
+  useEffect(() => {
+    if (!clinicId) return
+    setLoading(true)
+    tracesApi.list(clinicId, undefined, INITIAL_LIMIT).then((data) => {
+      setTraces(data)
+      data.forEach((t) => seenIdsRef.current.add(t.id))
+      setHasMore(data.length >= INITIAL_LIMIT)
+    }).finally(() => setLoading(false))
+  }, [clinicId])
+
+  // Infinite scroll
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el || loading || !hasMore) return
+    const { scrollTop, scrollHeight, clientHeight } = el
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      const newLimit = limit + LOAD_MORE
+      setLimit(newLimit)
+      setLoading(true)
+      tracesApi.list(clinicId, undefined, newLimit).then((data) => {
+        setTraces(data)
+        data.forEach((t) => seenIdsRef.current.add(t.id))
+        setHasMore(data.length >= newLimit)
+      }).finally(() => setLoading(false))
+    }
+  }, [clinicId, limit, loading, hasMore])
 
   return (
     <div className="flex flex-col h-full bg-[#111127]">
       <div className="px-3 py-1.5 border-b border-[#1e293b] text-xs font-semibold text-[#7dd3fc] flex items-center gap-2 flex-shrink-0">
         Trace Log
         <span className="text-[#64748b] font-normal">
-          {traces?.length || 0} traces
+          {traces.length} traces{hasMore ? '+' : ''}
         </span>
-        {isLoading && <span className="text-[#64748b] font-normal">polling...</span>}
+        {loading && <span className="text-[#64748b] font-normal">loading...</span>}
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {(!traces || traces.length === 0) && !isLoading && (
+      <div className="flex-1 overflow-y-auto" ref={scrollRef} onScroll={handleScroll}>
+        {traces.length === 0 && !loading && (
           <div className="text-xs text-[#64748b] px-3 py-4 text-center">
             No traces yet. Send a message or wait for patient activity.
           </div>
         )}
-        {traces?.map((t) => (
+        {traces.map((t) => (
           <TraceRow key={t.id} trace={t} clinicId={clinicId} onReplay={onReplay} />
         ))}
+        {loading && traces.length > 0 && (
+          <div className="text-[10px] text-[#64748b] px-3 py-2 text-center">Loading more...</div>
+        )}
       </div>
     </div>
   )

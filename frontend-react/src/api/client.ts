@@ -48,9 +48,9 @@ export const edgeCasesApi = {
 }
 
 export const tracesApi = {
-  list: (clinicId: string, since?: string) =>
+  list: (clinicId: string, since?: string, limit = 25) =>
     api.get<{ traces: TraceSummary[] }>(`/clinics/${clinicId}/traces`, {
-      params: { limit: 50, ...(since ? { since } : {}) },
+      params: { limit, ...(since ? { since } : {}) },
     }).then((r) => r.data.traces),
 
   detail: (clinicId: string, traceId: string) =>
