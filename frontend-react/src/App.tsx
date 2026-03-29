@@ -4,15 +4,12 @@ import { useAuth } from './hooks/useAuth'
 import { Layout } from './components/Layout'
 import { Login } from './components/Login'
 import { ClinicsPage } from './pages/ClinicsPage'
-// TODO: перенести Edge Cases в Clinix
-// import { EdgeCasesPage } from './pages/EdgeCasesPage'
 import { ClinicLayout } from './pages/ClinicLayout'
 import { ClinicVisualizerTab } from './pages/ClinicVisualizerTab'
 import { ClinicConfigTab } from './pages/ClinicConfigTab'
 import { ClinicAdminsTab } from './pages/ClinicAdminsTab'
 import { ArchitecturePage } from './pages/ArchitecturePage'
 import { RoadmapPage } from './pages/RoadmapPage'
-import { TestAnimPage } from './pages/TestAnimPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,10 +37,7 @@ export default function App() {
                 <Route path="admins" element={<ClinicAdminsTab />} />
               </Route>
               <Route path="/architecture" element={<ArchitecturePage />} />
-              {/* TODO: перенести Edge Cases в Clinix */}
-              {/* <Route path="/edge-cases" element={<EdgeCasesPage />} /> */}
               <Route path="/roadmap" element={<RoadmapPage />} />
-              <Route path="/test-anim" element={<TestAnimPage />} />
               <Route path="/visualizer" element={<Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>

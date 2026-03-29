@@ -1,8 +1,8 @@
 """Hub database — clinic registry (PostgreSQL)."""
 import os
 import json
-import hashlib
 import asyncpg
+import bcrypt
 
 DATABASE_URL = os.environ.get("HUB_DATABASE_URL",
     "postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse")
@@ -48,16 +48,26 @@ async def init_db():
 
 
 def _hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    # Support legacy SHA256 hashes (pre-bcrypt migration)
+    if len(password_hash) == 64 and not password_hash.startswith("$2"):
+        import hashlib
+        return hashlib.sha256(password.encode()).hexdigest() == password_hash
+    return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
 async def authenticate_admin(username: str, password: str):
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM hub.admin_users WHERE username = $1 AND password_hash = $2",
-            username, _hash_password(password))
-        return dict(row) if row else None
+            "SELECT * FROM hub.admin_users WHERE username = $1",
+            username)
+        if row and _verify_password(password, row["password_hash"]):
+            return dict(row)
+        return None
 
 
 async def create_admin_user(username: str, password: str, full_name: str = '', role: str = 'operator', clinic_id: str = None):

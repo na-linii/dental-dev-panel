@@ -19,8 +19,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    from hub.db import create_admin_user
-    await create_admin_user("admin", "admin", "Администратор", "admin")
+    # Create default admin from env vars (if set)
+    admin_user = os.environ.get("HUB_ADMIN_USER")
+    admin_pass = os.environ.get("HUB_ADMIN_PASS")
+    if admin_user and admin_pass:
+        from hub.db import create_admin_user
+        await create_admin_user(admin_user, admin_pass, "Администратор", "admin")
     yield
 
 
