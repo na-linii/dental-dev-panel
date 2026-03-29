@@ -1,10 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { clinicsApi } from '../api/client'
+import { clinicsApi, traceApi } from '../api/client'
 import { ForceGraph3D } from '../components/ForceGraph3D'
+import type { ForceGraph3DHandle, AnimStep } from '../components/ForceGraph3D'
 import { ChatPlayground } from '../components/ChatPlayground'
-import { TraceLog } from '../components/TraceLog'
+import { TraceLog, buildAnimPath } from '../components/TraceLog'
 import type { Clinic, GraphData } from '../types'
+
+const SPEEDS = [1, 2, 4] as const
 
 export function VisualizerPage() {
   const [searchParams] = useSearchParams()
@@ -14,6 +17,11 @@ export function VisualizerPage() {
   const [traceId, setTraceId] = useState<string | null>(null)
   const [graphError, setGraphError] = useState<string | null>(null)
   const [playgroundOpen, setPlaygroundOpen] = useState(false)
+  const [speed, setSpeed] = useState<number>(1)
+
+  const graphRef = useRef<ForceGraph3DHandle>(null)
+  // Cache trace paths for replay
+  const tracePathsRef = useRef<Map<string, AnimStep[]>>(new Map())
 
   const clinicId = searchParams.get('clinic') || ''
 
@@ -36,9 +44,39 @@ export function VisualizerPage() {
     [clinics, clinicId],
   )
 
+  // Animate trace on graph
+  const animateTrace = useCallback(async (tid: string) => {
+    if (!graphRef.current) return
+
+    // Check cache first
+    let path = tracePathsRef.current.get(tid)
+    if (!path) {
+      try {
+        const data = await traceApi.get(tid)
+        path = buildAnimPath(data.flow)
+        tracePathsRef.current.set(tid, path)
+      } catch {
+        return
+      }
+    }
+
+    graphRef.current.animateFlow(path, speed)
+  }, [speed])
+
+  // When new trace received: load into TraceLog + animate
+  const handleTraceReceived = useCallback((tid: string) => {
+    setTraceId(tid)
+    animateTrace(tid)
+  }, [animateTrace])
+
+  // Replay without re-sending
+  const handleReplayTrace = useCallback((tid: string) => {
+    animateTrace(tid)
+  }, [animateTrace])
+
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 48px)' }}>
-      {/* Top bar — clinic info, no dropdown */}
+      {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-1.5 bg-[#111127] border-b border-[#1e293b] text-xs flex-shrink-0">
         <button
           onClick={() => navigate('/')}
@@ -56,7 +94,23 @@ export function VisualizerPage() {
         ) : (
           <span className="text-[#64748b]">{clinicId}</span>
         )}
-        <div className="ml-auto">
+
+        {/* Speed controls */}
+        <div className="ml-auto flex items-center gap-1.5">
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSpeed(s)}
+              className={`px-2 py-0.5 rounded text-[10px] cursor-pointer border ${
+                speed === s
+                  ? 'bg-[#7dd3fc] text-[#0a0a1a] border-[#7dd3fc]'
+                  : 'bg-[#111127] text-[#64748b] border-[#1e293b] hover:text-white'
+              }`}
+            >
+              {s}x
+            </button>
+          ))}
+          <span className="text-[#1e293b] mx-1">|</span>
           <button
             onClick={() => setPlaygroundOpen(!playgroundOpen)}
             className={`px-2.5 py-1 rounded text-[11px] cursor-pointer border ${
@@ -70,7 +124,7 @@ export function VisualizerPage() {
         </div>
       </div>
 
-      {/* Main area: graph + playground side by side */}
+      {/* Main area */}
       <div className="flex flex-1 min-h-0">
         {/* 3D Graph */}
         <div className="flex-1 relative min-w-0">
@@ -79,7 +133,7 @@ export function VisualizerPage() {
               {graphError}
             </div>
           )}
-          <ForceGraph3D data={graphData} className="w-full h-full" />
+          <ForceGraph3D ref={graphRef} data={graphData} className="w-full h-full" />
         </div>
 
         {/* Playground panel */}
@@ -87,13 +141,14 @@ export function VisualizerPage() {
           <div className="w-80 flex-shrink-0 bg-[#111127] border-l border-[#1e293b] flex flex-col overflow-hidden">
             <ChatPlayground
               clinicId={clinicId}
-              onTraceReceived={(id) => setTraceId(id)}
+              onTraceReceived={handleTraceReceived}
+              onReplayTrace={handleReplayTrace}
             />
           </div>
         )}
       </div>
 
-      {/* Trace Log — visible when playground is open */}
+      {/* Trace Log */}
       {playgroundOpen && (
         <div className="h-[280px] flex-shrink-0 border-t border-[#1e293b]">
           <TraceLog traceId={traceId} />

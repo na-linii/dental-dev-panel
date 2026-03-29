@@ -5,6 +5,7 @@ import type { ChatResponse } from '../types'
 interface ChatPlaygroundProps {
   clinicId: string
   onTraceReceived?: (traceId: string) => void
+  onReplayTrace?: (traceId: string) => void
 }
 
 interface Message {
@@ -17,7 +18,7 @@ function generateUserId(): string {
   return 'hub-' + Math.floor(Math.random() * 900000 + 100000)
 }
 
-export function ChatPlayground({ clinicId, onTraceReceived }: ChatPlaygroundProps) {
+export function ChatPlayground({ clinicId, onTraceReceived, onReplayTrace }: ChatPlaygroundProps) {
   const [channel, setChannel] = useState('tg_bot')
   const [userId] = useState(generateUserId)
   const [phone, setPhone] = useState('')
@@ -133,12 +134,21 @@ export function ChatPlayground({ clinicId, onTraceReceived }: ChatPlaygroundProp
               {m.text}
             </div>
             {m.traceId && (
-              <button
-                onClick={() => onTraceReceived?.(m.traceId!)}
-                className="text-[10px] text-[#7dd3fc] hover:underline mt-0.5 ml-1"
-              >
-                trace: {m.traceId.slice(0, 8)}...
-              </button>
+              <div className="flex items-center gap-2 mt-0.5 ml-1">
+                <button
+                  onClick={() => onTraceReceived?.(m.traceId!)}
+                  className="text-[10px] text-[#7dd3fc] hover:underline"
+                >
+                  trace: {m.traceId.slice(0, 8)}...
+                </button>
+                <button
+                  onClick={() => onReplayTrace?.(m.traceId!)}
+                  className="text-[10px] text-[#facc15] hover:underline"
+                  title="Replay animation on graph"
+                >
+                  ▶ Replay
+                </button>
+              </div>
             )}
           </div>
         ))}

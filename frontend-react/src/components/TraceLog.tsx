@@ -225,4 +225,23 @@ export function TraceLog({ traceId }: TraceLogProps) {
   )
 }
 
+/**
+ * Build animation path from trace flow data.
+ * Returns AnimStep[] where each step has links [[source, target]] and duration in ms.
+ */
+export function buildAnimPath(flow: TraceFlow[]): Array<{ links: [string, string][]; dur: number }> {
+  if (!flow?.length) return []
+  const { steps } = buildSteps(flow)
+  const path: Array<{ links: [string, string][]; dur: number }> = []
+
+  for (const step of steps) {
+    const src = NAME_TO_NODE[step.from] || step.from.toLowerCase().replace(/\s+/g, '_')
+    const tgt = NAME_TO_NODE[step.to] || step.to.toLowerCase().replace(/\s+/g, '_')
+    const dur = step.duration || 150  // default 150ms per step if no timing
+    path.push({ links: [[src, tgt]], dur })
+  }
+
+  return path
+}
+
 export { NAME_TO_NODE }
