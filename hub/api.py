@@ -280,8 +280,20 @@ async def admin_me(authorization: str = Header(default="")):
     return app._admin_tokens[token]
 
 
-# --- Frontend (React SPA) ---
+# --- Frontend (React SPA with fallback) ---
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    from fastapi.responses import FileResponse
+
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dir, "assets")), name="assets")
+
+    @app.get("/{path:path}")
+    async def spa_fallback(path: str):
+        """Serve React SPA — all non-API, non-admin routes return index.html."""
+        if path.startswith("admin") or path.startswith("langfuse"):
+            raise HTTPException(404)
+        file_path = os.path.join(frontend_dir, path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(frontend_dir, "index.html"))
