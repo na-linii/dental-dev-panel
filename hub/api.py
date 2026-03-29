@@ -240,7 +240,7 @@ async def langfuse_redirect():
     return RedirectResponse(host)
 
 
-# --- Frontend ---
+# --- Frontend (React SPA) ---
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_dir):

@@ -17,8 +17,6 @@ services:
     build:
       context: .
       dockerfile: hub/Dockerfile
-    volumes:
-      - ./frontend:/app/frontend:ro
     environment:
       HUB_DATABASE_URL: postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse
       LANGFUSE_EXTERNAL_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost/langfuse}
