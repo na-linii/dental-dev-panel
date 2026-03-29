@@ -1,16 +1,9 @@
 /* viz.js — 3D Visualizer, ES module (imports THREE + SpriteText from CDN) */
 import * as THREE from "https://esm.sh/three";
 import SpriteText from "https://esm.sh/three-spritetext";
+import { COLORS, WIREFRAME } from "./viz-config.js";
 
-var C = {
-  router:'#7dd3fc',
-  agent:'#3b82f6',
-  tool:'#8b5cf6',
-  gateway:'#10b981',
-  connector:'#f59e0b',
-  plugin:'#f59e0b',
-  storage:'#ec4899',
-};
+var C = {...COLORS, connector: COLORS.plugin};
 
 window.initViz = async function() {
   if (window._vizGraph) return;
@@ -55,10 +48,7 @@ window.initViz = async function() {
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color:color, transparent:true, opacity:0.85 })));
 
       // Wireframe from node data or fallback to group defaults
-      var wc = node.wireframe || {
-        router:'#ffffff', agent:'#bfdbfe', tool:'#e9d5ff',
-        gateway:'#a7f3d0', connector:'#fef3c7', plugin:'#fef3c7', storage:'#fbcfe8',
-      }[node.group] || '#ffffff';
+      var wc = WIREFRAME;
       var wire = new THREE.LineSegments(
         new THREE.EdgesGeometry(geo),
         new THREE.LineBasicMaterial({color: wc, transparent: true, opacity: 0.5})

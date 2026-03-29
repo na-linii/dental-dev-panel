@@ -1,25 +1,23 @@
-/* arch-viz.js — Architecture visualization with sidebar detail panel */
+/* arch-viz.js — Architecture visualization with always-visible sidebar */
 import * as THREE from "https://esm.sh/three";
 import SpriteText from "https://esm.sh/three-spritetext";
-
-var TYPE_C = {
-  router:'#7dd3fc', agent:'#3b82f6', tool:'#8b5cf6',
-  gateway:'#10b981', plugin:'#f59e0b', storage:'#ec4899',
-};
-var TYPE_LABELS = {
-  router:'Router', agent:'Agent', tool:'Tool',
-  gateway:'Gateway', plugin:'Plugin', storage:'Storage',
-};
-var STATUS_C = {done:'#10b981', wip:'#eab308', planned:null};
-var STATUS_OPACITY = {done:0.9, wip:0.7, planned:0.25};
-var LABEL_OPACITY = {done:1, wip:0.8, planned:0.3};
+import { COLORS, WIREFRAME, LABELS, getColor, getOpacity, getLabelOpacity, getLinkColor } from "./viz-config.js";
 
 var _allNodes = [];
+var _allLinks = [];
 
 window.initArchViz = function() {
   if (window._archGraph) return;
+  var wrap = document.getElementById('arch-graph-wrap');
   var el = document.getElementById('arch-graph');
-  if (!el || el.clientWidth < 50) return;
+  if (!el || !wrap || wrap.clientWidth < 50) return;
+
+  // Show sidebar immediately
+  var sb = document.getElementById('arch-sidebar');
+  if (sb) {
+    sb.style.display = 'flex';
+    sb.innerHTML = '<div style="color:var(--muted);font-size:.7rem;padding:20px 0;text-align:center">Click a node to see details</div>';
+  }
 
   var clinics = window.CLINICS || [{id:'zubatka'}];
   var clinicId = clinics[0].id;
@@ -30,45 +28,36 @@ window.initArchViz = function() {
       var N = (data.nodes || []).map(function(n) {
         n.type = n.group || 'tool';
         n.shape = n.shape || 'octahedron';
-        n.status = n.planned ? 'planned' : 'done';
         return n;
       });
       _allNodes = N;
-      var L = data.links || [];
-      renderArch(el, N, L);
+      _allLinks = data.links || [];
+      renderArch(el, wrap, N, _allLinks);
     })
     .catch(function(e) {
       console.error('Failed to load arch graph:', e);
-      renderArch(el, [{id:'error',name:'Failed to load',group:'router',shape:'dodecahedron',val:15,status:'done',type:'router'}], []);
     });
 };
 
-function renderArch(el, N, L) {
-  function getColor(node) {
-    if (node.status === 'planned') return '#1e293b';
-    return TYPE_C[node.type] || '#888';
-  }
-
+function renderArch(el, wrap, N, L) {
   window._archGraph = new ForceGraph3D(el)
-    .width(el.clientWidth).height(el.clientHeight)
+    .width(wrap.clientWidth).height(wrap.clientHeight)
     .graphData({nodes:N, links:L})
     .backgroundColor('#0a0a1a')
     .nodeVal(function(n) { return Math.max(3, (n.val||5)*0.5); })
-    .nodeColor(function(n) { return getColor(n); })
+    .nodeColor(function(n) { return getColor(n.type, n.planned); })
     .nodeOpacity(0.85)
     .linkColor(function(l) {
       var t = typeof l.target==='object' ? l.target : N.find(function(x){return x.id===l.target;});
-      if (t && t.status==='planned') return 'rgba(255,255,255,0.04)';
-      if (t && t.status==='wip') return 'rgba(234,179,8,0.15)';
-      return 'rgba(255,255,255,0.15)';
+      return getLinkColor(t);
     })
     .linkWidth(1)
     .onNodeClick(function(node) { showSidebar(node, N, L); })
     .nodeThreeObject(function(node) {
       var group = new THREE.Group();
       var r = Math.cbrt(node.val||5) * 4.5;
-      var fill = getColor(node);
-      var opacity = STATUS_OPACITY[node.status] || 0.85;
+      var fill = getColor(node.type, node.planned);
+      var opacity = getOpacity(node.planned);
 
       var geo;
       switch(node.shape) {
@@ -81,17 +70,16 @@ function renderArch(el, N, L) {
       }
       group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:fill, transparent:true, opacity:opacity})));
 
-      var wireColor = STATUS_C[node.status];
-      if (wireColor) {
-        var wire = new THREE.LineSegments(
-          new THREE.EdgesGeometry(geo),
-          new THREE.LineBasicMaterial({color:wireColor, transparent:true, opacity:0.7})
-        );
-        wire.scale.setScalar(1.04);
-        group.add(wire);
-      }
+      // White wireframe for all nodes
+      var wire = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({color:WIREFRAME, transparent:true, opacity: node.planned ? 0.25 : 0.5})
+      );
+      wire.scale.setScalar(1.04);
+      group.add(wire);
 
-      var la = LABEL_OPACITY[node.status] || 0.85;
+      // Label
+      var la = getLabelOpacity(node.planned);
       var s = new SpriteText(node.name);
       s.color = 'rgba(255,255,255,' + la + ')';
       s.textHeight = 4;
@@ -111,7 +99,6 @@ function renderArch(el, N, L) {
   window._archGraph.d3Force('link').distance(80);
 
   window.addEventListener('resize', function() {
-    var wrap = document.getElementById('arch-graph-wrap') || el;
     if (window._archGraph && wrap.clientWidth > 50) {
       window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
     }
@@ -124,23 +111,20 @@ function showSidebar(node, N, L) {
   var sb = document.getElementById('arch-sidebar');
   if (!sb) return;
   sb.style.display = 'flex';
-  _resizeGraph();
 
-  var color = TYPE_C[node.type] || '#888';
-  var typeName = TYPE_LABELS[node.type] || node.type;
-  var statusLabel = node.status === 'planned' ? ' (planned)' : '';
+  var color = COLORS[node.type] || '#888';
+  var typeName = LABELS[node.type] || node.type;
+  var planned = node.planned ? ' <span style="color:var(--muted);font-style:italic">(planned)</span>' : '';
 
   var html = '';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-  html += '<div style="display:flex;align-items:center;gap:6px">';
+  // Header
+  html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">';
   html += '<div style="width:10px;height:10px;border-radius:50%;background:' + color + '"></div>';
-  html += '<span style="font-size:.65rem;color:' + color + '">' + typeName + statusLabel + '</span>';
-  html += '</div>';
-  html += '<button onclick="window._closeArchSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">&times;</button>';
+  html += '<span style="font-size:.65rem;color:' + color + '">' + typeName + '</span>' + planned;
   html += '</div>';
 
-  html += '<h3 style="font-size:.9rem;margin:0 0 6px;color:#fff">' + node.name + '</h3>';
-  html += '<div style="font-size:.7rem;color:var(--muted);margin-bottom:2px"><code>' + node.id + '</code></div>';
+  html += '<h3 style="font-size:.9rem;margin:0 0 4px;color:#fff">' + node.name + '</h3>';
+  html += '<div style="font-size:.68rem;color:var(--muted);margin-bottom:6px"><code>' + node.id + '</code></div>';
 
   if (node.description) {
     html += '<p style="font-size:.72rem;color:#cbd5e1;margin:8px 0;line-height:1.5">' + node.description + '</p>';
@@ -159,7 +143,7 @@ function showSidebar(node, N, L) {
     html += '<div style="margin:8px 0">';
     html += '<div style="font-size:.65rem;color:var(--accent);margin-bottom:3px">Inputs</div>';
     node.inputs.forEach(function(inp) {
-      var req = inp.required ? '<span style="color:#f87171">*</span>' : '';
+      var req = inp.required ? '<span style="color:#f87171"> *</span>' : '';
       html += '<div style="font-size:.68rem;color:#94a3b8;padding:2px 0">';
       html += '<code style="color:#7dd3fc">' + inp.name + '</code>' + req;
       html += ' <span style="color:#64748b">' + (inp.type || '') + '</span>';
@@ -199,7 +183,7 @@ function showSidebar(node, N, L) {
       connsOut.forEach(function(c) {
         var target = N.find(function(n){return n.id===c;});
         var name = target ? target.name : c;
-        var tc = target ? (TYPE_C[target.type] || '#888') : '#888';
+        var tc = target ? (COLORS[target.type] || '#888') : '#888';
         html += '<div style="font-size:.68rem;padding:1px 0;cursor:pointer" onclick="window._archClickNode(\'' + c + '\')">';
         html += '<span style="color:' + tc + '">&#9654;</span> <span style="color:#cbd5e1">' + name + '</span>';
         html += '</div>';
@@ -210,7 +194,7 @@ function showSidebar(node, N, L) {
       connsIn.forEach(function(c) {
         var source = N.find(function(n){return n.id===c;});
         var name = source ? source.name : c;
-        var sc = source ? (TYPE_C[source.type] || '#888') : '#888';
+        var sc = source ? (COLORS[source.type] || '#888') : '#888';
         html += '<div style="font-size:.68rem;padding:1px 0;cursor:pointer" onclick="window._archClickNode(\'' + c + '\')">';
         html += '<span style="color:' + sc + '">&#9664;</span> <span style="color:#cbd5e1">' + name + '</span>';
         html += '</div>';
@@ -222,28 +206,11 @@ function showSidebar(node, N, L) {
   sb.innerHTML = html;
 }
 
-function _resizeGraph() {
-  setTimeout(function() {
-    var wrap = document.getElementById('arch-graph-wrap');
-    if (window._archGraph && wrap && wrap.clientWidth > 50) {
-      window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
-    }
-  }, 50);
-}
-
-window._closeArchSidebar = function() {
-  var sb = document.getElementById('arch-sidebar');
-  if (sb) sb.style.display = 'none';
-  _resizeGraph();
-};
-
 window._archClickNode = function(nodeId) {
   if (!window._archGraph) return;
   var data = window._archGraph.graphData();
   var node = data.nodes.find(function(n){return n.id===nodeId;});
   if (node) {
     showSidebar(node, data.nodes, data.links);
-    window._archGraph.centerAt(node.x, node.y, 500);
-    window._archGraph.zoom(3, 500);
   }
 };
