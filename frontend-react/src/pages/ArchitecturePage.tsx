@@ -272,9 +272,10 @@ export function ArchitecturePage() {
   return (
     <div className="flex" style={{ height: 'calc(100vh - 48px)' }}>
       {/* 3D Graph — takes remaining space */}
-      <div className="flex-1 relative min-w-0" ref={graphRef}>
+      <div className="flex-1 relative min-w-0">
+        <div className="w-full h-full" ref={graphRef} />
         {/* Version badge */}
-        <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
+        <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium pointer-events-none"
           style={{ background: 'rgba(0,0,0,0.7)', color: '#64748b', border: '1px solid rgba(100,116,139,0.2)' }}
         >
           Dental Hub v{HUB_VERSION}
