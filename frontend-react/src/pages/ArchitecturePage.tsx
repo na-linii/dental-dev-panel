@@ -59,6 +59,18 @@ export function ArchitecturePage() {
       })
   }, [])
 
+  const resizeGraph = useCallback(() => {
+    // Delay to let React re-render the DOM (sidebar appear/disappear) before resizing
+    setTimeout(() => {
+      try {
+        if (fgRef.current && graphRef.current) {
+          const el = graphRef.current
+          fgRef.current.width(el.clientWidth).height(el.clientHeight)
+        }
+      } catch { /* ignore */ }
+    }, 50)
+  }, [])
+
   const selectNode = useCallback((node: RuntimeNode) => {
     selectedIdRef.current = node.id
     setSelected(node)
@@ -66,10 +78,20 @@ export function ArchitecturePage() {
       if (fgRef.current) {
         fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
       }
-    } catch {
-      // 3D re-render may fail in some environments
-    }
-  }, [])
+    } catch { /* ignore */ }
+    resizeGraph()
+  }, [resizeGraph])
+
+  const closePanel = useCallback(() => {
+    selectedIdRef.current = ''
+    setSelected(null)
+    try {
+      if (fgRef.current) {
+        fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
+      }
+    } catch { /* ignore */ }
+    resizeGraph()
+  }, [resizeGraph])
 
   // Init 3D graph
   useEffect(() => {
@@ -180,16 +202,16 @@ export function ArchitecturePage() {
     el.addEventListener('mousedown', () => { autoRotate = false })
     el.addEventListener('contextmenu', () => { autoRotate = false })
 
-    // Resize
-    const onResize = () => {
+    // Resize — observe container div, not just window
+    const ro = new ResizeObserver(() => {
       if (fgRef.current && el.clientWidth > 50) {
         fgRef.current.width(el.clientWidth).height(el.clientHeight)
       }
-    }
-    window.addEventListener('resize', onResize)
+    })
+    ro.observe(el)
 
     return () => {
-      window.removeEventListener('resize', onResize)
+      ro.disconnect()
       if (fgRef.current) {
         fgRef.current._destructor?.()
         fgRef.current = null
@@ -250,7 +272,7 @@ export function ArchitecturePage() {
             {/* Close button */}
             <div className="flex justify-end mb-2">
               <button
-                onClick={() => { setSelected(null); selectedIdRef.current = '' }}
+                onClick={closePanel}
                 className="text-[#64748b] hover:text-white text-xs cursor-pointer"
               >
                 ✕
