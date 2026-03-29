@@ -19,7 +19,7 @@ export var SHAPES = {
   tool:    'octahedron',
   gateway: 'box',
   plugin:  'octahedron',
-  storage: 'dodecahedron',
+  storage: 'box',
 };
 
 export var LABELS = {
