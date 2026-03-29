@@ -46,8 +46,10 @@ export interface GraphNode {
   description?: string
   connects_to?: string[]
   prompt_name?: string
-  inputs?: string[]
-  outputs?: string[]
+  inputs?: Array<{ name: string; type: string; required?: boolean; description?: string }>
+  outputs?: Array<{ name: string; type: string; required?: boolean; description?: string }>
+  requires?: string[]
+  conflicts_with?: string[]
 }
 
 export interface GraphLink {

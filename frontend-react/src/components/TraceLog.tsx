@@ -11,35 +11,25 @@ export interface AnimStep {
   llmNodes?: Record<string, 'openai' | 'openrouter'>
 }
 
-// Name → graph node ID mapping
-const NAME_TO_NODE: Record<string, string> = {
-  'Telegram': 'telegram',
-  'Chat Gateway': 'chat_gateway',
-  'Identity DB': 'db:identity',
-  'Checkpointer': 'db:checkpointer',
-  'Knowledge Base': 'db:kb',
-  'Dental Router': 'router',
-  'FAQ Agent': 'faq:agent',
-  'Booking Agent': 'booking:agent',
-  'Confirmation Agent': 'confirm:agent',
-  'Tier 1+2 Search': 'tool:tier1',
-  'Handoff': 'tool:handoff',
-  'CRM Gateway': 'crm_gateway',
-  'Google Sheets': 'google_sheets',
-  'get_availability': 'tool:get_availability',
-  'book_appointment': 'tool:book_appointment',
-  'cancel_appointment': 'tool:cancel_appointment',
-  'get_existing_bookings': 'tool:get_existing_bookings',
-  'register_patient': 'tool:register_patient',
+// Name → graph node ID mapping — built dynamically from /graph API data
+let _nameToNode: Record<string, string> = {}
+let _toolNames: string[] = []
+
+/** Update the name→nodeId mapping from graph nodes. Call once when graph data loads. */
+export function setGraphNodes(nodes: Array<{ id: string; name: string; group: string }>) {
+  _nameToNode = {}
+  _toolNames = []
+  for (const n of nodes) {
+    _nameToNode[n.name] = n.id
+    // Also map by ID for tool names (traces use short names like "get_availability")
+    const shortName = n.id.includes(':') ? n.id.split(':')[1] : n.id
+    if (shortName !== n.name) _nameToNode[shortName] = n.id
+    if (n.group === 'tool') _toolNames.push(shortName)
+  }
 }
 
-const TOOL_NAMES = [
-  'get_availability', 'book_appointment', 'cancel_appointment',
-  'get_existing_bookings', 'register_patient',
-]
-
 function toNodeId(name: string): string {
-  return NAME_TO_NODE[name] || name.toLowerCase().replace(/\s+/g, '_')
+  return _nameToNode[name] || name.toLowerCase().replace(/\s+/g, '_')
 }
 
 function obsDur(obs?: { startTime?: string; endTime?: string }): number {
@@ -118,7 +108,7 @@ export function buildAnimPath(flow: TraceFlow[]): AnimStep[] {
 
   // CRM tools: agent → tool → crm_gateway (real graph links)
   flow.forEach((obs) => {
-    if (obs.name && TOOL_NAMES.includes(obs.name)) {
+    if (obs.name && _toolNames.includes(obs.name)) {
       add(agentName || 'Booking Agent', obs.name, obs)
       add(obs.name, 'CRM Gateway', obs)
     }
@@ -237,7 +227,7 @@ function TraceRow({ trace, clinicId, onReplay, speed }: { trace: TraceSummary; c
         if (animStep.links.length === 0) continue
         const [from, to] = animStep.links[0]
         // Find matching observation for input/output
-        const obsName = Object.entries(NAME_TO_NODE).find(([, v]) => v === to)?.[0] || to
+        const obsName = Object.entries(_nameToNode).find(([, v]) => v === to)?.[0] || to
         const obs = flowMap.get(obsName) || flowMap.get(to)
         readable.push({
           from, to,

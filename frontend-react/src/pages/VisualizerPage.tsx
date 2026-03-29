@@ -5,7 +5,7 @@ import { clinicsApi, tracesApi } from '../api/client'
 import { ForceGraph3D } from '../components/ForceGraph3D'
 import type { ForceGraph3DHandle } from '../components/ForceGraph3D'
 import { ChatPlayground } from '../components/ChatPlayground'
-import { TraceLog, buildAnimPath } from '../components/TraceLog'
+import { TraceLog, buildAnimPath, setGraphNodes } from '../components/TraceLog'
 import type { Clinic, GraphData } from '../types'
 
 const ANIM_COLORS = ['#7dd3fc', '#facc15', '#4ade80', '#c084fc', '#fb923c', '#f472b6']
@@ -39,7 +39,7 @@ export function VisualizerPage() {
     setGraphError(null)
     clinicsApi
       .graph(clinicId)
-      .then(setGraphData)
+      .then((data) => { setGraphNodes(data.nodes || []); setGraphData(data) })
       .catch(() => setGraphError('Failed to load graph'))
   }, [clinicId])
 
