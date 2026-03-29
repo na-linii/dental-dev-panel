@@ -110,6 +110,30 @@ tr:last-child td{border-bottom:none}
 #login a{color:var(--accent);font-size:.75rem}
 #login.hidden{display:none}
 
+/* === Edge Cases === */
+.ec-card{margin-bottom:6px;padding:8px 12px}
+.ec-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.ec-name{font-size:.75rem;color:#fff}
+.ec-msg{font-size:.65rem;color:var(--muted);margin-top:2px}
+.ec-status{font-size:.65rem;color:var(--muted)}
+.ec-expand{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.ec-section{margin-bottom:6px}
+.ec-label{font-size:.6rem;color:var(--accent);text-transform:uppercase;margin-bottom:3px}
+.ec-patient{font-size:.65rem;color:#94a3b8}
+.ec-patient .identified{color:var(--green)}
+.ec-patient .not-identified{color:var(--yellow)}
+.ec-patient .empty{color:#64748b}
+.ec-history-msg{font-size:.65rem;padding:2px 0}
+.ec-history-user{color:#e2e8f0}
+.ec-history-bot{color:#94a3b8}
+.ec-input{font-size:.7rem;color:#fff;background:rgba(255,255,255,.05);padding:6px 8px;border-radius:4px}
+.ec-expected{font-size:.65rem;color:#94a3b8}
+.ec-response{display:none}
+.ec-response-text{font-size:.7rem;color:#e2e8f0;background:rgba(255,255,255,.05);padding:8px;border-radius:4px;white-space:pre-wrap;max-height:150px;overflow-y:auto}
+.ec-trace-link{margin-top:4px;font-size:.6rem}
+.ec-trace-link a{color:var(--accent)}
+.ec-loading{text-align:center;color:var(--muted);font-size:.75rem;padding:2rem}
+
 /* Speed buttons */
 .speed-btn{font-size:.6rem!important;padding:2px 5px!important;min-width:24px}
 .speed-btn.active{background:var(--accent)!important;color:var(--bg)!important;border-color:var(--accent)!important}

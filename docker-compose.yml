@@ -124,7 +124,7 @@ services:
     restart: unless-stopped
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    command: http langfuse-web:3000 --log stdout
+    command: http langfuse-web:3000 --domain=axiomatic-aryana-hillocky.ngrok-free.dev --log stdout
     ports: ["4040:4040"]  # ngrok dashboard
     depends_on:
       langfuse-web:

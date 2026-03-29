@@ -177,6 +177,61 @@ async def proxy_graph(clinic_id: str, request: Request, user=Depends(verify_gith
         return {"nodes": [], "links": [], "error": str(e)}
 
 
+# --- Edge Cases (from Langfuse dataset) ---
+
+@app.get("/api/edge-cases")
+async def get_edge_cases(user=Depends(verify_github_token)):
+    """Fetch edge case items from Langfuse dataset — single source of truth."""
+    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+
+    if not lf_pk or not lf_sk:
+        return {"items": [], "error": "Langfuse keys not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"{lf_host}/api/public/v2/datasets/dental-edge-cases",
+                auth=(lf_pk, lf_sk),
+            )
+            if r.status_code == 404:
+                return {"items": [], "error": "Dataset 'dental-edge-cases' not found. Run: python scripts/run_eval.py --seed-only"}
+            dataset = r.json()
+
+            r2 = await client.get(
+                f"{lf_host}/api/public/v2/dataset-items?datasetName=dental-edge-cases&limit=100",
+                auth=(lf_pk, lf_sk),
+            )
+            items_data = r2.json()
+
+        items = []
+        for item in items_data.get("data", []):
+            inp = item.get("input") or {}
+            exp = item.get("expectedOutput") or {}
+            meta = item.get("metadata") or {}
+            items.append({
+                "id": meta.get("id", item.get("id", "")),
+                "category": meta.get("category", "other"),
+                "message": inp.get("message", ""),
+                "expected": exp.get("behavior", ""),
+                "patient_name": meta.get("patient_name"),
+                "patient_phone": meta.get("patient_phone"),
+                "is_identified": meta.get("is_identified", False),
+                "history": meta.get("history", []),
+            })
+
+        return {"items": items, "dataset": dataset.get("name", "dental-edge-cases")}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
+@app.get("/api/langfuse-url")
+async def langfuse_url(user=Depends(verify_github_token)):
+    """Return Langfuse external URL for trace links."""
+    return {"url": os.environ.get("LANGFUSE_EXTERNAL_URL", "http://localhost:3000")}
+
+
 # --- Langfuse redirect ---
 
 @app.get("/langfuse")
