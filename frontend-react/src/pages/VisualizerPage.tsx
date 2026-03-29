@@ -8,7 +8,6 @@ import { ChatPlayground } from '../components/ChatPlayground'
 import { TraceLog, buildAnimPath } from '../components/TraceLog'
 import type { Clinic, GraphData } from '../types'
 
-const SPEEDS = [1, 2, 4] as const
 const ANIM_COLORS = ['#7dd3fc', '#facc15', '#4ade80', '#c084fc', '#fb923c', '#f472b6']
 
 type Mode = 'live' | 'replay'
@@ -21,7 +20,6 @@ export function VisualizerPage() {
   const [graphError, setGraphError] = useState<string | null>(null)
   const [playgroundOpen, setPlaygroundOpen] = useState(false)
   const [traceLogOpen, setTraceLogOpen] = useState(false)
-  const [speed, setSpeed] = useState<number>(1)
   const [mode, setMode] = useState<Mode>('live')
   const [replayTraceId, setReplayTraceId] = useState<string | null>(null)
 
@@ -86,14 +84,14 @@ export function VisualizerPage() {
       tracesApi.detail(clinicId, trace.id).then((data) => {
         const path = buildAnimPath(data.flow)
         if (path.length > 0 && graphRef.current) {
-          graphRef.current.animateFlow(path, speed, ANIM_COLORS[colorIdx])
+          graphRef.current.animateFlow(path, 1, ANIM_COLORS[colorIdx])  // LIVE = real time (1x)
         }
       }).catch(() => {})
     }
-  }, [traces, mode, clinicId, speed])
+  }, [traces, mode, clinicId])
 
-  // REPLAY mode
-  const handleReplay = useCallback(async (traceId: string) => {
+  // REPLAY mode — speed comes from TraceLog
+  const handleReplay = useCallback(async (traceId: string, replaySpeed: number) => {
     if (!graphRef.current) return
     setMode('replay')
     setReplayTraceId(traceId)
@@ -102,9 +100,9 @@ export function VisualizerPage() {
       const data = await tracesApi.detail(clinicId, traceId)
       const path = buildAnimPath(data.flow)
       if (path.length > 0) {
-        graphRef.current.animateFlow(path, speed, '#7dd3fc')
+        graphRef.current.animateFlow(path, replaySpeed, '#7dd3fc')
         // Return to LIVE after animation
-        const totalDur = path.reduce((sum, s) => sum + Math.max(s.dur / speed, 100), 0)
+        const totalDur = path.reduce((sum, s) => sum + Math.max(s.dur / replaySpeed, 100), 0)
         setTimeout(() => {
           setMode('live')
           setReplayTraceId(null)
@@ -117,7 +115,7 @@ export function VisualizerPage() {
       setMode('live')
       setReplayTraceId(null)
     }
-  }, [clinicId, speed])
+  }, [clinicId])
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 48px)' }}>
@@ -141,21 +139,6 @@ export function VisualizerPage() {
         )}
 
         <div className="ml-auto flex items-center gap-1.5">
-          {/* Speed */}
-          {SPEEDS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSpeed(s)}
-              className={`px-2 py-0.5 rounded text-[10px] cursor-pointer border ${
-                speed === s
-                  ? 'bg-[#7dd3fc] text-[#0a0a1a] border-[#7dd3fc]'
-                  : 'bg-[#111127] text-[#64748b] border-[#1e293b] hover:text-white'
-              }`}
-            >
-              {s}x
-            </button>
-          ))}
-          <span className="text-[#1e293b] mx-1">|</span>
           {/* Trace Log toggle */}
           <button
             onClick={() => setTraceLogOpen(!traceLogOpen)}

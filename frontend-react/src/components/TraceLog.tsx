@@ -147,12 +147,14 @@ function fmtTime(iso: string | null | undefined): string {
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+const SPEEDS = [1, 2, 4] as const
+
 interface TraceLogProps {
   clinicId: string
-  onReplay?: (traceId: string) => void
+  onReplay?: (traceId: string, speed: number) => void
 }
 
-function TraceRow({ trace, clinicId, onReplay }: { trace: TraceSummary; clinicId: string; onReplay?: (id: string) => void }) {
+function TraceRow({ trace, clinicId, onReplay, speed }: { trace: TraceSummary; clinicId: string; onReplay?: (id: string, speed: number) => void; speed: number }) {
   const [open, setOpen] = useState(false)
   const [steps, setSteps] = useState<Array<{ from: string; to: string; dur: number }> | null>(null)
 
@@ -162,11 +164,13 @@ function TraceRow({ trace, clinicId, onReplay }: { trace: TraceSummary; clinicId
     try {
       const data = await tracesApi.detail(clinicId, trace.id)
       const built = buildAnimPath(data.flow)
-      setSteps(built.map((s) => ({
-        from: s.links[0]?.[0] || '?',
-        to: s.links[0]?.[1] || '?',
-        dur: s.dur,
-      })))
+      setSteps(built
+        .filter((s) => s.links.length > 0)  // skip LLM-only steps (no link movement)
+        .map((s) => ({
+          from: s.links[0][0],
+          to: s.links[0][1],
+          dur: s.dur,
+        })))
     } catch {
       setSteps([])
     }
@@ -188,7 +192,7 @@ function TraceRow({ trace, clinicId, onReplay }: { trace: TraceSummary; clinicId
         <span className="text-[#94a3b8] truncate flex-1">{userId}</span>
         <span className="text-[#64748b] font-mono w-14 text-right flex-shrink-0">{latency}</span>
         <button
-          onClick={(e) => { e.stopPropagation(); onReplay?.(trace.id) }}
+          onClick={(e) => { e.stopPropagation(); onReplay?.(trace.id, speed) }}
           className="text-[#facc15] text-[10px] px-1.5 py-0.5 rounded bg-[#facc15]/10 hover:bg-[#facc15]/20 flex-shrink-0 cursor-pointer"
           title="Replay trace animation"
         >
@@ -217,6 +221,7 @@ const LOAD_MORE = 10
 
 export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
   const [traces, setTraces] = useState<TraceSummary[]>([])
+  const [speed, setSpeed] = useState(1)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [limit, setLimit] = useState(INITIAL_LIMIT)
@@ -279,10 +284,23 @@ export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
     <div className="flex flex-col h-full bg-[#111127]">
       <div className="px-3 py-1.5 border-b border-[#1e293b] text-xs font-semibold text-[#7dd3fc] flex items-center gap-2 flex-shrink-0">
         Trace Log
-        <span className="text-[#64748b] font-normal">
-          {traces.length} traces{hasMore ? '+' : ''}
-        </span>
         {loading && <span className="text-[#64748b] font-normal">loading...</span>}
+        <div className="ml-auto flex items-center gap-1">
+          <span className="text-[#64748b] font-normal text-[10px]">Replay:</span>
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSpeed(s)}
+              className={`px-1.5 py-0.5 rounded text-[10px] cursor-pointer border ${
+                speed === s
+                  ? 'bg-[#7dd3fc] text-[#0a0a1a] border-[#7dd3fc]'
+                  : 'bg-[#111127] text-[#64748b] border-[#1e293b] hover:text-white'
+              }`}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto" ref={scrollRef} onScroll={handleScroll}>
         {traces.length === 0 && !loading && (
@@ -291,7 +309,7 @@ export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
           </div>
         )}
         {traces.map((t) => (
-          <TraceRow key={t.id} trace={t} clinicId={clinicId} onReplay={onReplay} />
+          <TraceRow key={t.id} trace={t} clinicId={clinicId} onReplay={onReplay} speed={speed} />
         ))}
         {loading && traces.length > 0 && (
           <div className="text-[10px] text-[#64748b] px-3 py-2 text-center">Loading more...</div>
