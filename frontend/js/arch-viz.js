@@ -123,14 +123,8 @@ function renderArch(el, N, L) {
 function showSidebar(node, N, L) {
   var sb = document.getElementById('arch-sidebar');
   if (!sb) return;
-  sb.style.display = 'block';
-  // Resize graph to fit remaining space
-  setTimeout(function() {
-    var wrap = document.getElementById('arch-graph-wrap');
-    if (window._archGraph && wrap && wrap.clientWidth > 50) {
-      window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
-    }
-  }, 50);
+  sb.style.display = 'flex';
+  _resizeGraph();
 
   var color = TYPE_C[node.type] || '#888';
   var typeName = TYPE_LABELS[node.type] || node.type;
@@ -228,15 +222,19 @@ function showSidebar(node, N, L) {
   sb.innerHTML = html;
 }
 
-window._closeArchSidebar = function() {
-  var sb = document.getElementById('arch-sidebar');
-  if (sb) sb.style.display = 'none';
+function _resizeGraph() {
   setTimeout(function() {
     var wrap = document.getElementById('arch-graph-wrap');
     if (window._archGraph && wrap && wrap.clientWidth > 50) {
       window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
     }
   }, 50);
+}
+
+window._closeArchSidebar = function() {
+  var sb = document.getElementById('arch-sidebar');
+  if (sb) sb.style.display = 'none';
+  _resizeGraph();
 };
 
 window._archClickNode = function(nodeId) {
