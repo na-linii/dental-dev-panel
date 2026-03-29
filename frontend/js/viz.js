@@ -75,6 +75,25 @@ window.initViz = async function() {
   window._vizGraph.d3Force('charge').strength(-500);
   window._vizGraph.d3Force('link').distance(120);
 
+  // Auto-rotation until first mouse click
+  var _autoRotate = true;
+  var _angle = 0;
+  var _dist = 350;
+
+  function animate() {
+    if (!_autoRotate || !window._vizGraph) return;
+    _angle += 0.003;
+    window._vizGraph.cameraPosition({
+      x: _dist * Math.sin(_angle),
+      z: _dist * Math.cos(_angle),
+    });
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  graphEl.addEventListener('mousedown', function() { _autoRotate = false; });
+  graphEl.addEventListener('contextmenu', function() { _autoRotate = false; });
+
   window.addEventListener('resize', function() {
     if (window._vizGraph && graphEl.clientWidth > 0) {
       window._vizGraph.width(graphEl.clientWidth).height(graphEl.clientHeight);

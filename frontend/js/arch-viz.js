@@ -94,6 +94,26 @@ function renderArch(el, wrap, N, L) {
   window._archGraph.d3Force('charge').strength(-400);
   window._archGraph.d3Force('link').distance(80);
 
+  // Auto-rotation until first mouse click
+  var _autoRotate = true;
+  var _angle = 0;
+  var _dist = 300;
+
+  function animate() {
+    if (!_autoRotate || !window._archGraph) return;
+    _angle += 0.003;
+    window._archGraph.cameraPosition({
+      x: _dist * Math.sin(_angle),
+      z: _dist * Math.cos(_angle),
+    });
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  // Stop on any mouse button (but not scroll wheel)
+  el.addEventListener('mousedown', function() { _autoRotate = false; });
+  el.addEventListener('contextmenu', function() { _autoRotate = false; });
+
   window.addEventListener('resize', function() {
     if (window._archGraph && wrap.clientWidth > 50) {
       window._archGraph.width(wrap.clientWidth).height(wrap.clientHeight);
