@@ -50,3 +50,34 @@ export function getLinkColor(targetPlanned?: boolean): string {
   if (targetPlanned) return 'rgba(255,255,255,0.04)'
   return 'rgba(255,255,255,0.15)'
 }
+
+// --- 3D graph shared parameters ---
+
+export const GRAPH_BG = '#0a0a1a'
+export const CHARGE_STRENGTH = -400
+export const LINK_DISTANCE = 55
+
+export function nodeRadius(val: number): number {
+  return Math.cbrt(val || 5) * 4.5
+}
+
+/**
+ * Build geometry from shape name. Single source of truth for both pages.
+ */
+export function buildGeometry(shape: string, r: number, THREE: {
+  TetrahedronGeometry: new (r: number) => unknown
+  OctahedronGeometry: new (r: number) => unknown
+  BoxGeometry: new (w: number, h: number, d: number) => unknown
+  DodecahedronGeometry: new (r: number) => unknown
+  IcosahedronGeometry: new (r: number, detail?: number) => unknown
+}): unknown {
+  switch (shape) {
+    case 'tetrahedron': return new THREE.TetrahedronGeometry(r * 0.9)
+    case 'octahedron': return new THREE.OctahedronGeometry(r * 0.8)
+    case 'box': return new THREE.BoxGeometry(r * 1.1, r * 1.1, r * 1.1)
+    case 'dodecahedron': return new THREE.DodecahedronGeometry(r)
+    case 'icosahedron': return new THREE.IcosahedronGeometry(r)
+    case 'sphere': return new THREE.IcosahedronGeometry(r * 1.2, 2)
+    default: return new THREE.IcosahedronGeometry(r, 0)
+  }
+}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 
 import ForceGraph3DLib from '3d-force-graph'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
-import { COLORS, WIREFRAME } from '../config/viz'
+import { COLORS, WIREFRAME, GRAPH_BG, CHARGE_STRENGTH, LINK_DISTANCE, nodeRadius, buildGeometry } from '../config/viz'
 import type { GraphData, GraphNode } from '../types'
 
 export interface AnimStep {
@@ -30,19 +30,10 @@ const C: Record<string, string> = { ...COLORS, connector: COLORS.plugin }
 
 function buildNodeObject(node: GraphNode): THREE.Group {
   const group = new THREE.Group()
-  const r = Math.cbrt(node.val || 5) * 5
+  const r = nodeRadius(node.val)
   const color = C[node.group] || '#888'
 
-  let geo: THREE.BufferGeometry
-  switch (node.shape) {
-    case 'tetrahedron': geo = new THREE.TetrahedronGeometry(r * 0.9); break
-    case 'octahedron': geo = new THREE.OctahedronGeometry(r * 0.8); break
-    case 'box': geo = new THREE.BoxGeometry(r * 1.1, r * 1.1, r * 1.1); break
-    case 'dodecahedron': geo = new THREE.DodecahedronGeometry(r); break
-    case 'icosahedron': geo = new THREE.IcosahedronGeometry(r); break
-    case 'sphere': geo = new THREE.IcosahedronGeometry(r * 1.2, 2); break
-    default: geo = new THREE.IcosahedronGeometry(r, 0)
-  }
+  const geo = buildGeometry(node.shape, r, THREE) as THREE.BufferGeometry
 
   group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
     color, transparent: true, opacity: 0.85,
@@ -206,7 +197,7 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         graph = (ForceGraph3DLib as any)()(el)
-          .backgroundColor('#0a0a1a')
+          .backgroundColor(GRAPH_BG)
           .nodeVal((n: GraphNode) => Math.max(4, (n.val || 5) * 0.6))
           .nodeColor((n: GraphNode) => C[n.group] || '#888')
           .nodeOpacity(0.85)
@@ -227,8 +218,8 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
             if (onNodeClick && node.id) onNodeClick(node.id)
           })
 
-        graph.d3Force('charge')?.strength(-500)
-        graph.d3Force('link')?.distance(120)
+        graph.d3Force('charge')?.strength(CHARGE_STRENGTH)
+        graph.d3Force('link')?.distance(LINK_DISTANCE)
         graphRef.current = graph
 
         autoRotateRef.current = true

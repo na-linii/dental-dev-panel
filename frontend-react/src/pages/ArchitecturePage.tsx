@@ -5,7 +5,9 @@ import SpriteText from 'three-spritetext'
 import { architectureApi } from '../api/client'
 import {
   COLORS, WIREFRAME, LABELS, HUB_VERSION,
+  GRAPH_BG, CHARGE_STRENGTH, LINK_DISTANCE,
   getColor, getOpacity, getLabelOpacity, getLinkColor,
+  nodeRadius, buildGeometry,
 } from '../config/viz'
 import type { GraphNode } from '../types'
 
@@ -104,7 +106,7 @@ export function ArchitecturePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fg = (ForceGraph3D as any)()(el)
       .graphData({ nodes: [...nodes], links: [...links] })
-      .backgroundColor('#0a0a1a')
+      .backgroundColor(GRAPH_BG)
       .nodeVal((n: object) => Math.max(3, ((n as RuntimeNode).val || 5) * 0.5))
       .nodeColor((n: object) => {
         const node = n as RuntimeNode
@@ -121,21 +123,12 @@ export function ArchitecturePage() {
       .nodeThreeObject((node: object) => {
         const n = node as RuntimeNode
         const group = new THREE.Group()
-        const r = Math.cbrt(n.val || 5) * 4.5
+        const r = nodeRadius(n.val)
         const fill = getColor(n.type, n.planned)
         const opacity = getOpacity(n.planned)
         const isActive = n.id === selectedIdRef.current
 
-        let geo: THREE.BufferGeometry
-        switch (n.shape) {
-          case 'tetrahedron': geo = new THREE.TetrahedronGeometry(r * 0.9); break
-          case 'octahedron': geo = new THREE.OctahedronGeometry(r * 0.8); break
-          case 'box': geo = new THREE.BoxGeometry(r * 1.1, r * 1.1, r * 1.1); break
-          case 'dodecahedron': geo = new THREE.DodecahedronGeometry(r); break
-          case 'icosahedron': geo = new THREE.IcosahedronGeometry(r); break
-          case 'sphere': geo = new THREE.IcosahedronGeometry(r * 1.2, 2); break
-          default: geo = new THREE.IcosahedronGeometry(r, 0)
-        }
+        const geo = buildGeometry(n.shape, r, THREE) as THREE.BufferGeometry
         group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
           color: fill, transparent: true, opacity,
         })))
@@ -175,8 +168,8 @@ export function ArchitecturePage() {
       })
       .nodeThreeObjectExtend(false)
 
-    fg.d3Force('charge')?.strength(-400)
-    fg.d3Force('link')?.distance(80)
+    fg.d3Force('charge')?.strength(CHARGE_STRENGTH)
+    fg.d3Force('link')?.distance(LINK_DISTANCE)
 
     fgRef.current = fg
 
