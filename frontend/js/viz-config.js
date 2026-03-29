@@ -3,12 +3,12 @@
  */
 
 export var COLORS = {
-  router:  '#f472b6',  // pink — central node
-  agent:   '#38bdf8',  // sky blue
-  tool:    '#c084fc',  // purple
-  gateway: '#4ade80',  // lime green
-  plugin:  '#fb923c',  // orange
-  storage: '#facc15',  // yellow
+  router:  '#facc15',  // yellow — central node
+  agent:   '#22d3ee',  // cyan — bright sky
+  tool:    '#a855f7',  // vivid purple
+  gateway: '#22c55e',  // acid green
+  plugin:  '#f97316',  // acid orange
+  storage: '#ec4899',  // pink
 };
 
 export var WIREFRAME = '#ffffff';
