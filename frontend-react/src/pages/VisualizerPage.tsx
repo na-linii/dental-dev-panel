@@ -1,27 +1,32 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { clinicsApi, traceApi } from '../api/client'
+import { useQuery } from '@tanstack/react-query'
+import { clinicsApi, tracesApi } from '../api/client'
 import { ForceGraph3D } from '../components/ForceGraph3D'
-import type { ForceGraph3DHandle, AnimStep } from '../components/ForceGraph3D'
+import type { ForceGraph3DHandle } from '../components/ForceGraph3D'
 import { ChatPlayground } from '../components/ChatPlayground'
 import { TraceLog, buildAnimPath } from '../components/TraceLog'
 import type { Clinic, GraphData } from '../types'
 
 const SPEEDS = [1, 2, 4] as const
+const ANIM_COLORS = ['#7dd3fc', '#facc15', '#4ade80', '#c084fc', '#fb923c', '#f472b6']
+
+type Mode = 'live' | 'replay'
 
 export function VisualizerPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [clinics, setClinics] = useState<Clinic[]>([])
   const [graphData, setGraphData] = useState<GraphData | null>(null)
-  const [traceId, setTraceId] = useState<string | null>(null)
   const [graphError, setGraphError] = useState<string | null>(null)
   const [playgroundOpen, setPlaygroundOpen] = useState(false)
+  const [traceLogOpen, setTraceLogOpen] = useState(false)
   const [speed, setSpeed] = useState<number>(1)
+  const [mode, setMode] = useState<Mode>('live')
+  const [replayTraceId, setReplayTraceId] = useState<string | null>(null)
 
   const graphRef = useRef<ForceGraph3DHandle>(null)
-  // Cache trace paths for replay
-  const tracePathsRef = useRef<Map<string, AnimStep[]>>(new Map())
+  const lastAnimatedRef = useRef<Set<string>>(new Set())
 
   const clinicId = searchParams.get('clinic') || ''
 
@@ -44,43 +49,65 @@ export function VisualizerPage() {
     [clinics, clinicId],
   )
 
-  // Animate trace on graph
-  const animateTrace = useCallback(async (tid: string, isReplay = false) => {
-    if (!graphRef.current) return
+  // Poll traces for LIVE mode
+  const { data: traces } = useQuery({
+    queryKey: ['live-traces', clinicId],
+    queryFn: () => tracesApi.list(clinicId),
+    refetchInterval: 5000,
+    enabled: !!clinicId && mode === 'live',
+  })
 
-    // Check cache first
-    let path = tracePathsRef.current.get(tid)
-    if (!path) {
-      // Wait for Langfuse to finish writing trace (async ingestion)
-      if (!isReplay) {
-        await new Promise((r) => setTimeout(r, 3000))
-      }
-      try {
-        const data = await traceApi.get(tid)
-        path = buildAnimPath(data.flow)
-        if (path.length > 0) {
-          tracePathsRef.current.set(tid, path)
+  // LIVE mode: animate new traces automatically
+  useEffect(() => {
+    if (mode !== 'live' || !traces || !graphRef.current) return
+
+    for (const trace of traces) {
+      if (lastAnimatedRef.current.has(trace.id)) continue
+      if (!trace.latency) continue // trace still running, skip
+
+      lastAnimatedRef.current.add(trace.id)
+
+      // Assign color based on userId hash
+      const colorIdx = trace.userId
+        ? Math.abs(trace.userId.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0)) % ANIM_COLORS.length
+        : 0
+
+      // Fetch detail and animate
+      tracesApi.detail(clinicId, trace.id).then((data) => {
+        const path = buildAnimPath(data.flow)
+        if (path.length > 0 && graphRef.current) {
+          graphRef.current.animateFlow(path, speed, ANIM_COLORS[colorIdx])
         }
-      } catch {
-        return
+      }).catch(() => {})
+    }
+  }, [traces, mode, clinicId, speed])
+
+  // REPLAY mode
+  const handleReplay = useCallback(async (traceId: string) => {
+    if (!graphRef.current) return
+    setMode('replay')
+    setReplayTraceId(traceId)
+
+    try {
+      const data = await tracesApi.detail(clinicId, traceId)
+      const path = buildAnimPath(data.flow)
+      if (path.length > 0) {
+        graphRef.current.animateFlow(path, speed, '#7dd3fc')
+        // Return to LIVE after animation
+        const totalDur = path.reduce((sum, s) => sum + Math.max(s.dur / speed, 100), 0)
+        setTimeout(() => {
+          setMode('live')
+          setReplayTraceId(null)
+        }, totalDur + 500)
+      } else {
+        setMode('live')
+        setReplayTraceId(null)
       }
+    } catch {
+      setMode('live')
+      setReplayTraceId(null)
     }
-
-    if (path && path.length > 0) {
-      graphRef.current.animateFlow(path, speed)
-    }
-  }, [speed])
-
-  // When new trace received: load into TraceLog + animate
-  const handleTraceReceived = useCallback((tid: string) => {
-    setTraceId(tid)
-    animateTrace(tid)
-  }, [animateTrace])
-
-  // Replay without re-sending (use cached path)
-  const handleReplayTrace = useCallback((tid: string) => {
-    animateTrace(tid, true)
-  }, [animateTrace])
+  }, [clinicId, speed])
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 48px)' }}>
@@ -103,8 +130,8 @@ export function VisualizerPage() {
           <span className="text-[#64748b]">{clinicId}</span>
         )}
 
-        {/* Speed controls */}
         <div className="ml-auto flex items-center gap-1.5">
+          {/* Speed */}
           {SPEEDS.map((s) => (
             <button
               key={s}
@@ -119,6 +146,18 @@ export function VisualizerPage() {
             </button>
           ))}
           <span className="text-[#1e293b] mx-1">|</span>
+          {/* Trace Log toggle */}
+          <button
+            onClick={() => setTraceLogOpen(!traceLogOpen)}
+            className={`px-2.5 py-1 rounded text-[11px] cursor-pointer border ${
+              traceLogOpen
+                ? 'bg-[#7dd3fc] text-[#0a0a1a] border-[#7dd3fc]'
+                : 'bg-[#111127] text-white border-[#1e293b] hover:bg-[#1e293b]'
+            }`}
+          >
+            {traceLogOpen ? '✕ Trace Log' : '📋 Trace Log'}
+          </button>
+          {/* Playground toggle */}
           <button
             onClick={() => setPlaygroundOpen(!playgroundOpen)}
             className={`px-2.5 py-1 rounded text-[11px] cursor-pointer border ${
@@ -136,6 +175,17 @@ export function VisualizerPage() {
       <div className="flex flex-1 min-h-0">
         {/* 3D Graph */}
         <div className="flex-1 relative min-w-0">
+          {/* Mode indicator */}
+          <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
+            style={{
+              background: 'rgba(0,0,0,0.7)',
+              color: mode === 'live' ? '#4ade80' : '#facc15',
+              border: `1px solid ${mode === 'live' ? '#4ade8040' : '#facc1540'}`,
+            }}
+          >
+            {mode === 'live' ? '🟢 LIVE' : `▶ REPLAY ${replayTraceId?.slice(0, 8)}...`}
+          </div>
+
           {graphError && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-red-400 z-10">
               {graphError}
@@ -146,20 +196,16 @@ export function VisualizerPage() {
 
         {/* Playground panel */}
         {playgroundOpen && clinicId && (
-          <div className="w-80 flex-shrink-0 bg-[#111127] border-l border-[#1e293b] flex flex-col overflow-hidden">
-            <ChatPlayground
-              clinicId={clinicId}
-              onTraceReceived={handleTraceReceived}
-              onReplayTrace={handleReplayTrace}
-            />
+          <div className="w-80 flex-shrink-0 border-l border-[#1e293b] flex flex-col overflow-hidden">
+            <ChatPlayground clinicId={clinicId} />
           </div>
         )}
       </div>
 
       {/* Trace Log */}
-      {playgroundOpen && (
+      {traceLogOpen && clinicId && (
         <div className="h-[280px] flex-shrink-0 border-t border-[#1e293b]">
-          <TraceLog traceId={traceId} />
+          <TraceLog clinicId={clinicId} onReplay={handleReplay} />
         </div>
       )}
     </div>

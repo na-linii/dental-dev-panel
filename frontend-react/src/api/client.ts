@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type {
   Clinic, ChatRequest, ChatResponse, GraphData,
-  EdgeCaseItem, HealthResponse, TraceFlow,
+  EdgeCaseItem, HealthResponse, TraceFlow, TraceSummary,
 } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -47,6 +47,18 @@ export const edgeCasesApi = {
     api.get<{ items: EdgeCaseItem[]; error?: string }>('/edge-cases').then((r) => r.data),
 }
 
+export const tracesApi = {
+  list: (clinicId: string, since?: string) =>
+    api.get<{ traces: TraceSummary[] }>(`/clinics/${clinicId}/traces`, {
+      params: { limit: 50, ...(since ? { since } : {}) },
+    }).then((r) => r.data.traces),
+
+  detail: (clinicId: string, traceId: string) =>
+    api.get<{ flow: TraceFlow[]; trace_id: string }>(`/clinics/${clinicId}/traces/${traceId}`)
+      .then((r) => r.data),
+}
+
+// Keep legacy for backward compat
 export const traceApi = {
   get: (traceId: string) =>
     api.get<{ flow: TraceFlow[]; trace_id: string }>(`/trace/${traceId}`).then((r) => r.data),

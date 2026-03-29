@@ -83,6 +83,20 @@ export interface TraceFlow {
   parentId?: string
 }
 
+export interface TraceSummary {
+  id: string
+  name: string
+  startTime: string
+  latency: number | null
+  tags: string[]
+  userId: string | null
+  sessionId: string | null
+  input: unknown
+  output: unknown
+  metadata: Record<string, unknown> | null
+  scores: unknown[]
+}
+
 export interface User {
   login: string
   avatar: string

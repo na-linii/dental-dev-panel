@@ -11,7 +11,7 @@ export interface AnimStep {
 }
 
 export interface ForceGraph3DHandle {
-  animateFlow: (path: AnimStep[], speed: number) => void
+  animateFlow: (path: AnimStep[], speed: number, color?: string) => void
 }
 
 interface ForceGraph3DProps {
@@ -101,9 +101,14 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
     }, [])
 
     useImperativeHandle(ref, () => ({
-      animateFlow(path: AnimStep[], speed: number) {
+      animateFlow(path: AnimStep[], speed: number, color?: string) {
         const g = graphRef.current
         if (!g) return
+
+        // Set particle color for this animation
+        if (color) {
+          g.linkDirectionalParticleColor(() => color)
+        }
 
         // Clear previous
         animTimeoutsRef.current.forEach(clearTimeout)

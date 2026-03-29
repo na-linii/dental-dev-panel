@@ -4,21 +4,18 @@ import type { ChatResponse } from '../types'
 
 interface ChatPlaygroundProps {
   clinicId: string
-  onTraceReceived?: (traceId: string) => void
-  onReplayTrace?: (traceId: string) => void
 }
 
 interface Message {
   role: 'user' | 'bot' | 'error'
   text: string
-  traceId?: string
 }
 
 function generateUserId(): string {
   return 'hub-' + Math.floor(Math.random() * 900000 + 100000)
 }
 
-export function ChatPlayground({ clinicId, onTraceReceived, onReplayTrace }: ChatPlaygroundProps) {
+export function ChatPlayground({ clinicId }: ChatPlaygroundProps) {
   const [channel, setChannel] = useState('tg_bot')
   const [userId] = useState(generateUserId)
   const [phone, setPhone] = useState('')
@@ -56,28 +53,22 @@ export function ChatPlayground({ clinicId, onTraceReceived, onReplayTrace }: Cha
 
       setMessages((prev) => [
         ...prev,
-        { role: 'bot', text: data.response || 'No response', traceId: data.trace_id },
+        { role: 'bot', text: data.response || 'No response' },
       ])
-
-      if (data.trace_id && onTraceReceived) {
-        onTraceReceived(data.trace_id)
-      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error'
       setMessages((prev) => [...prev, { role: 'error', text: msg }])
     } finally {
       setSending(false)
     }
-  }, [input, sending, clinicId, channel, userId, threadId, phone, name, onTraceReceived])
+  }, [input, sending, clinicId, channel, userId, threadId, phone, name])
 
   return (
-    <div className="flex flex-col h-full bg-[#111127] border-l border-[#1e293b]">
-      {/* Header */}
+    <div className="flex flex-col h-full bg-[#111127]">
       <div className="px-3 py-2 border-b border-[#1e293b] text-xs font-semibold text-[#7dd3fc]">
-        Chat Playground
+        Playground
       </div>
 
-      {/* Config fields */}
       <div className="px-3 py-2 space-y-1.5 border-b border-[#1e293b] text-xs">
         <div className="flex items-center gap-2">
           <label className="text-[#64748b] w-16">Channel</label>
@@ -92,62 +83,36 @@ export function ChatPlayground({ clinicId, onTraceReceived, onReplayTrace }: Cha
         </div>
         <div className="flex items-center gap-2">
           <label className="text-[#64748b] w-16">User ID</label>
-          <input
-            value={userId}
-            readOnly
-            className="flex-1 bg-[#0a0a1a] border border-[#1e293b] rounded px-2 py-1 text-white text-xs opacity-60"
-          />
+          <input value={userId} readOnly className="flex-1 bg-[#0a0a1a] border border-[#1e293b] rounded px-2 py-1 text-white text-xs opacity-60" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-[#64748b] w-16">Phone</label>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="optional"
-            className="flex-1 bg-[#0a0a1a] border border-[#1e293b] rounded px-2 py-1 text-white text-xs"
-          />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="optional" className="flex-1 bg-[#0a0a1a] border border-[#1e293b] rounded px-2 py-1 text-white text-xs" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-[#64748b] w-16">Name</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="optional"
-            className="flex-1 bg-[#0a0a1a] border border-[#1e293b] rounded px-2 py-1 text-white text-xs"
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="optional" className="flex-1 bg-[#0a0a1a] border border-[#1e293b] rounded px-2 py-1 text-white text-xs" />
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {messages.map((m, i) => (
-          <div key={i}>
-            <div
-              className={`relative text-xs px-2.5 py-1.5 rounded-lg max-w-[95%] whitespace-pre-wrap group ${
-                m.role === 'user'
-                  ? 'bg-[#1e3a5f] text-white ml-auto'
-                  : m.role === 'bot'
-                    ? 'bg-[#1a3a2a] text-white'
-                    : 'bg-[#3a1a1a] text-red-300'
-              }`}
-            >
-              {m.text}
-              {m.traceId && (
-                <button
-                  onClick={() => onReplayTrace?.(m.traceId!)}
-                  className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-black/30 text-[#facc15] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  title="Replay trace animation"
-                >
-                  ▶
-                </button>
-              )}
-            </div>
+          <div
+            key={i}
+            className={`text-xs px-2.5 py-1.5 rounded-lg max-w-[95%] whitespace-pre-wrap ${
+              m.role === 'user'
+                ? 'bg-[#1e3a5f] text-white ml-auto'
+                : m.role === 'bot'
+                  ? 'bg-[#1a3a2a] text-white'
+                  : 'bg-[#3a1a1a] text-red-300'
+            }`}
+          >
+            {m.text}
           </div>
         ))}
         <div ref={msgsEndRef} />
       </div>
 
-      {/* Input */}
       <div className="px-3 py-2 border-t border-[#1e293b] flex gap-2">
         <input
           value={input}

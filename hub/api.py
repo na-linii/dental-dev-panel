@@ -118,6 +118,92 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
         raise HTTPException(502, f"Clinic unreachable: {e}")
 
 
+# --- Traces (Langfuse-powered) ---
+
+@app.get("/api/clinics/{clinic_id}/traces")
+async def get_clinic_traces(clinic_id: str, limit: int = 30, since: str = "", user=Depends(verify_github_token)):
+    """Fetch recent traces for a clinic from Langfuse."""
+    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+    if not lf_pk or not lf_sk:
+        return {"traces": [], "error": "Langfuse keys not configured"}
+
+    try:
+        params = {"limit": min(limit, 100), "tags": clinic_id}
+        if since:
+            params["fromTimestamp"] = since
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"{lf_host}/api/public/traces",
+                params=params,
+                auth=(lf_pk, lf_sk),
+            )
+            data = r.json()
+
+        traces = []
+        for t in data.get("data", []):
+            traces.append({
+                "id": t.get("id"),
+                "name": t.get("name"),
+                "startTime": t.get("timestamp"),
+                "latency": t.get("latency"),
+                "tags": t.get("tags", []),
+                "userId": t.get("userId"),
+                "sessionId": t.get("sessionId"),
+                "input": t.get("input"),
+                "output": t.get("output"),
+                "metadata": t.get("metadata"),
+                "scores": t.get("scores", []),
+            })
+        return {"traces": traces}
+    except Exception as e:
+        return {"traces": [], "error": str(e)}
+
+
+@app.get("/api/clinics/{clinic_id}/traces/{trace_id}")
+async def get_clinic_trace_detail(clinic_id: str, trace_id: str, user=Depends(verify_github_token)):
+    """Fetch single trace with observations for animation."""
+    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+    if not lf_pk or not lf_sk:
+        return {"flow": [], "error": "Langfuse keys not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"{lf_host}/api/public/traces/{trace_id}",
+                auth=(lf_pk, lf_sk),
+            )
+            trace = r.json()
+
+        flow = []
+        for obs in trace.get("observations", []):
+            name = obs.get("name", "")
+            if not name or name in ("RunnableSequence", "Prompt", "should_continue", "call_model", "RunnableLambda"):
+                continue
+            inp = obs.get("input")
+            out = obs.get("output")
+            if isinstance(inp, str) and len(inp) > 500: inp = inp[:500] + "..."
+            if isinstance(out, str) and len(out) > 500: out = out[:500] + "..."
+            flow.append({
+                "name": name,
+                "type": obs.get("type", ""),
+                "model": obs.get("model"),
+                "startTime": obs.get("startTime"),
+                "endTime": obs.get("endTime"),
+                "input": inp,
+                "output": out,
+                "id": obs.get("id", ""),
+                "parentId": obs.get("parentObservationId"),
+            })
+        return {"trace_id": trace_id, "flow": flow}
+    except Exception as e:
+        return {"trace_id": trace_id, "flow": [], "error": str(e)}
+
+
 @app.get("/api/trace/{trace_id}")
 async def get_trace(trace_id: str, user=Depends(verify_github_token)):
     """Fetch trace from Langfuse — returns observation chain for flow visualization."""
