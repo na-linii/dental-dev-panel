@@ -27,7 +27,7 @@ export function ClinicsPage() {
           <ClinicCard
             key={c.id}
             clinic={c}
-            onOpenViz={(id) => navigate(`/visualizer?clinic=${id}`)}
+            onClick={() => navigate(`/clinic/${c.clinic_id}`)}
           />
         ))}
       </div>
