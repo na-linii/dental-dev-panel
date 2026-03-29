@@ -43,9 +43,9 @@ export function VisualizerPage() {
   )
 
   return (
-    <div className="flex flex-col relative" style={{ height: 'calc(100vh - 48px)' }}>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 48px)' }}>
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-1.5 bg-[#111127] border-b border-[#1e293b] text-xs z-10">
+      <div className="flex items-center gap-3 px-4 py-1.5 bg-[#111127] border-b border-[#1e293b] text-xs flex-shrink-0">
         <button
           onClick={() => navigate('/')}
           className="text-[#64748b] hover:text-white cursor-pointer"
@@ -84,10 +84,10 @@ export function VisualizerPage() {
         </div>
       </div>
 
-      {/* Main area: graph takes full space, chat overlays on right */}
-      <div className="flex-1 relative min-h-0">
-        {/* 3D Graph — always full width */}
-        <div className="absolute inset-0">
+      {/* Main area: graph + chat side by side (chat shrinks graph area) */}
+      <div className="flex flex-1 min-h-0">
+        {/* 3D Graph — takes remaining space */}
+        <div className="flex-1 relative min-w-0">
           {graphError && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-red-400 z-10">
               {graphError}
@@ -96,9 +96,9 @@ export function VisualizerPage() {
           <ForceGraph3D data={graphData} className="w-full h-full" />
         </div>
 
-        {/* Chat Playground — overlay panel, doesn't affect graph layout */}
+        {/* Chat Playground — flex panel, shrinks graph */}
         {chatOpen && clinicId && (
-          <div className="absolute top-0 right-0 w-80 h-full bg-[#111127] border-l border-[#1e293b] z-20 flex flex-col">
+          <div className="w-80 flex-shrink-0 bg-[#111127] border-l border-[#1e293b] flex flex-col overflow-hidden">
             <ChatPlayground
               clinicId={clinicId}
               onTraceReceived={(id) => setTraceId(id)}
@@ -107,7 +107,7 @@ export function VisualizerPage() {
         )}
       </div>
 
-      {/* Trace Log — always at bottom */}
+      {/* Trace Log */}
       {traceId && (
         <div className="h-[280px] flex-shrink-0 border-t border-[#1e293b]">
           <TraceLog traceId={traceId} />

@@ -32,7 +32,7 @@ export function ArchitecturePage() {
   const [nodes, setNodes] = useState<RuntimeNode[]>([])
   const [links, setLinks] = useState<RuntimeLink[]>([])
   const [selected, setSelected] = useState<RuntimeNode | null>(null)
-  const selectedIdRef = useRef<string>('router')
+  const selectedIdRef = useRef<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,12 +49,7 @@ export function ArchitecturePage() {
         const runtimeLinks: RuntimeLink[] = (data.links || []).map((l) => ({ ...l }))
         setNodes(runtimeNodes)
         setLinks(runtimeLinks)
-        // Select router by default
-        const router = runtimeNodes.find((n) => n.id === 'router')
-        if (router) {
-          setSelected(router)
-          selectedIdRef.current = router.id
-        }
+        // No default selection — sidebar appears on node click
         setLoading(false)
       })
       .catch((e) => {
@@ -242,13 +237,22 @@ export function ArchitecturePage() {
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 48px)' }}>
-      {/* 3D Graph */}
-      <div className="flex-1 relative" ref={graphRef} />
+      {/* 3D Graph — takes remaining space */}
+      <div className="flex-1 relative min-w-0" ref={graphRef} />
 
-      {/* Sidebar */}
+      {/* Sidebar — only visible when node is selected */}
+      {selected && (
       <div className="w-80 flex-shrink-0 bg-[#111127] border-l border-[#1e293b] overflow-y-auto p-4">
-        {selected ? (
           <>
+            {/* Close button */}
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => { setSelected(null); selectedIdRef.current = '' }}
+                className="text-[#64748b] hover:text-white text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
             {/* Type badge */}
             <div className="flex items-center gap-1.5 mb-2">
               <div
@@ -357,10 +361,8 @@ export function ArchitecturePage() {
               </div>
             )}
           </>
-        ) : (
-          <div className="text-sm text-[#64748b]">Click a node to inspect</div>
-        )}
       </div>
+      )}
     </div>
   )
 }
