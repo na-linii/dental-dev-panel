@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth'
 
 const tabs = [
   { to: '/', label: 'Clinics' },
-  { to: '/visualizer', label: 'Visualizer' },
   { to: '/architecture', label: 'Architecture' },
   { to: '/edge-cases', label: 'Edge Cases' },
   { to: '/roadmap', label: 'Roadmap' },

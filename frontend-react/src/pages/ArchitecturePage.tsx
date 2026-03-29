@@ -240,7 +240,7 @@ export function ArchitecturePage() {
       <div className="flex-1 relative" ref={graphRef} />
 
       {/* Sidebar */}
-      <div className="w-80 bg-[#111127] border-l border-[#1e293b] overflow-y-auto p-4">
+      <div className="w-80 flex-shrink-0 bg-[#111127] border-l border-[#1e293b] overflow-y-auto p-4">
         {selected ? (
           <>
             {/* Type badge */}
