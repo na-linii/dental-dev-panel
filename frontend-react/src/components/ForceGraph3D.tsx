@@ -81,7 +81,8 @@ function buildNodeObject(node: GraphNode): THREE.Group {
 
 export function ForceGraph3D({ data, className, onNodeClick }: ForceGraph3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const graphRef = useRef<ReturnType<typeof ForceGraph3DLib> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const graphRef = useRef<any>(null)
   const autoRotateRef = useRef(true)
   const angleRef = useRef(0)
   const distRef = useRef(350)
@@ -95,7 +96,8 @@ export function ForceGraph3D({ data, className, onNodeClick }: ForceGraph3DProps
     const el = containerRef.current
     if (!el) return
 
-    const graph = ForceGraph3DLib()(el)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const graph = (ForceGraph3DLib as any)()(el)
       .backgroundColor('#0a0a1a')
       .nodeVal((n: GraphNode) => Math.max(4, (n.val || 5) * 0.6))
       .nodeColor((n: GraphNode) => C[n.group] || '#888')

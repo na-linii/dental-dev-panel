@@ -7,7 +7,7 @@ import {
   COLORS, WIREFRAME, LABELS,
   getColor, getOpacity, getLabelOpacity, getLinkColor,
 } from '../config/viz'
-import type { GraphNode, GraphLink } from '../types'
+import type { GraphNode } from '../types'
 
 interface RuntimeNode extends GraphNode {
   type: string
@@ -27,7 +27,8 @@ function resolveId(ref: string | RuntimeNode): string {
 
 export function ArchitecturePage() {
   const graphRef = useRef<HTMLDivElement>(null)
-  const fgRef = useRef<ReturnType<typeof ForceGraph3D> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fgRef = useRef<any>(null)
   const [nodes, setNodes] = useState<RuntimeNode[]>([])
   const [links, setLinks] = useState<RuntimeLink[]>([])
   const [selected, setSelected] = useState<RuntimeNode | null>(null)
@@ -78,7 +79,8 @@ export function ArchitecturePage() {
     if (fgRef.current) return // already initialized
 
     const el = graphRef.current
-    const fg = ForceGraph3D()(el)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fg = (ForceGraph3D as any)()(el)
       .graphData({ nodes: [...nodes], links: [...links] })
       .backgroundColor('#0a0a1a')
       .nodeVal((n: object) => Math.max(3, ((n as RuntimeNode).val || 5) * 0.5))
