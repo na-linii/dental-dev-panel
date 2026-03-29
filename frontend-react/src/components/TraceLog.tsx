@@ -154,23 +154,101 @@ interface TraceLogProps {
   onReplay?: (traceId: string, speed: number) => void
 }
 
+interface StepData {
+  from: string
+  to: string
+  dur: number
+  input?: unknown
+  output?: unknown
+  model?: string
+  type?: string
+}
+
+function formatValue(val: unknown): string {
+  if (val === null || val === undefined) return '—'
+  if (typeof val === 'string') return val.length > 300 ? val.slice(0, 300) + '...' : val
+  if (typeof val === 'object') {
+    // Extract meaningful content from common structures
+    const obj = val as Record<string, unknown>
+    if (obj.content) return String(obj.content).slice(0, 300)
+    if (obj.text) return String(obj.text).slice(0, 300)
+    if (obj.message) return String(obj.message).slice(0, 300)
+    if (obj.messages && Array.isArray(obj.messages)) {
+      const last = obj.messages[obj.messages.length - 1] as Record<string, unknown> | undefined
+      if (last?.content) return String(last.content).slice(0, 300)
+    }
+    if (obj.kwargs) return formatValue(obj.kwargs)
+    return JSON.stringify(val, null, 2).slice(0, 500)
+  }
+  return String(val)
+}
+
+function StepDetail({ step }: { step: StepData }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="border-b border-[#1e293b]/50 last:border-b-0">
+      <div
+        className="flex items-center gap-1.5 text-[10px] py-1 px-2 cursor-pointer hover:bg-[#1e293b]/30 rounded"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="text-[#475569] w-3">{(step.input || step.output) ? (open ? '▾' : '▸') : ' '}</span>
+        <span className="text-[#94a3b8]">{step.from}</span>
+        <span className="text-[#475569]">→</span>
+        <span className="text-white">{step.to}</span>
+        {step.model && <span className="text-[#fb923c] text-[9px]">{step.model}</span>}
+        <span className="text-[#64748b] ml-auto font-mono">{Math.round(step.dur)}ms</span>
+      </div>
+      {open && (step.input || step.output) && (
+        <div className="flex gap-2 px-3 pb-2">
+          <div className="flex-1 min-w-0">
+            <div className="text-[9px] text-[#7dd3fc] mb-0.5">Input</div>
+            <div className="text-[10px] text-[#cbd5e1] bg-[#0a0a1a] rounded p-2 max-h-32 overflow-auto whitespace-pre-wrap break-words">
+              {formatValue(step.input)}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[9px] text-[#4ade80] mb-0.5">Output</div>
+            <div className="text-[10px] text-[#cbd5e1] bg-[#0a0a1a] rounded p-2 max-h-32 overflow-auto whitespace-pre-wrap break-words">
+              {formatValue(step.output)}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TraceRow({ trace, clinicId, onReplay, speed }: { trace: TraceSummary; clinicId: string; onReplay?: (id: string, speed: number) => void; speed: number }) {
   const [open, setOpen] = useState(false)
-  const [steps, setSteps] = useState<Array<{ from: string; to: string; dur: number }> | null>(null)
+  const [steps, setSteps] = useState<StepData[] | null>(null)
 
   const loadSteps = async () => {
     if (steps) { setOpen(!open); return }
     setOpen(true)
     try {
       const data = await tracesApi.detail(clinicId, trace.id)
+      // Build readable steps from flow observations
+      const readable: StepData[] = []
       const built = buildAnimPath(data.flow)
-      setSteps(built
-        .filter((s) => s.links.length > 0)  // skip LLM-only steps (no link movement)
-        .map((s) => ({
-          from: s.links[0][0],
-          to: s.links[0][1],
-          dur: s.dur,
-        })))
+      const flowMap = new Map(data.flow.map((f) => [f.name, f]))
+
+      for (const animStep of built) {
+        if (animStep.links.length === 0) continue
+        const [from, to] = animStep.links[0]
+        // Find matching observation for input/output
+        const obsName = Object.entries(NAME_TO_NODE).find(([, v]) => v === to)?.[0] || to
+        const obs = flowMap.get(obsName) || flowMap.get(to)
+        readable.push({
+          from, to,
+          dur: animStep.dur,
+          input: obs?.input,
+          output: obs?.output,
+          model: obs?.model || undefined,
+          type: obs?.type || undefined,
+        })
+      }
+      setSteps(readable)
     } catch {
       setSteps([])
     }
@@ -200,15 +278,10 @@ function TraceRow({ trace, clinicId, onReplay, speed }: { trace: TraceSummary; c
         </button>
       </div>
       {open && steps && (
-        <div className="px-6 pb-2">
+        <div className="px-4 pb-1.5">
           {steps.length === 0 && <div className="text-[10px] text-[#64748b]">No steps</div>}
           {steps.map((s, i) => (
-            <div key={i} className="flex items-center gap-1.5 text-[10px] py-0.5">
-              <span className="text-[#94a3b8]">{s.from}</span>
-              <span className="text-[#475569]">→</span>
-              <span className="text-white">{s.to}</span>
-              <span className="text-[#64748b] ml-auto">{s.dur}ms</span>
-            </div>
+            <StepDetail key={i} step={s} />
           ))}
         </div>
       )}
