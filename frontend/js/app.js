@@ -21,6 +21,9 @@ window.showPage = function(id) {
   if (id === 'arch' && window.initArchViz) {
     setTimeout(window.initArchViz, 300);
   }
+  if (id === 'edge-cases' && window.initEdgeCases) {
+    setTimeout(window.initEdgeCases, 100);
+  }
 };
 
 /* =================== CLINICS =================== */
