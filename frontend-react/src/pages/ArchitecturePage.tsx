@@ -121,18 +121,19 @@ export function ArchitecturePage() {
       .nodeThreeObject((node: object) => {
         const n = node as RuntimeNode
         const group = new THREE.Group()
-        const r = (n.val || 5) * 0.8
+        const r = Math.cbrt(n.val || 5) * 4.5
         const fill = getColor(n.type, n.planned)
         const opacity = getOpacity(n.planned)
         const isActive = n.id === selectedIdRef.current
 
         let geo: THREE.BufferGeometry
         switch (n.shape) {
-          case 'dodecahedron': geo = new THREE.IcosahedronGeometry(r * 1.3, 2); break
-          case 'icosahedron': geo = new THREE.IcosahedronGeometry(r, 1); break
-          case 'box': geo = new THREE.IcosahedronGeometry(r, 0); break
-          case 'octahedron': geo = new THREE.DodecahedronGeometry(r * 0.8, 0); break
-          case 'tetrahedron': geo = new THREE.OctahedronGeometry(r * 0.9, 0); break
+          case 'tetrahedron': geo = new THREE.TetrahedronGeometry(r * 0.9); break
+          case 'octahedron': geo = new THREE.OctahedronGeometry(r * 0.8); break
+          case 'box': geo = new THREE.BoxGeometry(r * 1.1, r * 1.1, r * 1.1); break
+          case 'dodecahedron': geo = new THREE.DodecahedronGeometry(r); break
+          case 'icosahedron': geo = new THREE.IcosahedronGeometry(r); break
+          case 'sphere': geo = new THREE.IcosahedronGeometry(r * 1.2, 2); break
           default: geo = new THREE.IcosahedronGeometry(r, 0)
         }
         group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({

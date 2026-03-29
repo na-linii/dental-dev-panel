@@ -16,12 +16,12 @@ export const COLORS: Record<string, string> = {
 export const WIREFRAME = '#ffffff'
 
 export const SHAPES: Record<string, string> = {
-  router: 'dodecahedron',
-  agent: 'icosahedron',
-  tool: 'octahedron',
-  gateway: 'box',
-  plugin: 'octahedron',
-  storage: 'box',
+  tool: 'tetrahedron',      // 4 грани — самый простой
+  plugin: 'octahedron',     // 5-8 граней — ромбик
+  storage: 'box',           // 6 граней — куб
+  gateway: 'dodecahedron',  // 8-12 граней
+  router: 'icosahedron',    // 10-20 граней
+  agent: 'sphere',          // 16+ граней — почти сфера
 }
 
 export const LABELS: Record<string, string> = {
