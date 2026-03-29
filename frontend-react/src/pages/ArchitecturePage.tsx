@@ -121,7 +121,7 @@ export function ArchitecturePage() {
       .nodeThreeObject((node: object) => {
         const n = node as RuntimeNode
         const group = new THREE.Group()
-        const r = Math.cbrt(n.val || 5) * 4.5
+        const r = (n.val || 5) * 0.8
         const fill = getColor(n.type, n.planned)
         const opacity = getOpacity(n.planned)
         const isActive = n.id === selectedIdRef.current
