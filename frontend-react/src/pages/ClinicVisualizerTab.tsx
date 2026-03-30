@@ -6,7 +6,9 @@ import { ForceGraph3D } from '../components/ForceGraph3D'
 import type { ForceGraph3DHandle } from '../components/ForceGraph3D'
 import { ChatPlayground } from '../components/ChatPlayground'
 import { TraceLog, buildAnimPath, setGraphNodes } from '../components/TraceLog'
+import { VizLegend } from '../components/VizLegend'
 import type { GraphData } from '../types'
+import type { VizConfigEntry } from '../types'
 
 const ANIM_COLORS = ['#7dd3fc', '#facc15', '#4ade80', '#c084fc', '#fb923c', '#f472b6']
 
@@ -16,6 +18,7 @@ export function ClinicVisualizerTab() {
   const { clinicId } = useParams<{ clinicId: string }>()
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [graphError, setGraphError] = useState<string | null>(null)
+  const [vizConfig, setVizConfig] = useState<Record<string, VizConfigEntry>>({})
   const [playgroundOpen, setPlaygroundOpen] = useState(false)
   const [traceLogOpen, setTraceLogOpen] = useState(false)
   const [mode, setMode] = useState<Mode>('live')
@@ -31,7 +34,11 @@ export function ClinicVisualizerTab() {
     setGraphError(null)
     clinicsApi
       .graph(clinicId)
-      .then((data) => { setGraphNodes(data.nodes || []); setGraphData(data) })
+      .then((data) => {
+        setGraphNodes(data.nodes || [])
+        setGraphData(data)
+        if (data.meta?.viz_config) setVizConfig(data.meta.viz_config)
+      })
       .catch(() => setGraphError('Failed to load graph'))
   }, [clinicId])
 
@@ -118,7 +125,23 @@ export function ClinicVisualizerTab() {
       {/* Main area */}
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 relative min-w-0">
-          <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
+          {/* Legend */}
+          {Object.keys(vizConfig).length > 0 && (
+            <VizLegend
+              vizConfig={vizConfig}
+              onConfigChange={(newConfig) => {
+                setVizConfig(newConfig)
+                // Update graphData so ForceGraph3D re-renders with new colors
+                if (graphData) {
+                  setGraphData({
+                    ...graphData,
+                    meta: { ...graphData.meta, viz_config: newConfig },
+                  })
+                }
+              }}
+            />
+          )}
+          <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
             style={{
               background: 'rgba(0,0,0,0.7)',
               color: mode === 'replay'

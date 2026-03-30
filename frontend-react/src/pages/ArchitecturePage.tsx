@@ -9,7 +9,9 @@ import {
   getColor, getOpacity, getLabelOpacity, getLinkColor,
   nodeRadius, buildGeometry,
 } from '../config/viz'
+import { VizLegend } from '../components/VizLegend'
 import type { GraphNode } from '../types'
+import type { VizConfigEntry } from '../types'
 
 interface RuntimeNode extends GraphNode {
   type: string
@@ -61,6 +63,7 @@ export function ArchitecturePage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const expandedIdRef = useRef<string>('')
   const [colors, setColors] = useState<Record<string, string>>({})
+  const [vizConfig, setVizConfig] = useState<Record<string, VizConfigEntry>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [orbiting, setOrbiting] = useState(true)
@@ -72,13 +75,14 @@ export function ArchitecturePage() {
     architectureApi.graph()
       .then((data) => {
         // Extract color map from viz_config
-        const vizConfig = data.meta?.viz_config
-        if (vizConfig) {
+        const vc = data.meta?.viz_config
+        if (vc) {
           const colorMap: Record<string, string> = {}
-          for (const [group, cfg] of Object.entries(vizConfig)) {
+          for (const [group, cfg] of Object.entries(vc)) {
             colorMap[group] = cfg.color
           }
           setColors(colorMap)
+          setVizConfig(vc)
         }
 
         const runtimeNodes: RuntimeNode[] = (data.nodes || []).map((n) => ({
@@ -417,6 +421,21 @@ export function ArchitecturePage() {
       {/* 3D Graph — takes remaining space */}
       <div className="flex-1 relative min-w-0">
         <div className="w-full h-full" ref={graphRef} />
+        {/* Legend */}
+        {Object.keys(vizConfig).length > 0 && (
+          <VizLegend
+            vizConfig={vizConfig}
+            onConfigChange={(newConfig) => {
+              setVizConfig(newConfig)
+              const colorMap: Record<string, string> = {}
+              for (const [group, cfg] of Object.entries(newConfig)) {
+                colorMap[group] = cfg.color
+              }
+              setColors(colorMap)
+              refreshNodeVisuals()
+            }}
+          />
+        )}
         {/* Bottom bar: orbit button + version */}
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
           <button
