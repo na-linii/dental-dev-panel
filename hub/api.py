@@ -1058,8 +1058,8 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
 
     base_url = f"https://{JIRA_CLOUD}/rest/api/3/search/jql"
 
-    # 1. Fetch all epics in project
-    epics_jql = f'project = {JIRA_PROJECT} AND issuetype = Epic ORDER BY created ASC'
+    # 1. Fetch active epics (exclude Done)
+    epics_jql = f'project = {JIRA_PROJECT} AND issuetype = Epic AND status != "Готово" ORDER BY created ASC'
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
             base_url,
