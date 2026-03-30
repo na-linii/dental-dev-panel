@@ -251,6 +251,8 @@ async def proxy_health(clinic_id: str, user=Depends(verify_github_token)):
     clinic = await get_clinic(clinic_id)
     if not clinic:
         raise HTTPException(404)
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/health"
     try:
         async with httpx.AsyncClient(timeout=5) as client:
@@ -267,6 +269,8 @@ async def proxy_config(clinic_id: str, user=Depends(verify_github_token)):
     clinic = await get_clinic(clinic_id)
     if not clinic:
         raise HTTPException(404)
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/config"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -282,6 +286,8 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
     clinic = await get_clinic(clinic_id)
     if not clinic:
         raise HTTPException(404)
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/chat"
     body = await request.json()
     body["clinic_id"] = clinic.get("clinic_id", clinic_id)
@@ -438,6 +444,8 @@ async def proxy_graph(clinic_id: str, request: Request, user=Depends(verify_gith
     clinic = await get_clinic(clinic_id)
     if not clinic:
         raise HTTPException(404)
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/graph"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
