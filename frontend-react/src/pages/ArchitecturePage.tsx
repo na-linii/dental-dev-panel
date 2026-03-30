@@ -172,18 +172,28 @@ export function ArchitecturePage() {
       controls.update()
     }
 
+    // Fixed focus distance — same for every module, both orbit and non-orbit
+    const FOCUS_DIST = 150
+    const angleToNode = Math.atan2(cam.x - nx, cam.z - nz)
+
+    // If orbit is ON, set distance for next frame
+    if (os.on) {
+      // Move camera to fixed distance from new pivot
+      fgRef.current.cameraPosition({
+        x: nx + FOCUS_DIST * Math.sin(angleToNode),
+        y: os.camY,
+        z: nz + FOCUS_DIST * Math.cos(angleToNode),
+      })
+      os.angle = angleToNode
+    }
+
     // If orbit is OFF, do a smooth camera transition with lookAt
     if (!os.on) {
-      const currentDist = Math.sqrt(
-        (cam.x - nx) ** 2 + (cam.z - nz) ** 2,
-      ) || 200
-      const targetDist = Math.max(currentDist, 80)
-      const angleToNode = Math.atan2(cam.x - nx, cam.z - nz)
       fgRef.current.cameraPosition(
         {
-          x: nx + targetDist * Math.sin(angleToNode),
+          x: nx + FOCUS_DIST * Math.sin(angleToNode),
           y: cam.y,
-          z: nz + targetDist * Math.cos(angleToNode),
+          z: nz + FOCUS_DIST * Math.cos(angleToNode),
         },
         { x: nx, y: ny, z: nz },
         800,
