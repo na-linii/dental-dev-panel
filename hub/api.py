@@ -552,6 +552,203 @@ async def get_edge_cases(user=Depends(verify_github_token)):
         return {"items": [], "error": "Failed to fetch edge cases"}
 
 
+# --- Quality Dashboard (from Langfuse experiments) ---
+
+@app.get("/api/quality/summary")
+async def quality_summary(clinic_id: str = "", user=Depends(verify_github_token)):
+    """Aggregated quality results from the latest Langfuse experiment run."""
+    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+
+    if not lf_pk or not lf_sk:
+        return {"error": "Langfuse keys not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            # Fetch dataset runs (experiments)
+            r = await client.get(
+                f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs",
+                params={"limit": 50},
+                auth=(lf_pk, lf_sk),
+            )
+            if r.status_code == 404:
+                return {"error": "Dataset not found. Run: python scripts/run_eval.py --seed-only"}
+            runs_data = r.json().get("data", [])
+
+            # Filter by clinic if specified
+            if clinic_id:
+                runs_data = [run for run in runs_data if clinic_id in (run.get("name", "") or "")]
+
+            if not runs_data:
+                return {"total": 0, "passed": 0, "failed": 0, "categories": {}, "latency_p50": 0, "latency_p95": 0}
+
+            # Get the latest run
+            latest_run = runs_data[0]
+            run_name = latest_run.get("name", "")
+
+            # Fetch run items (individual test results)
+            r2 = await client.get(
+                f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs/{run_name}",
+                auth=(lf_pk, lf_sk),
+            )
+            run_detail = r2.json()
+
+        # Parse run items and aggregate scores
+        run_items = run_detail.get("datasetRunItems", [])
+        total = len(run_items)
+        passed = 0
+        failed = 0
+        categories: dict[str, dict[str, int]] = {}
+        latencies: list[float] = []
+
+        for item in run_items:
+            # Get scores from the run item
+            scores = item.get("scores", [])
+            item_passed = True
+            for score in scores:
+                if score.get("value") == "fail" or score.get("stringValue") == "fail":
+                    item_passed = False
+                    break
+
+            if item_passed:
+                passed += 1
+            else:
+                failed += 1
+
+            # Category from dataset item metadata
+            dataset_item = item.get("datasetItem", {})
+            meta = dataset_item.get("metadata", {}) if dataset_item else {}
+            cat = meta.get("category", "other")
+            if cat not in categories:
+                categories[cat] = {"passed": 0, "failed": 0}
+            if item_passed:
+                categories[cat]["passed"] += 1
+            else:
+                categories[cat]["failed"] += 1
+
+            # Latency from trace
+            trace = item.get("trace", {})
+            if trace and trace.get("latency"):
+                latencies.append(float(trace["latency"]))
+
+        # Calculate percentiles
+        latencies.sort()
+        latency_p50 = 0.0
+        latency_p95 = 0.0
+        if latencies:
+            idx50 = int(len(latencies) * 0.5)
+            idx95 = min(int(len(latencies) * 0.95), len(latencies) - 1)
+            latency_p50 = round(latencies[idx50], 2)
+            latency_p95 = round(latencies[idx95], 2)
+
+        return {
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "categories": categories,
+            "latency_p50": latency_p50,
+            "latency_p95": latency_p95,
+            "run_name": run_name,
+            "run_at": latest_run.get("createdAt", ""),
+        }
+
+    except Exception as e:
+        logger.error("quality_summary failed: %s", e)
+        return {"error": f"Failed to fetch quality data: {e}"}
+
+
+@app.get("/api/quality/history")
+async def quality_history(clinic_id: str = "", limit: int = 10, user=Depends(verify_github_token)):
+    """History of experiment runs with pass/fail counts."""
+    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+
+    if not lf_pk or not lf_sk:
+        return {"runs": [], "error": "Langfuse keys not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs",
+                params={"limit": 50},
+                auth=(lf_pk, lf_sk),
+            )
+            if r.status_code == 404:
+                return {"runs": [], "error": "Dataset not found"}
+            runs_data = r.json().get("data", [])
+
+            # Filter by clinic if specified
+            if clinic_id:
+                runs_data = [run for run in runs_data if clinic_id in (run.get("name", "") or "")]
+
+            runs_data = runs_data[:limit]
+
+            # Fetch details for each run
+            runs = []
+            for run in runs_data:
+                run_name = run.get("name", "")
+                try:
+                    r2 = await client.get(
+                        f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs/{run_name}",
+                        auth=(lf_pk, lf_sk),
+                    )
+                    run_detail = r2.json()
+                    run_items = run_detail.get("datasetRunItems", [])
+
+                    total = len(run_items)
+                    passed = 0
+                    failed = 0
+                    latencies: list[float] = []
+
+                    for item in run_items:
+                        scores = item.get("scores", [])
+                        item_passed = True
+                        for score in scores:
+                            if score.get("value") == "fail" or score.get("stringValue") == "fail":
+                                item_passed = False
+                                break
+                        if item_passed:
+                            passed += 1
+                        else:
+                            failed += 1
+
+                        trace = item.get("trace", {})
+                        if trace and trace.get("latency"):
+                            latencies.append(float(trace["latency"]))
+
+                    latencies.sort()
+                    avg_latency = round(sum(latencies) / len(latencies), 2) if latencies else 0
+
+                    runs.append({
+                        "name": run_name,
+                        "created_at": run.get("createdAt", ""),
+                        "total": total,
+                        "passed": passed,
+                        "failed": failed,
+                        "pass_rate": round(passed / total * 100, 1) if total else 0,
+                        "avg_latency": avg_latency,
+                    })
+                except Exception as e:
+                    logger.warning("Failed to fetch run details for %s: %s", run_name, e)
+                    runs.append({
+                        "name": run_name,
+                        "created_at": run.get("createdAt", ""),
+                        "total": 0,
+                        "passed": 0,
+                        "failed": 0,
+                        "pass_rate": 0,
+                        "avg_latency": 0,
+                    })
+
+        return {"runs": runs}
+
+    except Exception as e:
+        logger.error("quality_history failed: %s", e)
+        return {"runs": [], "error": f"Failed to fetch quality history: {e}"}
+
+
 @app.get("/api/langfuse-url")
 async def langfuse_url(user=Depends(verify_github_token)):
     """Return Langfuse external URL for trace links."""

@@ -2,7 +2,7 @@ import axios from 'axios'
 import type {
   Clinic, ChatRequest, ChatResponse, GraphData,
   EdgeCaseItem, HealthResponse, TraceFlow, TraceSummary, AdminUser,
-  EpicsResponse, ClinicCreateData,
+  EpicsResponse, ClinicCreateData, QualitySummary, QualityRunHistory,
 } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -119,6 +119,18 @@ export const settingsApi = {
   },
   saveVizConfig: (config: Record<string, { shape: string; color: string; val: number }>) =>
     api.put('/settings/viz-config', config).then((r) => r.data),
+}
+
+export const qualityApi = {
+  summary: (clinicId?: string) =>
+    api.get<QualitySummary>('/quality/summary', {
+      params: clinicId ? { clinic_id: clinicId } : {},
+    }).then((r) => r.data),
+
+  history: (clinicId?: string, limit = 10) =>
+    api.get<{ runs: QualityRunHistory[] }>('/quality/history', {
+      params: { limit, ...(clinicId ? { clinic_id: clinicId } : {}) },
+    }).then((r) => r.data.runs),
 }
 
 export const roadmapApi = {

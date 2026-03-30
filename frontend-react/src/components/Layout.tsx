@@ -4,8 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 const tabs = [
   { to: '/', label: 'Clinics' },
   { to: '/architecture', label: 'Architecture' },
-  // TODO: перенести Edge Cases в Clinix
-  // { to: '/edge-cases', label: 'Edge Cases' },
+  { to: '/quality', label: 'Quality' },
   { to: '/roadmap', label: 'Project Board' },
 ]
 

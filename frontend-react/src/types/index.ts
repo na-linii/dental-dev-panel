@@ -258,3 +258,30 @@ export interface DeployStep {
   status: 'running' | 'done' | 'failed' | 'pending'
   output?: string
 }
+
+export interface QualityCategoryResult {
+  passed: number
+  failed: number
+}
+
+export interface QualitySummary {
+  total: number
+  passed: number
+  failed: number
+  categories: Record<string, QualityCategoryResult>
+  latency_p50: number
+  latency_p95: number
+  run_name?: string
+  run_at?: string
+  error?: string
+}
+
+export interface QualityRunHistory {
+  name: string
+  created_at: string
+  total: number
+  passed: number
+  failed: number
+  pass_rate: number
+  avg_latency: number
+}
