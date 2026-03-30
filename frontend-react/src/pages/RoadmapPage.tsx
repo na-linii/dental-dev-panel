@@ -236,9 +236,11 @@ export function RoadmapPage() {
 
         {/* Epic cards */}
         {!loading && !error && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
+          <div className="columns-1 lg:columns-2 2xl:columns-3 gap-4 space-y-4">
             {epics.map((epic) => (
-              <EpicCard key={epic.key} epic={epic} />
+              <div key={epic.key} className="break-inside-avoid">
+                <EpicCard epic={epic} />
+              </div>
             ))}
             {epics.length === 0 && (
               <div className="text-[0.75rem] text-[#64748b]">No epics found</div>
