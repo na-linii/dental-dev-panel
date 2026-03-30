@@ -19,6 +19,7 @@ import { AdminChatsPage } from './pages/admin/AdminChatsPage'
 import { AdminChatDetailPage } from './pages/admin/AdminChatDetailPage'
 import { AdminActionsPage } from './pages/admin/AdminActionsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
+import { AdminConfirmationsPage } from './pages/admin/AdminConfirmationsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,6 +68,7 @@ export default function App() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="chats" element={<AdminChatsPage />} />
               <Route path="chats/:sessionId" element={<AdminChatDetailPage />} />
+              <Route path="confirmations" element={<AdminConfirmationsPage />} />
               <Route path="actions" element={<AdminActionsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>

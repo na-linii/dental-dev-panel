@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, MessageCircle, ClipboardList, Settings, LogOut, Menu } from 'lucide-react'
+import { LayoutDashboard, MessageCircle, CalendarCheck, ClipboardList, Settings, LogOut, Menu } from 'lucide-react'
 import { adminMe } from '../api/adminClient'
 import type { AdminUser } from '../api/adminClient'
 
 const navItems = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/chats', label: 'Chats', icon: MessageCircle },
+  { to: '/admin/confirmations', label: 'Записи', icon: CalendarCheck },
   { to: '/admin/actions', label: 'Actions', icon: ClipboardList },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
