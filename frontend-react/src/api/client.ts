@@ -30,6 +30,9 @@ export const clinicsApi = {
   list: () =>
     api.get<{ clinics: Clinic[] }>('/clinics').then((r) => r.data.clinics),
 
+  create: (data: { id: string; name: string; server_host: string; server_port: number; clinic_id: string }) =>
+    api.post<{ ok: boolean; clinic: Clinic }>('/clinics', data).then((r) => r.data.clinic),
+
   health: (id: string) =>
     api.get<HealthResponse>(`/clinics/${id}/health`).then((r) => r.data),
 
