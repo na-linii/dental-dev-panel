@@ -7,6 +7,7 @@ const tabs = [
   // TODO: перенести Edge Cases в Clinix
   // { to: '/edge-cases', label: 'Edge Cases' },
   { to: '/roadmap', label: 'Project Board' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 export function Layout() {

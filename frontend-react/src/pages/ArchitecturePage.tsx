@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
 import { architectureApi } from '../api/client'
 import {
-  COLORS, WIREFRAME, LABELS, HUB_VERSION,
+  WIREFRAME, LABELS, HUB_VERSION,
   GRAPH_BG, CHARGE_STRENGTH, LINK_DISTANCE,
   getColor, getOpacity, getLabelOpacity, getLinkColor,
   nodeRadius, buildGeometry,
@@ -35,6 +35,7 @@ export function ArchitecturePage() {
   const [links, setLinks] = useState<RuntimeLink[]>([])
   const [selected, setSelected] = useState<RuntimeNode | null>(null)
   const selectedIdRef = useRef<string>('')
+  const [colors, setColors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,6 +43,16 @@ export function ArchitecturePage() {
   useEffect(() => {
     architectureApi.graph()
       .then((data) => {
+        // Extract color map from viz_config
+        const vizConfig = data.meta?.viz_config
+        if (vizConfig) {
+          const colorMap: Record<string, string> = {}
+          for (const [group, cfg] of Object.entries(vizConfig)) {
+            colorMap[group] = cfg.color
+          }
+          setColors(colorMap)
+        }
+
         const runtimeNodes: RuntimeNode[] = (data.nodes || []).map((n) => ({
           ...n,
           type: n.group || 'tool',
@@ -110,7 +121,7 @@ export function ArchitecturePage() {
       .nodeVal((n: object) => Math.max(3, ((n as RuntimeNode).val || 5) * 0.5))
       .nodeColor((n: object) => {
         const node = n as RuntimeNode
-        return getColor(node.type, node.planned)
+        return node.color || getColor(node.type, node.planned, colors)
       })
       .nodeOpacity(0.85)
       .linkColor((l: object) => {
@@ -124,7 +135,7 @@ export function ArchitecturePage() {
         const n = node as RuntimeNode
         const group = new THREE.Group()
         const r = nodeRadius(n.val)
-        const fill = getColor(n.type, n.planned)
+        const fill = n.color || getColor(n.type, n.planned, colors)
         const opacity = getOpacity(n.planned)
         const isActive = n.id === selectedIdRef.current
 
@@ -213,7 +224,7 @@ export function ArchitecturePage() {
     } catch (e) {
       console.error('3D graph init failed:', e)
     }
-  }, [nodes, links, selectNode])
+  }, [nodes, links, colors, selectNode])
 
   // Handle sidebar connection click
   const handleConnectionClick = useCallback((nodeId: string) => {
@@ -293,9 +304,9 @@ export function ArchitecturePage() {
             <div className="flex items-center gap-1.5 mb-2">
               <div
                 className="w-2.5 h-2.5 rounded-full"
-                style={{ background: COLORS[selected.type] || '#888' }}
+                style={{ background: selected.color || colors[selected.type] || '#888' }}
               />
-              <span className="text-[0.65rem]" style={{ color: COLORS[selected.type] || '#888' }}>
+              <span className="text-[0.65rem]" style={{ color: selected.color || colors[selected.type] || '#888' }}>
                 {LABELS[selected.type] || selected.type}
               </span>
               {selected.planned && (
@@ -369,7 +380,7 @@ export function ArchitecturePage() {
                     <div className="text-[0.65rem] text-[#64748b] mb-0.5">Bidirectional:</div>
                     {connsBidi.map((c) => {
                       const node = findNode(c)
-                      const nc = node ? (COLORS[node.type] || '#888') : '#888'
+                      const nc = node ? (node.color || colors[node.type] || '#888') : '#888'
                       return (
                         <div
                           key={c}
@@ -388,7 +399,7 @@ export function ArchitecturePage() {
                     <div className="text-[0.65rem] text-[#64748b] mt-1 mb-0.5">Outgoing:</div>
                     {connsOutOnly.map((c) => {
                       const target = findNode(c)
-                      const tc = target ? (COLORS[target.type] || '#888') : '#888'
+                      const tc = target ? (target.color || colors[target.type] || '#888') : '#888'
                       return (
                         <div
                           key={c}
@@ -407,7 +418,7 @@ export function ArchitecturePage() {
                     <div className="text-[0.65rem] text-[#64748b] mt-1 mb-0.5">Incoming:</div>
                     {connsInOnly.map((c) => {
                       const source = findNode(c)
-                      const sc = source ? (COLORS[source.type] || '#888') : '#888'
+                      const sc = source ? (source.color || colors[source.type] || '#888') : '#888'
                       return (
                         <div
                           key={c}

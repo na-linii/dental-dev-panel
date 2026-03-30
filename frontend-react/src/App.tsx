@@ -10,6 +10,7 @@ import { ClinicConfigTab } from './pages/ClinicConfigTab'
 import { ClinicAdminsTab } from './pages/ClinicAdminsTab'
 import { ArchitecturePage } from './pages/ArchitecturePage'
 import { RoadmapPage } from './pages/RoadmapPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ export default function App() {
               </Route>
               <Route path="/architecture" element={<ArchitecturePage />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/visualizer" element={<Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>
