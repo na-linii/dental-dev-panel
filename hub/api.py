@@ -552,201 +552,103 @@ async def get_edge_cases(user=Depends(verify_github_token)):
         return {"items": [], "error": "Failed to fetch edge cases"}
 
 
-# --- Quality Dashboard (from Langfuse experiments) ---
+@app.post("/api/clinics/{clinic_id}/edge-cases/run")
+async def run_edge_case(clinic_id: str, request: Request, user=Depends(verify_github_token)):
+    """Run a single edge case against a clinic's agent."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, f"Clinic {clinic_id} not found")
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid server_host")
 
-@app.get("/api/quality/summary")
-async def quality_summary(clinic_id: str = "", user=Depends(verify_github_token)):
-    """Aggregated quality results from the latest Langfuse experiment run."""
-    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
-    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
-    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+    body = await request.json()
+    message = body.get("message", "")
+    case_id = body.get("case_id", "unknown")
+    patient_phone = body.get("patient_phone")
+    patient_name = body.get("patient_name")
+    history = body.get("history", [])
 
-    if not lf_pk or not lf_sk:
-        return {"error": "Langfuse keys not configured"}
+    chat_body = {
+        "message": message,
+        "clinic_id": clinic.get("clinic_id", clinic_id),
+        "channel": "tg_bot",
+        "channel_user_id": "edge-case-tester",
+        "thread_id": f"ec-{case_id}-{int(datetime.now(timezone.utc).timestamp())}",
+    }
+    if patient_phone:
+        chat_body["phone"] = patient_phone
+    if patient_name:
+        chat_body["name"] = patient_name
 
+    url = f"http://{clinic['server_host']}:{clinic['server_port']}/chat"
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            # Fetch dataset runs (experiments)
-            r = await client.get(
-                f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs",
-                params={"limit": 50},
-                auth=(lf_pk, lf_sk),
-            )
-            if r.status_code == 404:
-                return {"error": "Dataset not found. Run: python scripts/run_eval.py --seed-only"}
-            runs_data = r.json().get("data", [])
-
-            # Filter by clinic if specified
-            if clinic_id:
-                runs_data = [run for run in runs_data if clinic_id in (run.get("name", "") or "")]
-
-            if not runs_data:
-                return {"total": 0, "passed": 0, "failed": 0, "categories": {}, "latency_p50": 0, "latency_p95": 0}
-
-            # Get the latest run
-            latest_run = runs_data[0]
-            run_name = latest_run.get("name", "")
-
-            # Fetch run items (individual test results)
-            r2 = await client.get(
-                f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs/{run_name}",
-                auth=(lf_pk, lf_sk),
-            )
-            run_detail = r2.json()
-
-        # Parse run items and aggregate scores
-        run_items = run_detail.get("datasetRunItems", [])
-        total = len(run_items)
-        passed = 0
-        failed = 0
-        categories: dict[str, dict[str, int]] = {}
-        latencies: list[float] = []
-
-        for item in run_items:
-            # Get scores from the run item
-            scores = item.get("scores", [])
-            item_passed = True
-            for score in scores:
-                if score.get("value") == "fail" or score.get("stringValue") == "fail":
-                    item_passed = False
-                    break
-
-            if item_passed:
-                passed += 1
-            else:
-                failed += 1
-
-            # Category from dataset item metadata
-            dataset_item = item.get("datasetItem", {})
-            meta = dataset_item.get("metadata", {}) if dataset_item else {}
-            cat = meta.get("category", "other")
-            if cat not in categories:
-                categories[cat] = {"passed": 0, "failed": 0}
-            if item_passed:
-                categories[cat]["passed"] += 1
-            else:
-                categories[cat]["failed"] += 1
-
-            # Latency from trace
-            trace = item.get("trace", {})
-            if trace and trace.get("latency"):
-                latencies.append(float(trace["latency"]))
-
-        # Calculate percentiles
-        latencies.sort()
-        latency_p50 = 0.0
-        latency_p95 = 0.0
-        if latencies:
-            idx50 = int(len(latencies) * 0.5)
-            idx95 = min(int(len(latencies) * 0.95), len(latencies) - 1)
-            latency_p50 = round(latencies[idx50], 2)
-            latency_p95 = round(latencies[idx95], 2)
-
-        return {
-            "total": total,
-            "passed": passed,
-            "failed": failed,
-            "categories": categories,
-            "latency_p50": latency_p50,
-            "latency_p95": latency_p95,
-            "run_name": run_name,
-            "run_at": latest_run.get("createdAt", ""),
-        }
-
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(url, json=chat_body)
+            if r.status_code >= 400:
+                return {"response": "Agent returned error", "error": True, "case_id": case_id}
+            data = r.json()
+            return {
+                "case_id": case_id,
+                "response": data.get("response", ""),
+                "trace_id": data.get("trace_id"),
+                "thread_id": data.get("thread_id", chat_body["thread_id"]),
+                "error": data.get("error", False),
+            }
     except Exception as e:
-        logger.error("quality_summary failed: %s", e)
-        return {"error": f"Failed to fetch quality data: {e}"}
+        logger.error("run_edge_case failed for %s/%s: %s", clinic_id, case_id, e)
+        return {"case_id": case_id, "response": f"Connection error: {e}", "error": True}
 
 
-@app.get("/api/quality/history")
-async def quality_history(clinic_id: str = "", limit: int = 10, user=Depends(verify_github_token)):
-    """History of experiment runs with pass/fail counts."""
-    lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
-    lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
-    lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+@app.post("/api/clinics/{clinic_id}/edge-cases/run-all")
+async def run_all_edge_cases(clinic_id: str, request: Request, user=Depends(verify_github_token)):
+    """Run all provided edge cases against a clinic's agent sequentially."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, f"Clinic {clinic_id} not found")
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid server_host")
 
-    if not lf_pk or not lf_sk:
-        return {"runs": [], "error": "Langfuse keys not configured"}
+    body = await request.json()
+    cases = body.get("cases", [])
+    if not cases:
+        return {"results": [], "error": "No cases provided"}
 
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.get(
-                f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs",
-                params={"limit": 50},
-                auth=(lf_pk, lf_sk),
-            )
-            if r.status_code == 404:
-                return {"runs": [], "error": "Dataset not found"}
-            runs_data = r.json().get("data", [])
+    results = []
+    url = f"http://{clinic['server_host']}:{clinic['server_port']}/chat"
 
-            # Filter by clinic if specified
-            if clinic_id:
-                runs_data = [run for run in runs_data if clinic_id in (run.get("name", "") or "")]
+    async with httpx.AsyncClient(timeout=60) as client:
+        for case in cases:
+            case_id = case.get("id", "unknown")
+            chat_body = {
+                "message": case.get("message", ""),
+                "clinic_id": clinic.get("clinic_id", clinic_id),
+                "channel": "tg_bot",
+                "channel_user_id": "edge-case-tester",
+                "thread_id": f"ec-{case_id}-{int(datetime.now(timezone.utc).timestamp())}",
+            }
+            if case.get("patient_phone"):
+                chat_body["phone"] = case["patient_phone"]
+            if case.get("patient_name"):
+                chat_body["name"] = case["patient_name"]
 
-            runs_data = runs_data[:limit]
-
-            # Fetch details for each run
-            runs = []
-            for run in runs_data:
-                run_name = run.get("name", "")
-                try:
-                    r2 = await client.get(
-                        f"{lf_host}/api/public/v2/datasets/dental-edge-cases/runs/{run_name}",
-                        auth=(lf_pk, lf_sk),
-                    )
-                    run_detail = r2.json()
-                    run_items = run_detail.get("datasetRunItems", [])
-
-                    total = len(run_items)
-                    passed = 0
-                    failed = 0
-                    latencies: list[float] = []
-
-                    for item in run_items:
-                        scores = item.get("scores", [])
-                        item_passed = True
-                        for score in scores:
-                            if score.get("value") == "fail" or score.get("stringValue") == "fail":
-                                item_passed = False
-                                break
-                        if item_passed:
-                            passed += 1
-                        else:
-                            failed += 1
-
-                        trace = item.get("trace", {})
-                        if trace and trace.get("latency"):
-                            latencies.append(float(trace["latency"]))
-
-                    latencies.sort()
-                    avg_latency = round(sum(latencies) / len(latencies), 2) if latencies else 0
-
-                    runs.append({
-                        "name": run_name,
-                        "created_at": run.get("createdAt", ""),
-                        "total": total,
-                        "passed": passed,
-                        "failed": failed,
-                        "pass_rate": round(passed / total * 100, 1) if total else 0,
-                        "avg_latency": avg_latency,
+            try:
+                r = await client.post(url, json=chat_body)
+                if r.status_code >= 400:
+                    results.append({"case_id": case_id, "response": "Agent returned error", "error": True})
+                else:
+                    data = r.json()
+                    results.append({
+                        "case_id": case_id,
+                        "response": data.get("response", ""),
+                        "trace_id": data.get("trace_id"),
+                        "thread_id": data.get("thread_id", chat_body["thread_id"]),
+                        "error": data.get("error", False),
                     })
-                except Exception as e:
-                    logger.warning("Failed to fetch run details for %s: %s", run_name, e)
-                    runs.append({
-                        "name": run_name,
-                        "created_at": run.get("createdAt", ""),
-                        "total": 0,
-                        "passed": 0,
-                        "failed": 0,
-                        "pass_rate": 0,
-                        "avg_latency": 0,
-                    })
+            except Exception as e:
+                logger.error("run_all_edge_cases case %s failed: %s", case_id, e)
+                results.append({"case_id": case_id, "response": f"Connection error: {e}", "error": True})
 
-        return {"runs": runs}
-
-    except Exception as e:
-        logger.error("quality_history failed: %s", e)
-        return {"runs": [], "error": f"Failed to fetch quality history: {e}"}
+    return {"results": results}
 
 
 @app.get("/api/langfuse-url")
@@ -1058,7 +960,7 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
 
     base_url = f"https://{JIRA_CLOUD}/rest/api/3/search/jql"
 
-    # 1. Fetch all epics (frontend splits into Active/Done tabs)
+    # 1. Fetch all epics in project
     epics_jql = f'project = {JIRA_PROJECT} AND issuetype = Epic ORDER BY created ASC'
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(

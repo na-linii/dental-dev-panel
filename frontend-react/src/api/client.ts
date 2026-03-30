@@ -63,9 +63,37 @@ export const clinicsApi = {
     api.delete(`/clinics/${clinicId}/admins/${adminId}`),
 }
 
+export interface EdgeCaseRunResult {
+  case_id: string
+  response: string
+  trace_id?: string
+  thread_id?: string
+  error?: boolean
+}
+
 export const edgeCasesApi = {
   list: () =>
     api.get<{ items: EdgeCaseItem[]; error?: string }>('/edge-cases').then((r) => r.data),
+
+  run: (clinicId: string, caseData: {
+    case_id: string
+    message: string
+    patient_phone?: string | null
+    patient_name?: string | null
+    history?: Array<{ role: string; content: string }>
+  }) =>
+    api.post<EdgeCaseRunResult>(`/clinics/${clinicId}/edge-cases/run`, caseData).then((r) => r.data),
+
+  runAll: (clinicId: string, cases: EdgeCaseItem[]) =>
+    api.post<{ results: EdgeCaseRunResult[] }>(`/clinics/${clinicId}/edge-cases/run-all`, {
+      cases: cases.map((c) => ({
+        id: c.id,
+        message: c.message,
+        patient_phone: c.patient_phone,
+        patient_name: c.patient_name,
+        history: c.history,
+      })),
+    }).then((r) => r.data.results),
 }
 
 export const tracesApi = {
