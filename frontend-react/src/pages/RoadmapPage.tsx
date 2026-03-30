@@ -157,6 +157,7 @@ export function RoadmapPage() {
   const [epics, setEpics] = useState<Epic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'active' | 'done'>('active')
 
   useEffect(() => {
     roadmapApi.epics()
@@ -178,8 +179,13 @@ export function RoadmapPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Overall progress across all epics
-  const totals = epics.reduce(
+  const activeEpics = epics.filter(e => e.status !== 'Готово')
+  const doneEpics = epics.filter(e => e.status === 'Готово')
+  const displayedEpics = tab === 'active' ? activeEpics : doneEpics
+
+  // Overall progress across active epics
+  const sourceEpics = tab === 'active' ? activeEpics : doneEpics
+  const totals = sourceEpics.reduce(
     (acc, e) => ({
       total: acc.total + e.progress.total,
       done: acc.done + e.progress.done,
@@ -196,7 +202,33 @@ export function RoadmapPage() {
     <div className="overflow-y-auto p-6" style={{ height: 'calc(100vh - 48px)' }}>
       <div className="max-w-[1600px] mx-auto">
         <h2 className="text-lg font-semibold mb-1">Project Board</h2>
-        <p className="text-xs text-[#64748b] mb-5">Jira epics and tasks</p>
+        <p className="text-xs text-[#64748b] mb-4">Jira epics and tasks</p>
+
+        {/* Tabs: Active / Done */}
+        {!loading && !error && (
+          <div className="flex gap-1 mb-5">
+            <button
+              onClick={() => setTab('active')}
+              className={`px-3 py-1.5 rounded text-[0.78rem] font-medium transition-colors border-0 cursor-pointer ${
+                tab === 'active'
+                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  : 'bg-transparent text-[#64748b] hover:text-[#94a3b8]'
+              }`}
+            >
+              Active ({activeEpics.length})
+            </button>
+            <button
+              onClick={() => setTab('done')}
+              className={`px-3 py-1.5 rounded text-[0.78rem] font-medium transition-colors border-0 cursor-pointer ${
+                tab === 'done'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-transparent text-[#64748b] hover:text-[#94a3b8]'
+              }`}
+            >
+              Done ({doneEpics.length})
+            </button>
+          </div>
+        )}
 
         {/* Loading state */}
         {loading && (
@@ -211,7 +243,7 @@ export function RoadmapPage() {
         )}
 
         {/* Overall progress (only when we have data) */}
-        {!loading && !error && epics.length > 0 && (
+        {!loading && !error && displayedEpics.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[0.78rem] text-[#94a3b8]">Overall progress</span>
@@ -245,13 +277,13 @@ export function RoadmapPage() {
         {/* Epic cards */}
         {!loading && !error && (
           <div className="columns-1 lg:columns-2 2xl:columns-3 gap-4 space-y-4">
-            {epics.map((epic) => (
+            {displayedEpics.map((epic) => (
               <div key={epic.key} className="break-inside-avoid">
                 <EpicCard epic={epic} />
               </div>
             ))}
-            {epics.length === 0 && (
-              <div className="text-[0.75rem] text-[#64748b]">No epics found</div>
+            {displayedEpics.length === 0 && (
+              <div className="text-[0.75rem] text-[#64748b]">{tab === 'active' ? 'No active epics' : 'No completed epics'}</div>
             )}
           </div>
         )}
