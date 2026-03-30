@@ -27,7 +27,7 @@ TIMEOUT = 30  # seconds to wait for bot response
 
 
 async def send_and_wait(client: TelegramClient, text: str, timeout: int = TIMEOUT) -> str | None:
-    """Send message to bot, wait for response."""
+    """Send message to bot, wait for response. Handles streaming (bot sends '...' then edits)."""
     entity = await client.get_entity(BOT_USERNAME)
 
     # Remember last message ID before sending
@@ -37,11 +37,24 @@ async def send_and_wait(client: TelegramClient, text: str, timeout: int = TIMEOU
     await client.send_message(entity, text)
     print(f"  -> Sent: {text}")
 
+    found_id = None
     for _ in range(timeout):
         await asyncio.sleep(1)
         msgs = await client.get_messages(entity, limit=3)
         for m in msgs:
             if m.id > last_id and not m.out:
+                # Skip streaming placeholder — wait for real content
+                if m.text and m.text.strip() not in ("...", "…", ""):
+                    return m.text
+                found_id = m.id
+        # If we found a placeholder, keep waiting for edit
+        if found_id:
+            continue
+    # If we only got placeholder after timeout, return whatever we have
+    if found_id:
+        msgs = await client.get_messages(entity, limit=3)
+        for m in msgs:
+            if m.id == found_id:
                 return m.text
     return None
 
