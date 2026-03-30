@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 WORKDIR /app
+RUN apt-get update && apt-get install -y openssh-client git && rm -rf /var/lib/apt/lists/*
 RUN pip install fastapi uvicorn httpx asyncpg bcrypt
 COPY hub/ /app/hub/
 COPY frontend-react/dist/ /app/frontend/

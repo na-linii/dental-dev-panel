@@ -146,7 +146,7 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
             steps = [
                 ("connecting", f"echo 'Connected to {ssh_host}'"),
                 ("cloning", "test -d /opt/dental-core/.git && (cd /opt/dental-core && git fetch origin main && git reset --hard FETCH_HEAD) || git clone https://github.com/na-linii/dental-core.git /opt/dental-core"),
-                ("configuring", f"cat > /opt/dental-core/.env << 'ENVEOF'\n{env_content}\nENVOF"),
+                ("configuring", f"cat > /opt/dental-core/.env << 'ENVEOF'\n{env_content}\nENVEOF"),
                 ("building", "cd /opt/dental-core && docker compose -f docker-compose.prod.yml build agent 2>&1 | tail -5"),
                 ("starting", "cd /opt/dental-core && docker compose -f docker-compose.prod.yml up -d 2>&1"),
                 ("health_check", f"sleep 10 && curl -sf http://localhost:{port}/health && echo ' OK' || echo 'FAIL'"),
@@ -158,7 +158,8 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
                 yield f"data: {json.dumps({'step': step_name, 'status': 'running'})}\n\n"
 
                 try:
-                    full_cmd = f"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 {ssh_user}@{ssh_host} '{command}'"
+                    ssh_key_opt = "-i /app/ssh-keys/deploy_key" if os.path.exists("/app/ssh-keys/deploy_key") else ""
+                    full_cmd = f"ssh {ssh_key_opt} -o StrictHostKeyChecking=no -o ConnectTimeout=10 {ssh_user}@{ssh_host} '{command}'"
 
                     proc = await asyncio.create_subprocess_shell(
                         full_cmd,
