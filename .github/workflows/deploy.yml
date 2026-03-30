@@ -1,0 +1,58 @@
+name: Deploy Dental Hub
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend-react
+          npm ci
+          npm run build
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 158.160.85.19
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/dental-hub
+            git fetch origin main
+            git reset --hard FETCH_HEAD
+
+      - name: Copy frontend build
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 158.160.85.19
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "frontend-react/dist/"
+          target: "/opt/dental-hub/"
+          overwrite: true
+
+      - name: Rebuild and restart
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 158.160.85.19
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/dental-hub
+            docker compose build hub-api
+            docker compose up -d hub-api
+            sleep 5
+            curl -sf http://localhost:8880/ > /dev/null && echo "Hub healthy" || echo "Hub unhealthy"
