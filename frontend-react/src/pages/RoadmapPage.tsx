@@ -61,9 +61,17 @@ function EpicCard({ epic }: { epic: Epic }) {
         className="w-full text-left p-4 cursor-pointer bg-transparent border-0"
       >
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[0.65rem] text-[#64748b] font-mono">{epic.key}</span>
-            <h3 className="text-white text-sm font-medium">{epic.summary}</h3>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <a
+              href={epic.url || `https://na-linii.atlassian.net/browse/${epic.key}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[0.65rem] font-mono px-1.5 py-0.5 rounded bg-[#1e293b] text-[#7dd3fc] hover:bg-[#334155] no-underline shrink-0"
+            >
+              {epic.key}
+            </a>
+            <h3 className="text-white text-sm font-medium truncate">{epic.summary}</h3>
           </div>
           <svg
             className={`w-4 h-4 text-[#64748b] transition-transform ${expanded ? 'rotate-180' : ''}`}
