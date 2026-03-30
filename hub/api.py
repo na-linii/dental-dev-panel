@@ -475,40 +475,22 @@ async def architecture_graph(authorization: str = Header(default=""), user=Depen
         return {"nodes": [], "links": [], "error": "Failed to fetch architecture graph"}
 
 
-# --- Settings (viz config) ---
+# --- Settings (viz config — stored in Hub DB for instant updates) ---
 
-VIZ_CONFIG_FILE_URL = "https://api.github.com/repos/na-linii/dental-core/contents/agent/viz_config.json"
+@app.get("/api/settings/viz-config")
+async def get_viz_config_api(user=Depends(verify_github_token)):
+    """Get viz config from Hub DB. Falls back to dental-core graph.json viz_config."""
+    from hub.db import get_viz_config
+    config = await get_viz_config()
+    return {"config": config}
+
 
 @app.put("/api/settings/viz-config")
-async def save_viz_config(request: Request, authorization: str = Header(default=""), user=Depends(verify_github_token)):
-    """Save viz config to dental-core repo via GitHub API."""
-    import base64
-    import json
-
-    gh_token = authorization.replace("Bearer ", "").strip()
+async def save_viz_config_api(request: Request, user=Depends(verify_github_token)):
+    """Save viz config to Hub DB (instant, no GitHub commit)."""
+    from hub.db import save_viz_config
     new_config = await request.json()
-
-    # 1. Get current file SHA
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.get(VIZ_CONFIG_FILE_URL, headers={"Authorization": f"Bearer {gh_token}"}, params={"ref": "main"})
-        if r.status_code != 200:
-            raise HTTPException(502, "Failed to read current config from GitHub")
-        sha = r.json()["sha"]
-
-        # 2. Update file via GitHub API
-        content = base64.b64encode(json.dumps(new_config, indent=2, ensure_ascii=False).encode() + b"\n").decode()
-        update_resp = await client.put(VIZ_CONFIG_FILE_URL, headers={
-            "Authorization": f"Bearer {gh_token}",
-            "Accept": "application/vnd.github+json",
-        }, json={
-            "message": "chore: update viz_config.json from Hub Settings",
-            "content": content,
-            "sha": sha,
-            "branch": "main",
-        })
-        if update_resp.status_code not in (200, 201):
-            raise HTTPException(502, f"GitHub commit failed: {update_resp.status_code}")
-
+    await save_viz_config(new_config)
     return {"ok": True}
 
 

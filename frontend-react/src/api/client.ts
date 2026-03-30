@@ -108,8 +108,15 @@ export interface JiraTask {
 }
 
 export const settingsApi = {
-  getVizConfig: () =>
-    architectureApi.graph().then((data) => data.meta?.viz_config || {}),
+  getVizConfig: async () => {
+    // Hub DB first (instant), fallback to graph.json viz_config
+    try {
+      const r = await api.get<{ config: Record<string, { shape: string; color: string; val: number }> }>('/settings/viz-config')
+      if (r.data.config && Object.keys(r.data.config).length > 0) return r.data.config
+    } catch { /* fallback */ }
+    const data = await architectureApi.graph()
+    return data.meta?.viz_config || {}
+  },
   saveVizConfig: (config: Record<string, { shape: string; color: string; val: number }>) =>
     api.put('/settings/viz-config', config).then((r) => r.data),
 }

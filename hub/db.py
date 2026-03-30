@@ -42,6 +42,13 @@ async def init_db():
         await conn.execute("ALTER TABLE hub.clinics ADD COLUMN IF NOT EXISTS deploy_log TEXT DEFAULT ''")
 
         await conn.execute("""
+            CREATE TABLE IF NOT EXISTS hub.viz_config (
+                id TEXT PRIMARY KEY DEFAULT 'default',
+                config JSONB NOT NULL DEFAULT '{}'::jsonb,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS hub.admin_users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
@@ -83,6 +90,26 @@ async def create_admin_user(username: str, password: str, full_name: str = '', r
         await conn.execute(
             "INSERT INTO hub.admin_users (username, password_hash, full_name, role, clinic_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (username) DO NOTHING",
             username, _hash_password(password), full_name, role, clinic_id)
+
+
+async def get_viz_config() -> dict:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT config FROM hub.viz_config WHERE id = 'default'")
+        if row:
+            import json
+            return json.loads(row["config"]) if isinstance(row["config"], str) else row["config"]
+        return {}
+
+
+async def save_viz_config(config: dict):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        import json
+        await conn.execute("""
+            INSERT INTO hub.viz_config (id, config, updated_at) VALUES ('default', $1::jsonb, NOW())
+            ON CONFLICT (id) DO UPDATE SET config = $1::jsonb, updated_at = NOW()
+        """, json.dumps(config))
 
 
 async def get_clinics():
