@@ -141,7 +141,13 @@ async def create_clinic_admin(username: str, password: str, full_name: str, role
             return None
 
 
-async def delete_admin_user(admin_id: int):
+async def delete_admin_user(admin_id: int, clinic_id: str = None):
+    """Delete admin user. If clinic_id provided, only delete if admin belongs to that clinic."""
     pool = await get_pool()
     async with pool.acquire() as conn:
+        if clinic_id:
+            result = await conn.execute(
+                "DELETE FROM hub.admin_users WHERE id = $1 AND clinic_id = $2",
+                admin_id, clinic_id)
+            return result  # "DELETE 1" or "DELETE 0"
         await conn.execute("DELETE FROM hub.admin_users WHERE id = $1", admin_id)
