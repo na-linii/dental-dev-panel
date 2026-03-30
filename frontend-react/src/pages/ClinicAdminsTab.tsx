@@ -67,7 +67,7 @@ export function ClinicAdminsTab() {
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-white">Administrators</h3>
+          <h2 className="text-lg font-semibold mb-1">Administrators</h2>
           <p className="text-xs text-[#64748b]">
             Manage admin panel access for {clinicId}
           </p>

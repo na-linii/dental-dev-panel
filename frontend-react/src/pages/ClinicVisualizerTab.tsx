@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { clinicsApi, tracesApi } from '../api/client'
+import { clinicsApi, tracesApi, settingsApi } from '../api/client'
 import { ForceGraph3D } from '../components/ForceGraph3D'
 import type { ForceGraph3DHandle } from '../components/ForceGraph3D'
 import { ChatPlayground } from '../components/ChatPlayground'
@@ -32,14 +32,34 @@ export function ClinicVisualizerTab() {
     if (!clinicId) return
     setGraphData(null)
     setGraphError(null)
-    clinicsApi
-      .graph(clinicId)
-      .then((data) => {
-        setGraphNodes(data.nodes || [])
-        setGraphData(data)
-        if (data.meta?.viz_config) setVizConfig(data.meta.viz_config)
+
+    // Load DB vizConfig first, then merge with graph data (DB takes priority)
+    let dbVizConfig: Record<string, VizConfigEntry> = {}
+
+    settingsApi.getVizConfig()
+      .then((dbConfig) => {
+        if (Object.keys(dbConfig).length > 0) {
+          dbVizConfig = dbConfig
+        }
       })
-      .catch(() => setGraphError('Failed to load graph'))
+      .catch(() => {})
+      .finally(() => {
+        clinicsApi
+          .graph(clinicId)
+          .then((data) => {
+            setGraphNodes(data.nodes || [])
+            // Merge: DB config takes priority over graph meta viz_config
+            const graphVc = data.meta?.viz_config || {}
+            const merged = { ...graphVc, ...dbVizConfig }
+            if (Object.keys(merged).length > 0) {
+              setVizConfig(merged)
+              // Also apply merged config to graph data for ForceGraph3D
+              data = { ...data, meta: { ...data.meta, viz_config: merged } }
+            }
+            setGraphData(data)
+          })
+          .catch(() => setGraphError('Failed to load graph'))
+      })
   }, [clinicId])
 
   const { data: traces, isError: tracesError } = useQuery({
