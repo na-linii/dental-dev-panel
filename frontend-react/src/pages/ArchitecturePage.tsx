@@ -52,6 +52,7 @@ interface OrbitState {
   on: boolean
   angle: number
   pivot: { x: number; y: number; z: number }
+  camY: number
 }
 
 export function ArchitecturePage() {
@@ -67,7 +68,7 @@ export function ArchitecturePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [orbiting, setOrbiting] = useState(true)
-  const orbitState = useRef<OrbitState>({ on: true, angle: 0, pivot: { x: 0, y: 0, z: 0 } })
+  const orbitState = useRef<OrbitState>({ on: true, angle: 0, pivot: { x: 0, y: 0, z: 0 }, camY: 0 })
   const animFrameRef = useRef<number>(0)
 
   // Load vizConfig from DB first, then graph data (DB colors take priority)
@@ -159,29 +160,34 @@ export function ArchitecturePage() {
     // Update orbit pivot to this node
     os.pivot = { x: nx, y: ny, z: nz }
 
-    // Smoothly move camera to look at this node from a nice distance
+    // Sync angle from current camera position relative to new pivot
+    // This ensures smooth transition — camera continues from where it is
     const cam = fgRef.current.cameraPosition()
-    const currentDist = Math.sqrt(
-      (cam.x - nx) ** 2 + (cam.z - nz) ** 2,
-    ) || 200
-    const targetDist = Math.max(currentDist, 80)
-    const angleToNode = Math.atan2(cam.x - nx, cam.z - nz)
+    os.angle = Math.atan2(cam.x - nx, cam.z - nz)
+    // Keep camY constant — don't update it during orbit
 
-    // Sync orbit angle so it continues smoothly after camera transition
-    os.angle = angleToNode
+    // If orbit is OFF, do a smooth camera transition with lookAt
+    if (!os.on) {
+      const currentDist = Math.sqrt(
+        (cam.x - nx) ** 2 + (cam.z - nz) ** 2,
+      ) || 200
+      const targetDist = Math.max(currentDist, 80)
+      const angleToNode = Math.atan2(cam.x - nx, cam.z - nz)
+      fgRef.current.cameraPosition(
+        {
+          x: nx + targetDist * Math.sin(angleToNode),
+          y: cam.y,
+          z: nz + targetDist * Math.cos(angleToNode),
+        },
+        { x: nx, y: ny, z: nz },
+        800,
+      )
+    }
+    // If orbit is ON, orbitFrame handles camera positioning — no cameraPosition call needed
 
-    fgRef.current.cameraPosition(
-      {
-        x: nx + targetDist * Math.sin(angleToNode),
-        y: cam.y,
-        z: nz + targetDist * Math.cos(angleToNode),
-      },
-      { x: nx, y: ny, z: nz }, // lookAt
-      800, // transition ms
-    )
-
-    // If orbit was on, keep it on (pivot just changed). Don't restart if it was off.
+    // If restartOrbit requested and orbit was off, start it
     if (restartOrbit && !os.on) {
+      os.camY = cam.y
       os.on = true
       setOrbiting(true)
     }
@@ -302,6 +308,13 @@ export function ArchitecturePage() {
     os.on = true
     os.angle = 0
     os.pivot = { x: 0, y: 0, z: 0 }
+    // Set initial camY after a short delay so the camera has settled
+    setTimeout(() => {
+      if (fgRef.current) {
+        const cam = fgRef.current.cameraPosition()
+        os.camY = cam.y
+      }
+    }, 500)
     const ORBIT_SPEED = 0.0015
 
     function orbitFrame() {
@@ -317,7 +330,7 @@ export function ArchitecturePage() {
         const dist = Math.sqrt(dx * dx + dz * dz) || 200
         fgRef.current.cameraPosition({
           x: os.pivot.x + dist * Math.sin(os.angle),
-          y: cam.y,
+          y: os.camY,
           z: os.pivot.z + dist * Math.cos(os.angle),
         })
       }
@@ -466,9 +479,12 @@ export function ArchitecturePage() {
                 } else {
                   os.pivot = { x: 0, y: 0, z: 0 }
                 }
-                // Sync angle from current camera position
+                // Sync angle and Y from current camera position
                 const cam = fgRef.current?.cameraPosition()
-                if (cam) os.angle = Math.atan2(cam.x - os.pivot.x, cam.z - os.pivot.z)
+                if (cam) {
+                  os.angle = Math.atan2(cam.x - os.pivot.x, cam.z - os.pivot.z)
+                  os.camY = cam.y
+                }
                 os.on = true
                 setOrbiting(true)
               }
