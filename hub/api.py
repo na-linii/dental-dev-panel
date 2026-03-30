@@ -1,7 +1,9 @@
 """Dental Hub API — clinic management and proxying."""
 import os
 import logging
+import ipaddress
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import secrets
 import httpx
@@ -14,6 +16,26 @@ from hub.auth import verify_github_token
 from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic
 
 logger = logging.getLogger(__name__)
+
+ADMIN_TOKEN_TTL_HOURS = 24
+
+_BLOCKED_HOSTS = frozenset([
+    "169.254.169.254", "metadata.google.internal",
+    "localhost", "127.0.0.1", "0.0.0.0",
+])
+
+
+def _validate_server_host(host: str) -> bool:
+    """Reject private IPs, localhost, and cloud metadata endpoints."""
+    if host in _BLOCKED_HOSTS:
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            return False
+    except ValueError:
+        pass  # hostname, not IP — allow
+    return True
 
 
 @asynccontextmanager
@@ -55,6 +77,9 @@ async def list_clinics(user=Depends(verify_github_token)):
 @app.post("/api/clinics")
 async def create_clinic(request: Request, user=Depends(verify_github_token)):
     data = await request.json()
+    server_host = data.get("server_host", "")
+    if not server_host or not _validate_server_host(server_host):
+        raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     clinic = await add_clinic(data)
     return {"ok": True, "clinic": clinic}
 
@@ -86,7 +111,8 @@ async def proxy_health(clinic_id: str, user=Depends(verify_github_token)):
             r = await client.get(url)
             return r.json()
     except Exception as e:
-        return {"status": "unreachable", "error": str(e)}
+        logger.error("proxy_health failed for %s: %s", clinic_id, e)
+        return {"status": "unreachable", "error": "Failed to connect to clinic agent"}
 
 
 @app.get("/api/clinics/{clinic_id}/config")
@@ -101,7 +127,8 @@ async def proxy_config(clinic_id: str, user=Depends(verify_github_token)):
             r = await client.get(url)
             return r.json()
     except Exception as e:
-        return {"config": {}, "error": str(e)}
+        logger.error("proxy_config failed for %s: %s", clinic_id, e)
+        return {"config": {}, "error": "Failed to connect to clinic agent"}
 
 
 @app.post("/api/clinics/{clinic_id}/chat")
@@ -119,7 +146,8 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
                 return {"response": "Сервис временно недоступен. Попробуйте позже.", "error": True}
             return r.json()
     except Exception as e:
-        raise HTTPException(502, f"Clinic unreachable: {e}")
+        logger.error("proxy_chat failed for %s: %s", clinic_id, e)
+        raise HTTPException(502, "Failed to connect to clinic agent")
 
 
 # --- Traces (Langfuse-powered) ---
@@ -163,7 +191,8 @@ async def get_clinic_traces(clinic_id: str, limit: int = 30, since: str = "", us
             })
         return {"traces": traces}
     except Exception as e:
-        return {"traces": [], "error": str(e)}
+        logger.error("get_clinic_traces failed for %s: %s", clinic_id, e)
+        return {"traces": [], "error": "Failed to fetch traces"}
 
 
 @app.get("/api/clinics/{clinic_id}/traces/{trace_id}")
@@ -205,7 +234,8 @@ async def get_clinic_trace_detail(clinic_id: str, trace_id: str, user=Depends(ve
             })
         return {"trace_id": trace_id, "flow": flow}
     except Exception as e:
-        return {"trace_id": trace_id, "flow": [], "error": str(e)}
+        logger.error("get_clinic_trace_detail failed for %s/%s: %s", clinic_id, trace_id, e)
+        return {"trace_id": trace_id, "flow": [], "error": "Failed to fetch trace details"}
 
 
 @app.get("/api/trace/{trace_id}")
@@ -252,7 +282,8 @@ async def get_trace(trace_id: str, user=Depends(verify_github_token)):
 
         return {"trace_id": trace_id, "flow": flow}
     except Exception as e:
-        return {"trace_id": trace_id, "flow": [], "error": str(e)}
+        logger.error("get_trace failed for %s: %s", trace_id, e)
+        return {"trace_id": trace_id, "flow": [], "error": "Failed to fetch trace details"}
 
 
 @app.get("/api/clinics/{clinic_id}/graph")
@@ -267,7 +298,8 @@ async def proxy_graph(clinic_id: str, request: Request, user=Depends(verify_gith
             r = await client.get(url, params=dict(request.query_params))
             return r.json()
     except Exception as e:
-        return {"nodes": [], "links": [], "error": str(e)}
+        logger.error("proxy_graph failed for %s: %s", clinic_id, e)
+        return {"nodes": [], "links": [], "error": "Failed to connect to clinic agent"}
 
 
 # --- Architecture (source of truth = GitHub repo) ---
@@ -293,7 +325,8 @@ async def architecture_graph(authorization: str = Header(default=""), user=Depen
                 return r.json()
             return {"nodes": [], "links": [], "error": f"GitHub API: {r.status_code}"}
     except Exception as e:
-        return {"nodes": [], "links": [], "error": str(e)}
+        logger.error("architecture_graph failed: %s", e)
+        return {"nodes": [], "links": [], "error": "Failed to fetch architecture graph"}
 
 
 # --- Settings (viz config) ---
@@ -379,7 +412,8 @@ async def get_edge_cases(user=Depends(verify_github_token)):
 
         return {"items": items, "dataset": dataset.get("name", "dental-edge-cases")}
     except Exception as e:
-        return {"items": [], "error": str(e)}
+        logger.error("get_edge_cases failed: %s", e)
+        return {"items": [], "error": "Failed to fetch edge cases"}
 
 
 @app.get("/api/langfuse-url")
@@ -421,8 +455,10 @@ async def admin_login(request: Request):
         "full_name": user["full_name"],
         "role": user["role"],
         "clinic_id": user["clinic_id"],
+        "created_at": datetime.now(timezone.utc),
     }
-    return {"token": token, "user": app._admin_tokens[token]}
+    user_data = {k: v for k, v in app._admin_tokens[token].items() if k != "created_at"}
+    return {"token": token, "user": user_data}
 
 
 @app.get("/admin/api/me")
@@ -430,7 +466,14 @@ async def admin_me(authorization: str = Header(default="")):
     token = authorization.replace("Bearer ", "").strip()
     if not hasattr(app, '_admin_tokens') or token not in app._admin_tokens:
         raise HTTPException(401, "Not authenticated")
-    return app._admin_tokens[token]
+    token_data = app._admin_tokens[token]
+    created_at = token_data.get("created_at")
+    if created_at:
+        age_hours = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+        if age_hours > ADMIN_TOKEN_TTL_HOURS:
+            del app._admin_tokens[token]
+            raise HTTPException(401, "Token expired")
+    return {k: v for k, v in token_data.items() if k != "created_at"}
 
 
 # --- Clinic Admin Users API (used by Hub frontend) ---
@@ -465,7 +508,9 @@ async def add_clinic_admin(clinic_id: str, request: Request, user=Depends(verify
 @app.delete("/api/clinics/{clinic_id}/admins/{admin_id}")
 async def remove_clinic_admin(clinic_id: str, admin_id: int, user=Depends(verify_github_token)):
     from hub.db import delete_admin_user
-    await delete_admin_user(admin_id)
+    result = await delete_admin_user(admin_id, clinic_id=clinic_id)
+    if result and result == "DELETE 0":
+        raise HTTPException(404, "Admin not found in this clinic")
     return {"ok": True}
 
 
