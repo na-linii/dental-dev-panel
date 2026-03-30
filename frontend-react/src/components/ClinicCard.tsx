@@ -7,6 +7,13 @@ interface Props {
   onClick: () => void
 }
 
+const DEPLOY_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  not_deployed: { bg: 'bg-[#1e1b4b]', text: 'text-[#a5b4fc]', label: 'NOT DEPLOYED' },
+  deploying: { bg: 'bg-[#422006]', text: 'text-[#fbbf24]', label: 'DEPLOYING' },
+  deployed: { bg: 'bg-[#052e16]', text: 'text-[#4ade80]', label: 'DEPLOYED' },
+  failed: { bg: 'bg-[#450a0a]', text: 'text-[#f87171]', label: 'FAILED' },
+}
+
 export function ClinicCard({ clinic, onClick }: Props) {
   const { data: health } = useQuery({
     queryKey: ['health', clinic.id],
@@ -16,6 +23,8 @@ export function ClinicCard({ clinic, onClick }: Props) {
   })
 
   const isOnline = health?.status === 'ok'
+  const deployStatus = (clinic.config?.deploy_status as string) || 'not_deployed'
+  const badge = DEPLOY_BADGE[deployStatus] || DEPLOY_BADGE.not_deployed
 
   return (
     <div
@@ -40,7 +49,7 @@ export function ClinicCard({ clinic, onClick }: Props) {
             <td>{clinic.server_host}:{clinic.server_port}</td>
           </tr>
           <tr>
-            <td className="text-[#64748b] py-0.5 pr-2">Status</td>
+            <td className="text-[#64748b] py-0.5 pr-2">Health</td>
             <td>
               <span
                 className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
@@ -50,6 +59,16 @@ export function ClinicCard({ clinic, onClick }: Props) {
                 }`}
               >
                 {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td className="text-[#64748b] py-0.5 pr-2">Deploy</td>
+            <td>
+              <span
+                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.bg} ${badge.text}`}
+              >
+                {badge.label}
               </span>
             </td>
           </tr>

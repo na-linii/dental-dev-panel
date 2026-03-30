@@ -1,6 +1,8 @@
 """Dental Hub API — clinic management and proxying."""
 import os
+import json
 import logging
+import asyncio
 import ipaddress
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -10,10 +12,10 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 
 from hub.auth import verify_github_token
-from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic
+from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +98,112 @@ async def get_clinic_detail(clinic_id: str, user=Depends(verify_github_token)):
 async def delete_clinic(clinic_id: str, user=Depends(verify_github_token)):
     await remove_clinic(clinic_id)
     return {"ok": True}
+
+
+# --- Deploy ---
+
+@app.post("/api/clinics/{clinic_id}/deploy")
+async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
+    """Deploy clinic to target server via SSH. Streams progress as SSE."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, "Clinic not found")
+
+    async def deploy_stream():
+        try:
+            ssh_host = clinic["server_host"]
+            ssh_user = clinic.get("ssh_user", "")
+            port = clinic.get("server_port", 8080)
+            clinic_config = clinic.get("config", {})
+            hub_url = clinic.get("hub_url", "")
+
+            # Build the .env content for the clinic
+            env_lines = [
+                f"CLINIC_ID={clinic['clinic_id']}",
+                f"DATABASE_URL=postgresql://agent:agent@agent-postgres:5432/agent",
+            ]
+            # Add config values as env vars
+            if clinic_config.get("openai_api_key"):
+                env_lines.append(f"OPENAI_API_KEY={clinic_config['openai_api_key']}")
+            if clinic_config.get("openai_api_base"):
+                env_lines.append(f"OPENAI_API_BASE={clinic_config['openai_api_base']}")
+            if clinic_config.get("openai_proxy_secret"):
+                env_lines.append(f"OPENAI_PROXY_SECRET={clinic_config['openai_proxy_secret']}")
+            if clinic_config.get("telegram_bot_token"):
+                env_lines.append(f"TELEGRAM_BOT_TOKEN={clinic_config['telegram_bot_token']}")
+            if clinic_config.get("google_sheets_id"):
+                env_lines.append(f"ZUBATKA_SHEET_ID={clinic_config['google_sheets_id']}")
+            if clinic_config.get("google_sa_key_path"):
+                env_lines.append(f"GOOGLE_SA_KEY_PATH={clinic_config['google_sa_key_path']}")
+            if hub_url:
+                env_lines.append(f"LANGFUSE_HOST={hub_url}/langfuse")
+                env_lines.append(f"LANGFUSE_PUBLIC_KEY={os.environ.get('LANGFUSE_PUBLIC_KEY', '')}")
+                env_lines.append(f"LANGFUSE_SECRET_KEY={os.environ.get('LANGFUSE_SECRET_KEY', '')}")
+
+            env_content = "\n".join(env_lines)
+
+            # SSH commands to execute sequentially
+            steps = [
+                ("connecting", f"echo 'Connected to {ssh_host}'"),
+                ("cloning", "test -d /opt/dental-core/.git && (cd /opt/dental-core && git fetch origin main && git reset --hard FETCH_HEAD) || git clone https://github.com/na-linii/dental-core.git /opt/dental-core"),
+                ("configuring", f"cat > /opt/dental-core/.env << 'ENVEOF'\n{env_content}\nENVOF"),
+                ("building", "cd /opt/dental-core && docker compose -f docker-compose.prod.yml build agent 2>&1 | tail -5"),
+                ("starting", "cd /opt/dental-core && docker compose -f docker-compose.prod.yml up -d 2>&1"),
+                ("health_check", f"sleep 10 && curl -sf http://localhost:{port}/health && echo ' OK' || echo 'FAIL'"),
+            ]
+
+            deploy_log = []
+
+            for step_name, command in steps:
+                yield f"data: {json.dumps({'step': step_name, 'status': 'running'})}\n\n"
+
+                try:
+                    full_cmd = f"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 {ssh_user}@{ssh_host} '{command}'"
+
+                    proc = await asyncio.create_subprocess_shell(
+                        full_cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.STDOUT,
+                    )
+                    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=300)
+                    output = stdout.decode() if stdout else ""
+
+                    success = proc.returncode == 0
+                    deploy_log.append(f"[{step_name}] {'OK' if success else 'FAIL'}: {output[:500]}")
+
+                    yield f"data: {json.dumps({'step': step_name, 'status': 'done' if success else 'failed', 'output': output[:200]})}\n\n"
+
+                    if not success:
+                        yield f"data: {json.dumps({'step': 'error', 'status': 'failed', 'output': f'Step {step_name} failed'})}\n\n"
+                        await update_clinic_deploy(clinic_id, "failed", "\n".join(deploy_log))
+                        return
+
+                except asyncio.TimeoutError:
+                    deploy_log.append(f"[{step_name}] TIMEOUT")
+                    yield f"data: {json.dumps({'step': step_name, 'status': 'failed', 'output': 'Timeout'})}\n\n"
+                    await update_clinic_deploy(clinic_id, "failed", "\n".join(deploy_log))
+                    return
+
+            await update_clinic_deploy(clinic_id, "deployed", "\n".join(deploy_log))
+            yield f"data: {json.dumps({'step': 'done', 'status': 'deployed'})}\n\n"
+
+        except Exception as e:
+            logger.error("Deploy error for %s: %s", clinic_id, e)
+            yield f"data: {json.dumps({'step': 'error', 'status': 'failed', 'output': 'Internal error'})}\n\n"
+
+    return StreamingResponse(deploy_stream(), media_type="text/event-stream")
+
+
+@app.get("/api/clinics/{clinic_id}/deploy-status")
+async def get_deploy_status(clinic_id: str, user=Depends(verify_github_token)):
+    """Get current deploy status and log for a clinic."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, "Clinic not found")
+    return {
+        "deploy_status": clinic.get("deploy_status", "not_deployed"),
+        "deploy_log": clinic.get("deploy_log", ""),
+    }
 
 
 # --- Proxy ---
