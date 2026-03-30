@@ -126,12 +126,18 @@ export function ArchitecturePage() {
 
   const focusNode = useCallback((node: RuntimeNode) => {
     if (!fgRef.current) return
+    const nx = node.x || 0, ny = node.y || 0, nz = node.z || 0
+
+    // Update auto-rotation pivot to orbit around this node
+    const setPivot = (fgRef.current as { _setPivot?: (p: { x: number; y: number; z: number }) => void })._setPivot
+    if (setPivot) setPivot({ x: nx, y: ny, z: nz })
+
     const distance = 120
-    const hyp = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1
+    const hyp = Math.hypot(nx, ny, nz) || 1
     const distRatio = 1 + distance / hyp
     fgRef.current.cameraPosition(
-      { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
-      { x: node.x || 0, y: node.y || 0, z: node.z || 0 },
+      { x: nx * distRatio, y: ny * distRatio, z: nz * distRatio },
+      { x: nx, y: ny, z: nz },
       800,
     )
   }, [])
@@ -235,26 +241,90 @@ export function ArchitecturePage() {
 
     fgRef.current = fg
 
-    // Auto-rotation
+    // Auto-rotation around a pivot point (default: origin, changes to selected node)
     let autoRotate = true
     let angle = 0
-    let dist = 300
+    let orbitDist = 300
+    let pivot = { x: 0, y: 0, z: 0 }
+
+    // Expose pivot setter for selectModule
+    ;(fg as { _setPivot?: (p: { x: number; y: number; z: number }) => void })._setPivot = (p) => {
+      pivot = p
+      // Recalculate orbit distance from pivot
+      const cam = fgRef.current?.cameraPosition()
+      if (cam) {
+        const dx = cam.x - pivot.x, dz = cam.z - pivot.z
+        orbitDist = Math.sqrt(dx * dx + dz * dz) || 120
+      }
+    }
 
     function animate() {
       if (!autoRotate || !fgRef.current) return
       angle += 0.0015
       const cam = fgRef.current.cameraPosition()
-      dist = Math.sqrt(cam.x * cam.x + cam.z * cam.z) || dist
+      const dx = cam.x - pivot.x, dz = cam.z - pivot.z
+      orbitDist = Math.sqrt(dx * dx + dz * dz) || orbitDist
       fgRef.current.cameraPosition({
-        x: dist * Math.sin(angle),
+        x: pivot.x + orbitDist * Math.sin(angle),
         y: cam.y,
-        z: dist * Math.cos(angle),
+        z: pivot.z + orbitDist * Math.cos(angle),
       })
       requestAnimationFrame(animate)
     }
     requestAnimationFrame(animate)
 
-    el.addEventListener('mousedown', () => { autoRotate = false })
+    // Stop auto-rotation on manual interaction, but track spin momentum
+    let lastMouseX = 0
+    let mouseVelocity = 0
+    let isDragging = false
+
+    el.addEventListener('mousedown', (e) => {
+      autoRotate = false
+      isDragging = true
+      lastMouseX = e.clientX
+      mouseVelocity = 0
+    })
+
+    el.addEventListener('mousemove', (e) => {
+      if (!isDragging) return
+      mouseVelocity = (e.clientX - lastMouseX) * 0.00003
+      lastMouseX = e.clientX
+    })
+
+    const handleMouseUp = () => {
+      if (!isDragging) return
+      isDragging = false
+      // If spin was fast enough, continue as auto-rotation with that velocity
+      if (Math.abs(mouseVelocity) > 0.0003) {
+        autoRotate = true
+        // Override angle speed in animate loop
+        const spinSpeed = mouseVelocity
+        let decayFrame = 0
+        function spinDecay() {
+          if (!autoRotate || !fgRef.current) return
+          const decay = Math.pow(0.995, decayFrame++)
+          const speed = spinSpeed * decay
+          if (Math.abs(speed) < 0.0002) {
+            // Decayed enough, keep gentle auto-rotate
+            return
+          }
+          angle += speed
+          const cam = fgRef.current.cameraPosition()
+          const dx = cam.x - pivot.x, dz = cam.z - pivot.z
+          orbitDist = Math.sqrt(dx * dx + dz * dz) || orbitDist
+          fgRef.current.cameraPosition({
+            x: pivot.x + orbitDist * Math.sin(angle),
+            y: cam.y,
+            z: pivot.z + orbitDist * Math.cos(angle),
+          })
+          requestAnimationFrame(spinDecay)
+        }
+        requestAnimationFrame(spinDecay)
+      }
+    }
+
+    el.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('mouseup', handleMouseUp) // catch release outside element
     el.addEventListener('contextmenu', () => { autoRotate = false })
 
     // Resize — observe container div, not just window
