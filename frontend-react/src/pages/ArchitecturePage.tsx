@@ -56,6 +56,7 @@ export function ArchitecturePage() {
   const [colors, setColors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [orbiting, setOrbiting] = useState(true)
 
   // Load graph data
   useEffect(() => {
@@ -128,18 +129,24 @@ export function ArchitecturePage() {
     if (!fgRef.current) return
     const nx = node.x || 0, ny = node.y || 0, nz = node.z || 0
 
-    // Update auto-rotation pivot to orbit around this node
-    const setPivot = (fgRef.current as { _setPivot?: (p: { x: number; y: number; z: number }) => void })._setPivot
-    if (setPivot) setPivot({ x: nx, y: ny, z: nz })
+    // Set this node as orbit pivot
+    const ctrl = (fgRef.current as Record<string, unknown>)._orbitCtrl as { setPivot: (p: { x: number; y: number; z: number }) => void; start: () => void; isActive: () => boolean } | undefined
+    if (ctrl) {
+      ctrl.setPivot({ x: nx, y: ny, z: nz })
+      // If orbiting, it will automatically orbit around new pivot
+      // If not orbiting, just move camera to the node
+    }
 
-    const distance = 120
-    const hyp = Math.hypot(nx, ny, nz) || 1
-    const distRatio = 1 + distance / hyp
-    fgRef.current.cameraPosition(
-      { x: nx * distRatio, y: ny * distRatio, z: nz * distRatio },
-      { x: nx, y: ny, z: nz },
-      800,
-    )
+    if (!ctrl?.isActive()) {
+      const distance = 120
+      const hyp = Math.hypot(nx, ny, nz) || 1
+      const distRatio = 1 + distance / hyp
+      fgRef.current.cameraPosition(
+        { x: nx * distRatio, y: ny * distRatio, z: nz * distRatio },
+        { x: nx, y: ny, z: nz },
+        800,
+      )
+    }
   }, [])
 
   const selectModule = useCallback((nodeId: string) => {
@@ -241,91 +248,61 @@ export function ArchitecturePage() {
 
     fgRef.current = fg
 
-    // Auto-rotation around a pivot point (default: origin, changes to selected node)
-    let autoRotate = true
+    // Orbit animation — rotates camera around a pivot (origin or selected node)
+    let orbitActive = true
     let angle = 0
     let orbitDist = 300
     let pivot = { x: 0, y: 0, z: 0 }
+    let camY = 80
 
-    // Expose pivot setter for selectModule
-    ;(fg as { _setPivot?: (p: { x: number; y: number; z: number }) => void })._setPivot = (p) => {
-      pivot = p
-      // Recalculate orbit distance from pivot
-      const cam = fgRef.current?.cameraPosition()
-      if (cam) {
-        const dx = cam.x - pivot.x, dz = cam.z - pivot.z
-        orbitDist = Math.sqrt(dx * dx + dz * dz) || 120
-      }
+    // Expose controls for external use (selectModule, toggle button)
+    const orbitCtrl = {
+      setPivot(p: { x: number; y: number; z: number }) {
+        pivot = p
+        const cam = fgRef.current?.cameraPosition()
+        if (cam) {
+          const dx = cam.x - pivot.x, dz = cam.z - pivot.z
+          orbitDist = Math.sqrt(dx * dx + dz * dz) || 120
+          camY = cam.y
+        }
+      },
+      start() {
+        if (orbitActive) return
+        orbitActive = true
+        // Sync angle from current camera position
+        const cam = fgRef.current?.cameraPosition()
+        if (cam) {
+          angle = Math.atan2(cam.x - pivot.x, cam.z - pivot.z)
+          const dx = cam.x - pivot.x, dz = cam.z - pivot.z
+          orbitDist = Math.sqrt(dx * dx + dz * dz) || 120
+          camY = cam.y
+        }
+        requestAnimationFrame(orbitLoop)
+      },
+      stop() { orbitActive = false },
+      isActive() { return orbitActive },
     }
+    ;(fg as Record<string, unknown>)._orbitCtrl = orbitCtrl
 
-    function animate() {
-      if (!autoRotate || !fgRef.current) return
+    function orbitLoop() {
+      if (!orbitActive || !fgRef.current) return
       angle += 0.0015
-      const cam = fgRef.current.cameraPosition()
-      const dx = cam.x - pivot.x, dz = cam.z - pivot.z
-      orbitDist = Math.sqrt(dx * dx + dz * dz) || orbitDist
       fgRef.current.cameraPosition({
         x: pivot.x + orbitDist * Math.sin(angle),
-        y: cam.y,
+        y: camY,
         z: pivot.z + orbitDist * Math.cos(angle),
       })
-      requestAnimationFrame(animate)
+      requestAnimationFrame(orbitLoop)
     }
-    requestAnimationFrame(animate)
+    requestAnimationFrame(orbitLoop)
 
-    // Stop auto-rotation on manual interaction, but track spin momentum
-    let lastMouseX = 0
-    let mouseVelocity = 0
-    let isDragging = false
-
-    el.addEventListener('mousedown', (e) => {
-      autoRotate = false
-      isDragging = true
-      lastMouseX = e.clientX
-      mouseVelocity = 0
-    })
-
-    el.addEventListener('mousemove', (e) => {
-      if (!isDragging) return
-      mouseVelocity = (e.clientX - lastMouseX) * 0.00003
-      lastMouseX = e.clientX
-    })
-
-    const handleMouseUp = () => {
-      if (!isDragging) return
-      isDragging = false
-      // If spin was fast enough, continue as auto-rotation with that velocity
-      if (Math.abs(mouseVelocity) > 0.0003) {
-        autoRotate = true
-        // Override angle speed in animate loop
-        const spinSpeed = mouseVelocity
-        let decayFrame = 0
-        function spinDecay() {
-          if (!autoRotate || !fgRef.current) return
-          const decay = Math.pow(0.995, decayFrame++)
-          const speed = spinSpeed * decay
-          if (Math.abs(speed) < 0.0002) {
-            // Decayed enough, keep gentle auto-rotate
-            return
-          }
-          angle += speed
-          const cam = fgRef.current.cameraPosition()
-          const dx = cam.x - pivot.x, dz = cam.z - pivot.z
-          orbitDist = Math.sqrt(dx * dx + dz * dz) || orbitDist
-          fgRef.current.cameraPosition({
-            x: pivot.x + orbitDist * Math.sin(angle),
-            y: cam.y,
-            z: pivot.z + orbitDist * Math.cos(angle),
-          })
-          requestAnimationFrame(spinDecay)
-        }
-        requestAnimationFrame(spinDecay)
+    // Stop orbit on manual drag — dispatch event so React can sync state
+    el.addEventListener('mousedown', () => {
+      if (orbitActive) {
+        orbitActive = false
+        el.dispatchEvent(new CustomEvent('orbit-stopped'))
       }
-    }
-
-    el.addEventListener('mouseup', handleMouseUp)
-    window.addEventListener('mouseup', handleMouseUp) // catch release outside element
-    el.addEventListener('contextmenu', () => { autoRotate = false })
+    })
 
     // Resize — observe container div, not just window
     const ro = new ResizeObserver(() => {
@@ -372,6 +349,15 @@ export function ArchitecturePage() {
 
   const findNode = useCallback((id: string) => nodes.find((n) => n.id === id), [nodes])
 
+  // Sync orbit state when user drags the graph
+  useEffect(() => {
+    const el = graphRef.current
+    if (!el) return
+    const handler = () => setOrbiting(false)
+    el.addEventListener('orbit-stopped', handler)
+    return () => el.removeEventListener('orbit-stopped', handler)
+  }, [])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 48px)' }}>
@@ -416,11 +402,42 @@ export function ArchitecturePage() {
       {/* 3D Graph — takes remaining space */}
       <div className="flex-1 relative min-w-0">
         <div className="w-full h-full" ref={graphRef} />
-        {/* Version badge */}
-        <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium pointer-events-none"
-          style={{ background: 'rgba(0,0,0,0.7)', color: '#64748b', border: '1px solid rgba(100,116,139,0.2)' }}
-        >
-          Dental Hub v{HUB_VERSION}
+        {/* Bottom bar: orbit button + version */}
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
+          <button
+            onClick={() => {
+              const ctrl = (fgRef.current as Record<string, unknown>)?._orbitCtrl as { start: () => void; stop: () => void; isActive: () => boolean; setPivot: (p: { x: number; y: number; z: number }) => void } | undefined
+              if (!ctrl) return
+              if (ctrl.isActive()) {
+                ctrl.stop()
+                setOrbiting(false)
+              } else {
+                // If a module is selected, orbit around it
+                if (expandedIdRef.current && fgRef.current) {
+                  const data = fgRef.current.graphData()
+                  const rn = data.nodes.find((n: object) => (n as RuntimeNode).id === expandedIdRef.current) as RuntimeNode | undefined
+                  if (rn) ctrl.setPivot({ x: rn.x || 0, y: rn.y || 0, z: rn.z || 0 })
+                } else {
+                  ctrl.setPivot({ x: 0, y: 0, z: 0 })
+                }
+                ctrl.start()
+                setOrbiting(true)
+              }
+            }}
+            className="px-2.5 py-1 rounded-md text-[11px] font-medium cursor-pointer border-0"
+            style={{
+              background: orbiting ? 'rgba(34,211,238,0.15)' : 'rgba(0,0,0,0.7)',
+              color: orbiting ? '#22d3ee' : '#64748b',
+              border: `1px solid ${orbiting ? 'rgba(34,211,238,0.3)' : 'rgba(100,116,139,0.2)'}`,
+            }}
+          >
+            {orbiting ? '● Orbit' : '○ Orbit'}
+          </button>
+          <div className="px-2.5 py-1 rounded-md text-[11px] font-medium pointer-events-none"
+            style={{ background: 'rgba(0,0,0,0.7)', color: '#64748b', border: '1px solid rgba(100,116,139,0.2)' }}
+          >
+            Dental Hub v{HUB_VERSION}
+          </div>
         </div>
       </div>
 
