@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { settingsApi } from '../api/client'
+import { ShapeIcon } from '../components/ShapeIcon'
 import type { VizConfigEntry } from '../types'
 
 const GROUPS = ['router', 'agent', 'tool', 'gateway', 'plugin', 'storage']
@@ -21,46 +22,6 @@ const GROUP_LABELS: Record<string, string> = {
   gateway: 'Gateway',
   plugin: 'Plugin',
   storage: 'Storage',
-}
-
-/** Inline SVG preview for each shape */
-function ShapePreview({ shape, color }: { shape: string; color: string }) {
-  const size = 20
-  const half = size / 2
-  const common = { width: size, height: size, viewBox: `0 0 ${size} ${size}`, className: 'flex-shrink-0' }
-
-  switch (shape) {
-    case 'sphere':
-      return <svg {...common}><circle cx={half} cy={half} r={7} fill={color} opacity={0.8} /></svg>
-    case 'tetrahedron':
-      return <svg {...common}><polygon points={`${half},2 ${size - 2},${size - 2} 2,${size - 2}`} fill={color} opacity={0.8} /></svg>
-    case 'octahedron':
-      return <svg {...common}><polygon points={`${half},1 ${size - 2},${half} ${half},${size - 1} 2,${half}`} fill={color} opacity={0.8} /></svg>
-    case 'box':
-      return <svg {...common}><rect x={3} y={3} width={14} height={14} rx={1} fill={color} opacity={0.8} /></svg>
-    case 'dodecahedron':
-      // Pentagon
-      return (
-        <svg {...common}>
-          <polygon
-            points={`${half},2 ${size - 2},7 ${size - 4},${size - 2} 4,${size - 2} 2,7`}
-            fill={color} opacity={0.8}
-          />
-        </svg>
-      )
-    case 'icosahedron':
-      // Hexagon
-      return (
-        <svg {...common}>
-          <polygon
-            points={`${half},1 ${size - 2},5 ${size - 2},${size - 5} ${half},${size - 1} 2,${size - 5} 2,5`}
-            fill={color} opacity={0.8}
-          />
-        </svg>
-      )
-    default:
-      return <svg {...common}><circle cx={half} cy={half} r={7} fill={color} opacity={0.8} /></svg>
-  }
 }
 
 /** Color swatch that opens native color picker */
@@ -140,7 +101,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-[800px] mx-auto">
       <h1 className="text-xl font-bold text-white mb-1">Settings</h1>
       <p className="text-xs text-[#64748b] mb-6">
         Configure visualization styles for each module group. Changes are committed to dental-core via GitHub API.
@@ -162,7 +123,7 @@ export function SettingsPage() {
               <div className="flex-1 p-4">
                 {/* Group name */}
                 <div className="flex items-center gap-2 mb-3">
-                  <ShapePreview shape={entry.shape} color={entry.color} />
+                  <ShapeIcon shape={entry.shape} color={entry.color} size={20} />
                   <span className="text-white font-semibold text-sm">{GROUP_LABELS[group] || group}</span>
                 </div>
 
@@ -180,7 +141,7 @@ export function SettingsPage() {
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
-                      <ShapePreview shape={entry.shape} color={entry.color} />
+                      <ShapeIcon shape={entry.shape} color={entry.color} size={20} />
                     </div>
                   </div>
 
