@@ -612,6 +612,149 @@ async def admin_me(authorization: str = Header(default="")):
     return {k: v for k, v in token_data.items() if k != "created_at"}
 
 
+# --- Admin Panel Proxy (routes admin API calls to clinic agent) ---
+
+async def _get_admin_user(authorization: str = Header(default="")):
+    """Verify admin token and return user data including clinic_id."""
+    token = authorization.replace("Bearer ", "").strip()
+    if not hasattr(app, '_admin_tokens') or token not in app._admin_tokens:
+        raise HTTPException(401, "Not authenticated")
+    token_data = app._admin_tokens[token]
+    created_at = token_data.get("created_at")
+    if created_at:
+        age_hours = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+        if age_hours > ADMIN_TOKEN_TTL_HOURS:
+            del app._admin_tokens[token]
+            raise HTTPException(401, "Token expired")
+    return token_data
+
+
+async def _get_clinic_for_admin(admin_user: dict):
+    """Resolve clinic connection details for an admin user."""
+    clinic_id = admin_user.get("clinic_id")
+    if not clinic_id:
+        raise HTTPException(400, "Admin user has no clinic assigned")
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, f"Clinic {clinic_id} not found")
+    if not _validate_server_host(clinic['server_host']):
+        raise HTTPException(400, "Invalid clinic server_host")
+    return clinic
+
+
+async def _proxy_to_clinic(clinic: dict, method: str, path: str, body: dict | None = None, params: dict | None = None):
+    """Proxy a request to the clinic agent API."""
+    base_url = f"http://{clinic['server_host']}:{clinic['server_port']}"
+    url = f"{base_url}{path}"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            if method == "GET":
+                r = await client.get(url, params=params)
+            elif method == "POST":
+                r = await client.post(url, json=body)
+            elif method == "PATCH":
+                r = await client.patch(url, json=body)
+            elif method == "DELETE":
+                r = await client.delete(url, params=params)
+            elif method == "PUT":
+                r = await client.put(url, json=body)
+            else:
+                raise HTTPException(405, f"Method {method} not supported")
+
+            if r.status_code >= 400:
+                logger.error("Clinic proxy error %s %s: %s %s", method, url, r.status_code, r.text[:200])
+                raise HTTPException(r.status_code, r.text[:500])
+            return r.json()
+    except httpx.ConnectError:
+        raise HTTPException(502, "Failed to connect to clinic agent")
+    except httpx.TimeoutException:
+        raise HTTPException(504, "Clinic agent timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Clinic proxy unexpected error %s %s: %s", method, url, e)
+        raise HTTPException(502, "Proxy error")
+
+
+@app.get("/admin/api/dashboard/stats")
+async def admin_dashboard_stats(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/dashboard/stats")
+
+
+@app.get("/admin/api/sessions")
+async def admin_sessions(request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    params = dict(request.query_params)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/sessions", params=params)
+
+
+@app.get("/admin/api/sessions/{session_id}")
+async def admin_session_detail(session_id: int, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", f"/admin/sessions/{session_id}")
+
+
+@app.post("/admin/api/sessions/{session_id}/messages")
+async def admin_send_message(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    body["admin_username"] = admin_user.get("username", "admin")
+    return await _proxy_to_clinic(clinic, "POST", f"/admin/sessions/{session_id}/messages", body=body)
+
+
+@app.patch("/admin/api/sessions/{session_id}/status")
+async def admin_update_session_status(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/sessions/{session_id}/status", body=body)
+
+
+@app.get("/admin/api/actions")
+async def admin_actions(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/actions")
+
+
+@app.patch("/admin/api/actions/{action_id}")
+async def admin_update_action(action_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/actions/{action_id}", body=body)
+
+
+@app.get("/admin/api/bot/status")
+async def admin_bot_status(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/bot/status")
+
+
+@app.post("/admin/api/bot/toggle")
+async def admin_bot_toggle(request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "POST", "/admin/bot/toggle", body=body)
+
+
+@app.get("/admin/api/blocklist")
+async def admin_blocklist(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/blocklist")
+
+
+@app.post("/admin/api/blocklist")
+async def admin_blocklist_add(request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "POST", "/admin/blocklist", body=body)
+
+
+@app.delete("/admin/api/blocklist/{entry_id}")
+async def admin_blocklist_remove(entry_id: int, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "DELETE", f"/admin/blocklist/{entry_id}")
+
+
 # --- Clinic Admin Users API (used by Hub frontend) ---
 
 @app.get("/api/clinics/{clinic_id}/admins")
@@ -806,8 +949,8 @@ if os.path.isdir(frontend_dir):
 
     @app.get("/{path:path}")
     async def spa_fallback(path: str):
-        """Serve React SPA — all non-API, non-admin routes return index.html."""
-        if path.startswith("admin") or path.startswith("langfuse"):
+        """Serve React SPA — all non-API routes return index.html (includes /admin/*)."""
+        if path.startswith("langfuse"):
             raise HTTPException(404)
         file_path = os.path.join(frontend_dir, path)
         if os.path.isfile(file_path):

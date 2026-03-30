@@ -24,6 +24,8 @@ services:
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
       LANGFUSE_HOST: http://langfuse-web:3000
+      JIRA_USER_EMAIL: ${JIRA_USER_EMAIL:-}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
     depends_on:
       langfuse-web:
         condition: service_started
