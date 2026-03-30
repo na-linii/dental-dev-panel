@@ -432,6 +432,149 @@ async def remove_clinic_admin(clinic_id: str, admin_id: int, user=Depends(verify
     return {"ok": True}
 
 
+# --- Jira integration (roadmap tasks) ---
+
+JIRA_CLOUD = "na-linii.atlassian.net"
+JIRA_PROJECT = "PD"
+JIRA_EMAIL = os.getenv("JIRA_USER_EMAIL", "")
+JIRA_TOKEN = os.getenv("JIRA_API_TOKEN", "")
+
+
+@app.get("/api/roadmap/tasks")
+async def get_roadmap_tasks(user=Depends(verify_github_token)):
+    """Fetch 🔵 Dental Core/Hub tasks from Jira for roadmap timeline."""
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        raise HTTPException(503, "Jira credentials not configured")
+
+    jql = 'project = PD AND key >= PD-136 AND (summary ~ "Dental Core" OR summary ~ "Dental Hub") ORDER BY created ASC'
+    url = f"https://{JIRA_CLOUD}/rest/api/3/search/jql"
+    params = {
+        "jql": jql,
+        "maxResults": 50,
+        "fields": "summary,status,assignee,created,updated,description",
+    }
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            url,
+            params=params,
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+        )
+
+    if resp.status_code != 200:
+        logger.error("Jira API error %s: %s", resp.status_code, resp.text[:200])
+        raise HTTPException(502, "Jira API error")
+
+    data = resp.json()
+    tasks = []
+    for issue in data.get("issues", []):
+        f = issue["fields"]
+        assignee = f.get("assignee")
+        tasks.append({
+            "key": issue["key"],
+            "summary": f.get("summary", ""),
+            "status": f["status"]["name"] if f.get("status") else "Unknown",
+            "statusCategory": f["status"]["statusCategory"]["key"] if f.get("status") else "new",
+            "assignee": assignee["displayName"] if assignee else None,
+            "assigneeAvatar": assignee["avatarUrls"]["32x32"] if assignee else None,
+            "url": f"https://{JIRA_CLOUD}/browse/{issue['key']}",
+            "created": f.get("created"),
+            "updated": f.get("updated"),
+        })
+
+    return {"tasks": tasks, "total": data.get("total", 0)}
+
+
+@app.get("/api/roadmap/epics")
+async def get_roadmap_epics(user=Depends(verify_github_token)):
+    """Fetch epics with child tasks and progress from Jira."""
+    if not JIRA_EMAIL or not JIRA_TOKEN:
+        raise HTTPException(503, "Jira credentials not configured")
+
+    base_url = f"https://{JIRA_CLOUD}/rest/api/3/search/jql"
+
+    # 1. Fetch all epics in project
+    epics_jql = f'project = {JIRA_PROJECT} AND issuetype = Эпик ORDER BY created ASC'
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            base_url,
+            params={
+                "jql": epics_jql,
+                "maxResults": 50,
+                "fields": "summary,status",
+            },
+            auth=(JIRA_EMAIL, JIRA_TOKEN),
+        )
+
+    if resp.status_code != 200:
+        logger.error("Jira API error (epics) %s: %s", resp.status_code, resp.text[:200])
+        raise HTTPException(502, "Jira API error")
+
+    epics_data = resp.json()
+    epics = []
+
+    # 2. For each epic, fetch child tasks
+    async with httpx.AsyncClient(timeout=30) as client:
+        for epic_issue in epics_data.get("issues", []):
+            ef = epic_issue["fields"]
+            epic_key = epic_issue["key"]
+
+            children_jql = f"parent = {epic_key} ORDER BY created ASC"
+            children_resp = await client.get(
+                base_url,
+                params={
+                    "jql": children_jql,
+                    "maxResults": 100,
+                    "fields": "summary,status,assignee",
+                },
+                auth=(JIRA_EMAIL, JIRA_TOKEN),
+            )
+
+            tasks = []
+            done = 0
+            in_progress = 0
+            if children_resp.status_code == 200:
+                for child in children_resp.json().get("issues", []):
+                    cf = child["fields"]
+                    assignee = cf.get("assignee")
+                    status_cat = cf["status"]["statusCategory"]["key"] if cf.get("status") else "new"
+
+                    if status_cat == "done":
+                        done += 1
+                    elif status_cat == "indeterminate":
+                        in_progress += 1
+
+                    tasks.append({
+                        "key": child["key"],
+                        "summary": cf.get("summary", ""),
+                        "status": cf["status"]["name"] if cf.get("status") else "Unknown",
+                        "statusCategory": status_cat,
+                        "assignee": assignee["displayName"] if assignee else None,
+                        "assigneeAvatar": assignee["avatarUrls"]["32x32"] if assignee else None,
+                        "url": f"https://{JIRA_CLOUD}/browse/{child['key']}",
+                    })
+
+            total = len(tasks)
+            todo = total - done - in_progress
+            percent = round(done / total * 100) if total > 0 else 0
+
+            epics.append({
+                "key": epic_key,
+                "summary": ef.get("summary", ""),
+                "status": ef["status"]["name"] if ef.get("status") else "Unknown",
+                "progress": {
+                    "total": total,
+                    "done": done,
+                    "in_progress": in_progress,
+                    "todo": todo,
+                    "percent": percent,
+                },
+                "tasks": tasks,
+            })
+
+    return {"epics": epics}
+
+
 # --- Frontend (React SPA with fallback) ---
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
