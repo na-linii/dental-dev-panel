@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import ForceGraph3D from '3d-force-graph'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
@@ -27,14 +27,32 @@ function resolveId(ref: string | RuntimeNode): string {
   return typeof ref === 'object' ? ref.id : ref
 }
 
+/** Group display order */
+const GROUP_ORDER = ['router', 'agent', 'tool', 'gateway', 'plugin', 'storage']
+
+/** Chevron SVG */
+function Chevron({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      className={`w-3.5 h-3.5 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
+
 export function ArchitecturePage() {
   const graphRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fgRef = useRef<any>(null)
   const [nodes, setNodes] = useState<RuntimeNode[]>([])
   const [links, setLinks] = useState<RuntimeLink[]>([])
-  const [selected, setSelected] = useState<RuntimeNode | null>(null)
-  const selectedIdRef = useRef<string>('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const expandedIdRef = useRef<string>('')
   const [colors, setColors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +79,6 @@ export function ArchitecturePage() {
         const runtimeLinks: RuntimeLink[] = (data.links || []).map((l) => ({ ...l }))
         setNodes(runtimeNodes)
         setLinks(runtimeLinks)
-        // No default selection — sidebar appears on node click
         setLoading(false)
       })
       .catch((e) => {
@@ -71,39 +88,73 @@ export function ArchitecturePage() {
       })
   }, [])
 
-  const resizeGraph = useCallback(() => {
-    // Delay to let React re-render the DOM (sidebar appear/disappear) before resizing
-    setTimeout(() => {
-      try {
-        if (fgRef.current && graphRef.current) {
-          const el = graphRef.current
-          fgRef.current.width(el.clientWidth).height(el.clientHeight)
-        }
-      } catch { /* ignore */ }
-    }, 50)
+  /** Group nodes by type for sidebar */
+  const groupedNodes = useMemo(() => {
+    const groups: Record<string, RuntimeNode[]> = {}
+    for (const n of nodes) {
+      const g = n.type || 'tool'
+      if (!groups[g]) groups[g] = []
+      groups[g].push(n)
+    }
+    const sorted: { group: string; nodes: RuntimeNode[] }[] = []
+    for (const g of GROUP_ORDER) {
+      if (groups[g]) sorted.push({ group: g, nodes: groups[g] })
+    }
+    for (const g of Object.keys(groups)) {
+      if (!GROUP_ORDER.includes(g)) sorted.push({ group: g, nodes: groups[g] })
+    }
+    return sorted
+  }, [nodes])
+
+  /** Get display color for a node: node.color > colors[group] > #888 */
+  const getNodeColor = useCallback((node: RuntimeNode) => {
+    return node.color || colors[node.type] || '#888'
+  }, [colors])
+
+  /** Get display color for a group */
+  const getGroupColor = useCallback((group: string) => {
+    return colors[group] || '#888'
+  }, [colors])
+
+  const refreshNodeVisuals = useCallback(() => {
+    try {
+      if (fgRef.current) {
+        fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
+      }
+    } catch { /* ignore */ }
   }, [])
 
-  const selectNode = useCallback((node: RuntimeNode) => {
-    selectedIdRef.current = node.id
-    setSelected(node)
-    try {
-      if (fgRef.current) {
-        fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
-      }
-    } catch { /* ignore */ }
-    resizeGraph()
-  }, [resizeGraph])
+  const focusNode = useCallback((node: RuntimeNode) => {
+    if (!fgRef.current) return
+    const distance = 120
+    const hyp = Math.hypot(node.x || 0, node.y || 0, node.z || 0) || 1
+    const distRatio = 1 + distance / hyp
+    fgRef.current.cameraPosition(
+      { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+      { x: node.x || 0, y: node.y || 0, z: node.z || 0 },
+      800,
+    )
+  }, [])
 
-  const closePanel = useCallback(() => {
-    selectedIdRef.current = ''
-    setSelected(null)
-    try {
-      if (fgRef.current) {
-        fgRef.current.nodeThreeObject(fgRef.current.nodeThreeObject())
-      }
-    } catch { /* ignore */ }
-    resizeGraph()
-  }, [resizeGraph])
+  const selectModule = useCallback((nodeId: string) => {
+    // Toggle: if already expanded, collapse
+    if (expandedIdRef.current === nodeId) {
+      expandedIdRef.current = ''
+      setExpandedId(null)
+      refreshNodeVisuals()
+      return
+    }
+    expandedIdRef.current = nodeId
+    setExpandedId(nodeId)
+    refreshNodeVisuals()
+
+    // Find the runtime node in the graph (with coordinates) and focus camera
+    if (fgRef.current) {
+      const data = fgRef.current.graphData()
+      const runtimeNode = data.nodes.find((n: object) => (n as RuntimeNode).id === nodeId)
+      if (runtimeNode) focusNode(runtimeNode as RuntimeNode)
+    }
+  }, [refreshNodeVisuals, focusNode])
 
   // Init 3D graph
   useEffect(() => {
@@ -130,14 +181,14 @@ export function ArchitecturePage() {
         return getLinkColor(t?.planned)
       })
       .linkWidth(1)
-      .onNodeClick((node: object) => selectNode(node as RuntimeNode))
+      .onNodeClick((node: object) => selectModule((node as RuntimeNode).id))
       .nodeThreeObject((node: object) => {
         const n = node as RuntimeNode
         const group = new THREE.Group()
         const r = nodeRadius(n.val)
         const fill = n.color || getColor(n.type, n.planned, colors)
         const opacity = getOpacity(n.planned)
-        const isActive = n.id === selectedIdRef.current
+        const isActive = n.id === expandedIdRef.current
 
         const geo = buildGeometry(n.shape, r, THREE) as THREE.BufferGeometry
         group.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
@@ -224,39 +275,32 @@ export function ArchitecturePage() {
     } catch (e) {
       console.error('3D graph init failed:', e)
     }
-  }, [nodes, links, colors, selectNode])
+  }, [nodes, links, colors, selectModule])
 
-  // Handle sidebar connection click
-  const handleConnectionClick = useCallback((nodeId: string) => {
-    if (!fgRef.current) return
-    const data = fgRef.current.graphData()
-    const node = data.nodes.find((n: object) => (n as RuntimeNode).id === nodeId)
-    if (node) selectNode(node as RuntimeNode)
-  }, [selectNode])
-
-  // Compute connections for selected node (outgoing, incoming, bidirectional)
-  const connsOutOnly: string[] = []
-  const connsInOnly: string[] = []
-  const connsBidi: string[] = []
-  if (selected) {
+  /** Compute connections for a given node */
+  const getConnections = useCallback((nodeId: string) => {
     const outSet = new Set<string>()
     const inSet = new Set<string>()
     links.forEach((l) => {
       const src = resolveId(l.source)
       const tgt = resolveId(l.target)
-      if (src === selected.id) outSet.add(tgt)
-      if (tgt === selected.id) inSet.add(src)
+      if (src === nodeId) outSet.add(tgt)
+      if (tgt === nodeId) inSet.add(src)
     })
-    // Bidirectional = appears in both outgoing and incoming
+    const bidi: string[] = []
+    const outOnly: string[] = []
+    const inOnly: string[] = []
     for (const id of outSet) {
-      if (inSet.has(id)) { connsBidi.push(id) } else { connsOutOnly.push(id) }
+      if (inSet.has(id)) bidi.push(id)
+      else outOnly.push(id)
     }
     for (const id of inSet) {
-      if (!outSet.has(id)) connsInOnly.push(id)
+      if (!outSet.has(id)) inOnly.push(id)
     }
-  }
+    return { bidi, outOnly, inOnly }
+  }, [links])
 
-  const findNode = (id: string) => nodes.find((n) => n.id === id)
+  const findNode = useCallback((id: string) => nodes.find((n) => n.id === id), [nodes])
 
   if (loading) {
     return (
@@ -274,6 +318,29 @@ export function ArchitecturePage() {
     )
   }
 
+  const expandedNode = expandedId ? findNode(expandedId) : null
+  const connections = expandedId ? getConnections(expandedId) : null
+
+  /** Render a clickable connection item */
+  const renderConnectionItem = (id: string, arrow: string, arrowColor: string) => {
+    const node = findNode(id)
+    const nc = node ? getNodeColor(node as RuntimeNode) : '#888'
+    return (
+      <div
+        key={id}
+        className="text-[0.68rem] py-0.5 cursor-pointer hover:opacity-80 flex items-center gap-1"
+        onClick={() => selectModule(id)}
+      >
+        <span style={{ color: arrowColor }}>{arrow}</span>
+        <span
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{ background: nc }}
+        />
+        <span className="text-[#cbd5e1]">{node?.name || id}</span>
+      </div>
+    )
+  }
+
   return (
     <div className="flex" style={{ height: 'calc(100vh - 48px)' }}>
       {/* 3D Graph — takes remaining space */}
@@ -287,156 +354,165 @@ export function ArchitecturePage() {
         </div>
       </div>
 
-      {/* Sidebar — only visible when node is selected */}
-      {selected && (
-      <div className="w-80 flex-shrink-0 bg-[#111127] border-l border-[#1e293b] overflow-y-auto p-4">
-          <>
-            {/* Close button */}
-            <div className="flex justify-end mb-2">
-              <button
-                onClick={closePanel}
-                className="text-[#64748b] hover:text-white text-xs cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-            {/* Type badge */}
-            <div className="flex items-center gap-1.5 mb-2">
-              <div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ background: selected.color || colors[selected.type] || '#888' }}
-              />
-              <span className="text-[0.65rem]" style={{ color: selected.color || colors[selected.type] || '#888' }}>
-                {LABELS[selected.type] || selected.type}
-              </span>
-              {selected.planned && (
-                <span className="text-[0.65rem] text-[#64748b] italic">(planned)</span>
-              )}
-            </div>
+      {/* Sidebar — always visible, module list with accordion */}
+      <div className="w-[300px] flex-shrink-0 bg-[#111127] border-l border-[#1e293b] overflow-y-auto">
+        <div className="p-3">
+          <div className="text-[0.7rem] font-medium text-[#64748b] uppercase tracking-wider mb-3">
+            Modules
+          </div>
 
-            {/* Name + ID */}
-            <h3 className="text-[0.9rem] font-medium text-white mb-1">{selected.name}</h3>
-            <div className="text-[0.68rem] text-[#64748b] mb-1.5">
-              <code>{selected.id}</code>
-            </div>
+          {groupedNodes.map(({ group, nodes: groupNodes }) => {
+            const groupColor = getGroupColor(group)
+            return (
+              <div key={group} className="mb-3">
+                {/* Group header */}
+                <div className="flex items-center gap-1.5 mb-1 px-1">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: groupColor }}
+                  />
+                  <span
+                    className="text-[0.62rem] font-semibold uppercase tracking-wider"
+                    style={{ color: groupColor }}
+                  >
+                    {LABELS[group] || group}
+                  </span>
+                  <span className="text-[0.55rem] text-[#475569]">({groupNodes.length})</span>
+                </div>
 
-            {/* Description */}
-            {selected.description && (
-              <p className="text-[0.72rem] text-[#cbd5e1] my-2 leading-relaxed">
-                {selected.description}
-              </p>
-            )}
+                {/* Module list within group */}
+                {groupNodes.map((node) => {
+                  const isExpanded = expandedId === node.id
+                  const nodeColor = getNodeColor(node)
 
-            {/* Prompt */}
-            {selected.prompt_name && (
-              <div className="my-2">
-                <div className="text-[0.65rem] text-[#7dd3fc] mb-0.5">Prompt (Langfuse)</div>
-                <code className="text-[0.7rem] text-[#f0abfc]">{selected.prompt_name}</code>
-              </div>
-            )}
-
-            {/* Inputs */}
-            {selected.inputs && selected.inputs.length > 0 && (
-              <div className="my-2">
-                <div className="text-[0.65rem] text-[#7dd3fc] mb-0.5">Inputs</div>
-                {selected.inputs.map((inp, i) => {
-                  const port = typeof inp === 'string' ? { name: inp } : inp as { name: string; type?: string; required?: boolean; description?: string }
                   return (
-                    <div key={i} className="text-[0.68rem] text-[#94a3b8] py-0.5">
-                      <code className="text-[#7dd3fc]">{port.name}</code>
-                      {port.type && <span className="text-[#64748b] ml-1 text-[0.6rem]">{port.type}</span>}
-                      {port.required === false && <span className="text-[#475569] ml-1 text-[0.55rem] italic">optional</span>}
-                      {port.description && <div className="text-[0.58rem] text-[#475569] ml-2">{port.description}</div>}
+                    <div key={node.id}>
+                      {/* Module row — clickable */}
+                      <div
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors duration-150 ${
+                          isExpanded ? 'bg-[#1e293b]' : 'hover:bg-[#1a1a3a]'
+                        }`}
+                        onClick={() => selectModule(node.id)}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ background: nodeColor }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[0.72rem] text-[#e2e8f0] truncate">
+                            {node.name}
+                          </div>
+                        </div>
+                        {node.planned && (
+                          <span className="text-[0.55rem] text-[#475569] italic flex-shrink-0">plan</span>
+                        )}
+                        <span className="text-[#475569] flex-shrink-0">
+                          <Chevron expanded={isExpanded} />
+                        </span>
+                      </div>
+
+                      {/* Expanded details (accordion) */}
+                      {isExpanded && expandedNode && (
+                        <div className="ml-4 mr-1 mb-2 mt-1 pl-2 border-l border-[#1e293b]">
+                          {/* ID */}
+                          <div className="text-[0.6rem] text-[#475569] mb-1">
+                            <code>{node.id}</code>
+                          </div>
+
+                          {/* Description */}
+                          {node.description && (
+                            <p className="text-[0.68rem] text-[#94a3b8] mb-2 leading-relaxed">
+                              {node.description}
+                            </p>
+                          )}
+
+                          {/* Prompt */}
+                          {node.prompt_name && (
+                            <div className="mb-2">
+                              <div className="text-[0.6rem] text-[#7dd3fc] mb-0.5">Prompt</div>
+                              <code className="text-[0.65rem] text-[#f0abfc]">{node.prompt_name}</code>
+                            </div>
+                          )}
+
+                          {/* Inputs */}
+                          {node.inputs && node.inputs.length > 0 && (
+                            <div className="mb-2">
+                              <div className="text-[0.6rem] text-[#7dd3fc] mb-0.5">Inputs</div>
+                              {node.inputs.map((inp, i) => {
+                                const port = typeof inp === 'string' ? { name: inp } : inp as { name: string; type?: string; required?: boolean; description?: string }
+                                return (
+                                  <div key={i} className="text-[0.62rem] text-[#94a3b8] py-0.5">
+                                    <code className="text-[#7dd3fc]">{port.name}</code>
+                                    {port.type && <span className="text-[#64748b] ml-1 text-[0.55rem]">{port.type}</span>}
+                                    {port.required === false && <span className="text-[#475569] ml-1 text-[0.5rem] italic">opt</span>}
+                                    {port.description && <div className="text-[0.55rem] text-[#475569] ml-2">{port.description}</div>}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Outputs */}
+                          {node.outputs && node.outputs.length > 0 && (
+                            <div className="mb-2">
+                              <div className="text-[0.6rem] text-[#34d399] mb-0.5">Outputs</div>
+                              {node.outputs.map((out, i) => {
+                                const port = typeof out === 'string' ? { name: out } : out as { name: string; type?: string; required?: boolean; description?: string }
+                                return (
+                                  <div key={i} className="text-[0.62rem] text-[#94a3b8] py-0.5">
+                                    <code className="text-[#34d399]">{port.name}</code>
+                                    {port.type && <span className="text-[#64748b] ml-1 text-[0.55rem]">{port.type}</span>}
+                                    {port.required === false && <span className="text-[#475569] ml-1 text-[0.5rem] italic">opt</span>}
+                                    {port.description && <div className="text-[0.55rem] text-[#475569] ml-2">{port.description}</div>}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Connections */}
+                          {connections && (connections.bidi.length > 0 || connections.outOnly.length > 0 || connections.inOnly.length > 0) && (
+                            <div className="mt-1.5 pt-1.5 border-t border-[#1e293b]">
+                              <div className="text-[0.6rem] text-[#7dd3fc] mb-1">Connections</div>
+                              {connections.bidi.length > 0 && (
+                                <>
+                                  <div className="text-[0.55rem] text-[#475569] mb-0.5">Bidirectional</div>
+                                  {connections.bidi.map((c) => {
+                                    const cn = findNode(c)
+                                    return renderConnectionItem(c, '\u25C4\u25BA', cn ? getNodeColor(cn as RuntimeNode) : '#888')
+                                  })}
+                                </>
+                              )}
+                              {connections.outOnly.length > 0 && (
+                                <>
+                                  <div className="text-[0.55rem] text-[#475569] mt-1 mb-0.5">Outgoing</div>
+                                  {connections.outOnly.map((c) => {
+                                    const cn = findNode(c)
+                                    return renderConnectionItem(c, '\u25BA', cn ? getNodeColor(cn as RuntimeNode) : '#888')
+                                  })}
+                                </>
+                              )}
+                              {connections.inOnly.length > 0 && (
+                                <>
+                                  <div className="text-[0.55rem] text-[#475569] mt-1 mb-0.5">Incoming</div>
+                                  {connections.inOnly.map((c) => {
+                                    const cn = findNode(c)
+                                    return renderConnectionItem(c, '\u25C4', cn ? getNodeColor(cn as RuntimeNode) : '#888')
+                                  })}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
               </div>
-            )}
-
-            {/* Outputs */}
-            {selected.outputs && selected.outputs.length > 0 && (
-              <div className="my-2">
-                <div className="text-[0.65rem] text-[#34d399] mb-0.5">Outputs</div>
-                {selected.outputs.map((out, i) => {
-                  const port = typeof out === 'string' ? { name: out } : out as { name: string; type?: string; required?: boolean; description?: string }
-                  return (
-                    <div key={i} className="text-[0.68rem] text-[#94a3b8] py-0.5">
-                      <code className="text-[#34d399]">{port.name}</code>
-                      {port.type && <span className="text-[#64748b] ml-1 text-[0.6rem]">{port.type}</span>}
-                      {port.required === false && <span className="text-[#475569] ml-1 text-[0.55rem] italic">optional</span>}
-                      {port.description && <div className="text-[0.58rem] text-[#475569] ml-2">{port.description}</div>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Connections */}
-            {(connsOutOnly.length > 0 || connsInOnly.length > 0 || connsBidi.length > 0) && (
-              <div className="mt-2.5 border-t border-[#1e293b] pt-2">
-                <div className="text-[0.65rem] text-[#7dd3fc] mb-1">Connections</div>
-                {connsBidi.length > 0 && (
-                  <>
-                    <div className="text-[0.65rem] text-[#64748b] mb-0.5">Bidirectional:</div>
-                    {connsBidi.map((c) => {
-                      const node = findNode(c)
-                      const nc = node ? (node.color || colors[node.type] || '#888') : '#888'
-                      return (
-                        <div
-                          key={c}
-                          className="text-[0.68rem] py-0.5 cursor-pointer hover:opacity-80"
-                          onClick={() => handleConnectionClick(c)}
-                        >
-                          <span style={{ color: nc }}>&#9664;&#9654;</span>{' '}
-                          <span className="text-[#cbd5e1]">{node?.name || c}</span>
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-                {connsOutOnly.length > 0 && (
-                  <>
-                    <div className="text-[0.65rem] text-[#64748b] mt-1 mb-0.5">Outgoing:</div>
-                    {connsOutOnly.map((c) => {
-                      const target = findNode(c)
-                      const tc = target ? (target.color || colors[target.type] || '#888') : '#888'
-                      return (
-                        <div
-                          key={c}
-                          className="text-[0.68rem] py-0.5 cursor-pointer hover:opacity-80"
-                          onClick={() => handleConnectionClick(c)}
-                        >
-                          <span style={{ color: tc }}>&#9654;</span>{' '}
-                          <span className="text-[#cbd5e1]">{target?.name || c}</span>
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-                {connsInOnly.length > 0 && (
-                  <>
-                    <div className="text-[0.65rem] text-[#64748b] mt-1 mb-0.5">Incoming:</div>
-                    {connsInOnly.map((c) => {
-                      const source = findNode(c)
-                      const sc = source ? (source.color || colors[source.type] || '#888') : '#888'
-                      return (
-                        <div
-                          key={c}
-                          className="text-[0.68rem] py-0.5 cursor-pointer hover:opacity-80"
-                          onClick={() => handleConnectionClick(c)}
-                        >
-                          <span style={{ color: sc }}>&#9664;</span>{' '}
-                          <span className="text-[#cbd5e1]">{source?.name || c}</span>
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-              </div>
-            )}
-          </>
+            )
+          })}
+        </div>
       </div>
-      )}
     </div>
   )
 }
