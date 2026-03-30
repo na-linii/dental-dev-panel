@@ -49,14 +49,15 @@ function TaskRow({ task }: { task: EpicTask }) {
   )
 }
 
-function EpicCard({ epic, expanded, onToggle }: { epic: Epic; expanded: boolean; onToggle: () => void }) {
+function EpicCard({ epic }: { epic: Epic }) {
+  const [expanded, setExpanded] = useState(false)
   const { progress } = epic
 
   return (
     <div className="bg-[#111127] border border-[#1e293b] rounded-lg overflow-hidden">
       {/* Header — clickable */}
       <button
-        onClick={onToggle}
+        onClick={() => setExpanded(!expanded)}
         className="w-full text-left p-4 cursor-pointer bg-transparent border-0"
       >
         <div className="flex items-center justify-between mb-2">
@@ -148,7 +149,6 @@ export function RoadmapPage() {
   const [epics, setEpics] = useState<Epic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expandedEpic, setExpandedEpic] = useState<string | null>(null)
 
   useEffect(() => {
     roadmapApi.epics()
@@ -236,14 +236,9 @@ export function RoadmapPage() {
 
         {/* Epic cards */}
         {!loading && !error && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
             {epics.map((epic) => (
-              <EpicCard
-                key={epic.key}
-                epic={epic}
-                expanded={expandedEpic === epic.key}
-                onToggle={() => setExpandedEpic(expandedEpic === epic.key ? null : epic.key)}
-              />
+              <EpicCard key={epic.key} epic={epic} />
             ))}
             {epics.length === 0 && (
               <div className="text-[0.75rem] text-[#64748b]">No epics found</div>
