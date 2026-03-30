@@ -538,10 +538,11 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
                     cf = child["fields"]
                     assignee = cf.get("assignee")
                     status_cat = cf["status"]["statusCategory"]["key"] if cf.get("status") else "new"
+                    status_name = cf["status"]["name"] if cf.get("status") else ""
 
                     if status_cat == "done":
                         done += 1
-                    elif status_cat == "indeterminate":
+                    elif status_cat == "indeterminate" and status_name != "Backlog":
                         in_progress += 1
 
                     tasks.append({
