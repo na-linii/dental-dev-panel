@@ -21,14 +21,19 @@ const STATUS_STYLES: Record<string, string> = {
 export function AdminActionsPage() {
   const [actions, setActions] = useState<AdminAction[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const loadActions = async () => {
     setIsLoading(true)
+    setError(null)
     try {
-      const res = await getAdminActions()
-      setActions(res.items)
+      // Backend returns flat array
+      const data = await getAdminActions()
+      setActions(Array.isArray(data) ? data : [])
     } catch (e) {
       console.error('Actions load error:', e)
+      setError('Не удалось загрузить действия')
+      setActions([])
     } finally {
       setIsLoading(false)
     }
@@ -40,13 +45,15 @@ export function AdminActionsPage() {
   useEffect(() => {
     const id = setInterval(() => {
       if (!document.hidden) {
-        getAdminActions().then((res) => setActions(res.items)).catch(() => {})
+        getAdminActions()
+          .then((data) => setActions(Array.isArray(data) ? data : []))
+          .catch(() => {})
       }
     }, 15000)
     return () => clearInterval(id)
   }, [])
 
-  const handleAction = async (actionId: number, status: 'done' | 'failed') => {
+  const handleAction = async (actionId: string, status: 'done' | 'failed') => {
     try {
       await updateAdminAction(actionId, status)
       setActions((prev) => prev.map((a) => a.id === actionId ? { ...a, status } : a))
@@ -72,6 +79,13 @@ export function AdminActionsPage() {
         </button>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm text-amber-300">
+          {error}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -80,7 +94,6 @@ export function AdminActionsPage() {
               <tr className="border-b border-white/[0.06]">
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Тип</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Описание</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden md:table-cell">Пациент</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden sm:table-cell">Дата</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Статус</th>
                 <th className="text-right px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Действия</th>
@@ -89,7 +102,7 @@ export function AdminActionsPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-[#64748b]">
+                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
                       Загрузка...
@@ -98,20 +111,17 @@ export function AdminActionsPage() {
                 </tr>
               ) : actions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-[#64748b]">
+                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
                     Нет задач
                   </td>
                 </tr>
               ) : actions.map((action) => (
                 <tr key={action.id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors duration-150">
                   <td className="px-4 py-3 text-sm text-white whitespace-nowrap">
-                    {TYPE_LABELS[action.type] || action.type}
+                    {TYPE_LABELS[action.action_type] || action.action_type}
                   </td>
                   <td className="px-4 py-3 text-sm text-[#94a3b8] max-w-[200px] truncate">
-                    {action.description}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-[#94a3b8] hidden md:table-cell truncate max-w-[120px]">
-                    {action.patient_name}
+                    {action.description || '---'}
                   </td>
                   <td className="px-4 py-3 text-sm text-[#64748b] hidden sm:table-cell whitespace-nowrap">
                     {action.created_at ? format(new Date(action.created_at), 'dd.MM.yyyy HH:mm') : '---'}
