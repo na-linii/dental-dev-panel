@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import yaml from 'js-yaml'
 import { clinicsApi } from '../api/client'
+import { ConfigSection, SECTION_COLORS } from '../components/ConfigSection'
 import type { ClinicCreateData, DeployStep, ServiceItem, DoctorItem, FaqItem } from '../types'
 
 /* ── style tokens ── */
@@ -16,20 +17,7 @@ const TOGGLE_BASE =
 const TOGGLE_DOT =
   'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform'
 
-/* ── section colors ── */
-
-const SECTION_COLORS: Record<string, string> = {
-  basic: '#818cf8',
-  server: '#38bdf8',
-  modules: '#a78bfa',
-  channels: '#f472b6',
-  booking: '#fb923c',
-  confirmation: '#4ade80',
-  handoff: '#f87171',
-  llm: '#facc15',
-  knowledge: '#2dd4bf',
-  import: '#94a3b8',
-}
+/* ── section colors: shared from ConfigSection ── */
 
 /* ── Toggle component ── */
 
@@ -66,39 +54,7 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (v
   )
 }
 
-/* ── Collapsible Section ── */
-
-function Section({
-  id,
-  title,
-  children,
-  expanded,
-  onToggle,
-}: {
-  id: string
-  title: string
-  children: React.ReactNode
-  expanded: boolean
-  onToggle: () => void
-}) {
-  const color = SECTION_COLORS[id] || '#818cf8'
-  return (
-    <div className="bg-[#111127] border border-[#1e293b] rounded-xl overflow-hidden">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#1a1a3a] transition-colors cursor-pointer"
-      >
-        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: color }} />
-        <span className="text-sm font-semibold text-white flex-1 text-left">{title}</span>
-        <span className={`text-[#475569] text-xs transition-transform ${expanded ? 'rotate-180' : ''}`}>
-          {'\u25BC'}
-        </span>
-      </button>
-      {expanded && <div className="px-5 pb-5 space-y-4">{children}</div>}
-    </div>
-  )
-}
+/* ── Collapsible Section: using shared ConfigSection component ── */
 
 /* ── Deploy Progress ── */
 
@@ -444,12 +400,7 @@ export function ClinicCreatePage() {
   const [form, setForm] = useState<ClinicCreateData>(defaultForm)
   const [slugManual, setSlugManual] = useState(false)
 
-  // Section expand state — all expanded by default
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    basic: true, server: true, modules: true, channels: true,
-    booking: true, confirmation: true, handoff: true, llm: true,
-    knowledge: true, import: true,
-  })
+  // Section expand state managed internally by ConfigSection
 
   // Save / deploy
   const [saving, setSaving] = useState(false)
@@ -487,10 +438,6 @@ export function ClinicCreatePage() {
         },
       },
     }))
-  }
-
-  function toggleSection(id: string) {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   function handleNameChange(val: string) {
@@ -691,7 +638,7 @@ export function ClinicCreatePage() {
       <div className="max-w-[900px] mx-auto px-6 space-y-4">
 
         {/* ── Section 1: Basic Info ── */}
-        <Section id="basic" title="Basic Info" expanded={expanded.basic} onToggle={() => toggleSection('basic')}>
+        <ConfigSection title="Basic Info" color={SECTION_COLORS.basic}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Clinic Name</label>
@@ -715,10 +662,10 @@ export function ClinicCreatePage() {
               <p className="text-[10px] text-[#475569] mt-1">Auto-generated from name. Edit to override.</p>
             </div>
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 2: Server & Deploy ── */}
-        <Section id="server" title="Server & Deploy" expanded={expanded.server} onToggle={() => toggleSection('server')}>
+        <ConfigSection title="Server & Deploy" color={SECTION_COLORS.server}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Server Host (IP)</label>
@@ -785,10 +732,10 @@ export function ClinicCreatePage() {
               <p className="text-[10px] text-[#475569] mt-1">Auto-filled from current browser URL.</p>
             </div>
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 3: Modules ── */}
-        <Section id="modules" title="Modules" expanded={expanded.modules} onToggle={() => toggleSection('modules')}>
+        <ConfigSection title="Modules" color={SECTION_COLORS.modules}>
           {/* Telegram Bot */}
           <div className="bg-[#0a0a1a] rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -851,10 +798,10 @@ export function ClinicCreatePage() {
               </div>
             )}
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 4: Channels ── */}
-        <Section id="channels" title="Channels" expanded={expanded.channels} onToggle={() => toggleSection('channels')}>
+        <ConfigSection title="Channels" color={SECTION_COLORS.channels}>
           {Object.entries(form.config.channels).map(([key, ch]) => (
             <div key={key} className="bg-[#0a0a1a] rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -897,10 +844,10 @@ export function ClinicCreatePage() {
               )}
             </div>
           ))}
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 5: Booking Settings ── */}
-        <Section id="booking" title="Booking Settings" expanded={expanded.booking} onToggle={() => toggleSection('booking')}>
+        <ConfigSection title="Booking Settings" color={SECTION_COLORS.booking}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Pricing Mode</label>
@@ -974,10 +921,10 @@ export function ClinicCreatePage() {
               </div>
             </div>
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 6: Confirmation ── */}
-        <Section id="confirmation" title="Confirmation" expanded={expanded.confirmation} onToggle={() => toggleSection('confirmation')}>
+        <ConfigSection title="Confirmation" color={SECTION_COLORS.confirmation}>
           <Toggle value={form.config.confirmation_enabled} onChange={(v) => patchConfig({ confirmation_enabled: v })} label="Enabled" />
           {form.config.confirmation_enabled && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -1012,10 +959,10 @@ export function ClinicCreatePage() {
               </div>
             </div>
           )}
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 7: Handoff ── */}
-        <Section id="handoff" title="Handoff" expanded={expanded.handoff} onToggle={() => toggleSection('handoff')}>
+        <ConfigSection title="Handoff" color={SECTION_COLORS.handoff}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Admin Chat ID</label>
@@ -1037,10 +984,10 @@ export function ClinicCreatePage() {
               />
             </div>
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 8: OpenAI / LLM ── */}
-        <Section id="llm" title="OpenAI / LLM" expanded={expanded.llm} onToggle={() => toggleSection('llm')}>
+        <ConfigSection title="OpenAI / LLM" color={SECTION_COLORS.llm}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>OpenAI API Key</label>
@@ -1088,10 +1035,10 @@ export function ClinicCreatePage() {
               />
             </div>
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 9: Knowledge Base ── */}
-        <Section id="knowledge" title="Knowledge Base" expanded={expanded.knowledge} onToggle={() => toggleSection('knowledge')}>
+        <ConfigSection title="Knowledge Base" color={SECTION_COLORS.knowledge}>
           <div className="space-y-4">
             {/* Basic knowledge fields */}
             <div>
@@ -1296,10 +1243,10 @@ export function ClinicCreatePage() {
               )}
             </div>
           </div>
-        </Section>
+        </ConfigSection>
 
         {/* ── Section 10: Import / Export YAML ── */}
-        <Section id="import" title="Import / Export YAML" expanded={expanded.import} onToggle={() => toggleSection('import')}>
+        <ConfigSection title="Import / Export YAML" color={SECTION_COLORS.import}>
           <div className="space-y-3">
             <div>
               <label className={LABEL}>Paste YAML config to import</label>
@@ -1335,7 +1282,7 @@ export function ClinicCreatePage() {
               )}
             </div>
           </div>
-        </Section>
+        </ConfigSection>
       </div>
 
       {/* ── Sticky bottom bar ── */}
