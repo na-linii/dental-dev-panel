@@ -85,6 +85,13 @@ function EpicCard({ epic }: { epic: Epic }) {
               title={`Done: ${progress.done}`}
             />
           )}
+          {progress.review > 0 && (
+            <div
+              className="bg-purple-500 transition-all"
+              style={{ width: `${(progress.review / progress.total) * 100}%` }}
+              title={`Review: ${progress.review}`}
+            />
+          )}
           {progress.in_progress > 0 && (
             <div
               className="bg-yellow-500 transition-all"
@@ -94,19 +101,28 @@ function EpicCard({ epic }: { epic: Epic }) {
           )}
           {progress.todo > 0 && (
             <div
-              className="bg-[#334155] transition-all"
+              className="bg-blue-500 transition-all"
               style={{ width: `${(progress.todo / progress.total) * 100}%` }}
               title={`To Do: ${progress.todo}`}
+            />
+          )}
+          {progress.backlog > 0 && (
+            <div
+              className="bg-[#334155] transition-all"
+              style={{ width: `${(progress.backlog / progress.total) * 100}%` }}
+              title={`Backlog: ${progress.backlog}`}
             />
           )}
         </div>
 
         {/* Progress text */}
         <div className="flex items-center justify-between mt-2">
-          <div className="flex gap-3 text-[0.65rem] text-[#94a3b8]">
-            <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Done: {progress.done}</span>
-            <span><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1" />In Progress: {progress.in_progress}</span>
-            <span><span className="inline-block w-2 h-2 rounded-full bg-[#334155] mr-1" />To Do: {progress.todo}</span>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-[#94a3b8]">
+            {progress.done > 0 && <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Done: {progress.done}</span>}
+            {progress.review > 0 && <span><span className="inline-block w-2 h-2 rounded-full bg-purple-500 mr-1" />Review: {progress.review}</span>}
+            {progress.in_progress > 0 && <span><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1" />In Progress: {progress.in_progress}</span>}
+            {progress.todo > 0 && <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />To Do: {progress.todo}</span>}
+            {progress.backlog > 0 && <span><span className="inline-block w-2 h-2 rounded-full bg-[#334155] mr-1" />Backlog: {progress.backlog}</span>}
           </div>
           <span className={`text-[0.7rem] font-mono tabular-nums ${
             progress.percent >= 80 ? 'text-emerald-400' :
@@ -159,10 +175,12 @@ export function RoadmapPage() {
     (acc, e) => ({
       total: acc.total + e.progress.total,
       done: acc.done + e.progress.done,
+      review: acc.review + e.progress.review,
       in_progress: acc.in_progress + e.progress.in_progress,
       todo: acc.todo + e.progress.todo,
+      backlog: acc.backlog + e.progress.backlog,
     }),
-    { total: 0, done: 0, in_progress: 0, todo: 0 },
+    { total: 0, done: 0, review: 0, in_progress: 0, todo: 0, backlog: 0 },
   )
   const overallPercent = totals.total > 0 ? Math.round((totals.done / totals.total) * 100) : 0
 
@@ -198,16 +216,19 @@ export function RoadmapPage() {
             </div>
             <div className="flex h-3 rounded-full overflow-hidden bg-[#1e293b]">
               {totals.done > 0 && (
-                <div
-                  className="bg-emerald-500 transition-all"
-                  style={{ width: `${(totals.done / totals.total) * 100}%` }}
-                />
+                <div className="bg-emerald-500 transition-all" style={{ width: `${(totals.done / totals.total) * 100}%` }} />
+              )}
+              {totals.review > 0 && (
+                <div className="bg-purple-500 transition-all" style={{ width: `${(totals.review / totals.total) * 100}%` }} />
               )}
               {totals.in_progress > 0 && (
-                <div
-                  className="bg-yellow-500 transition-all"
-                  style={{ width: `${(totals.in_progress / totals.total) * 100}%` }}
-                />
+                <div className="bg-yellow-500 transition-all" style={{ width: `${(totals.in_progress / totals.total) * 100}%` }} />
+              )}
+              {totals.todo > 0 && (
+                <div className="bg-blue-500 transition-all" style={{ width: `${(totals.todo / totals.total) * 100}%` }} />
+              )}
+              {totals.backlog > 0 && (
+                <div className="bg-[#334155] transition-all" style={{ width: `${(totals.backlog / totals.total) * 100}%` }} />
               )}
             </div>
           </div>

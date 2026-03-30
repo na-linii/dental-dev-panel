@@ -531,8 +531,7 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
             )
 
             tasks = []
-            done = 0
-            in_progress = 0
+            counts = {"done": 0, "review": 0, "in_progress": 0, "todo": 0, "backlog": 0}
             if children_resp.status_code == 200:
                 for child in children_resp.json().get("issues", []):
                     cf = child["fields"]
@@ -541,14 +540,20 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
                     status_name = cf["status"]["name"] if cf.get("status") else ""
 
                     if status_cat == "done":
-                        done += 1
-                    elif status_cat == "indeterminate" and status_name != "Backlog":
-                        in_progress += 1
+                        counts["done"] += 1
+                    elif status_name in ("ON REVIEW", "На проверке"):
+                        counts["review"] += 1
+                    elif status_name == "Backlog":
+                        counts["backlog"] += 1
+                    elif status_name == "В работе":
+                        counts["in_progress"] += 1
+                    else:
+                        counts["todo"] += 1
 
                     tasks.append({
                         "key": child["key"],
                         "summary": cf.get("summary", ""),
-                        "status": cf["status"]["name"] if cf.get("status") else "Unknown",
+                        "status": status_name or "Unknown",
                         "statusCategory": status_cat,
                         "assignee": assignee["displayName"] if assignee else None,
                         "assigneeAvatar": assignee["avatarUrls"]["32x32"] if assignee else None,
@@ -556,8 +561,7 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
                     })
 
             total = len(tasks)
-            todo = total - done - in_progress
-            percent = round(done / total * 100) if total > 0 else 0
+            percent = round(counts["done"] / total * 100) if total > 0 else 0
 
             epics.append({
                 "key": epic_key,
@@ -565,9 +569,7 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
                 "status": ef["status"]["name"] if ef.get("status") else "Unknown",
                 "progress": {
                     "total": total,
-                    "done": done,
-                    "in_progress": in_progress,
-                    "todo": todo,
+                    **counts,
                     "percent": percent,
                 },
                 "tasks": tasks,

@@ -126,8 +126,10 @@ export interface EpicTask {
 export interface EpicProgress {
   total: number
   done: number
+  review: number
   in_progress: number
   todo: number
+  backlog: number
   percent: number
 }
 
