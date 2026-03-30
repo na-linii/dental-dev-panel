@@ -3,7 +3,7 @@ import { clinicsApi, edgeCasesApi, langfuseApi } from '../api/client'
 import type { EdgeCaseRunResult } from '../api/client'
 import type { Clinic, EdgeCaseItem } from '../types'
 
-const CATEGORIES = ['all', 'booking', 'faq', 'security', 'confirmation', 'production'] as const
+const CATEGORIES = ['all', 'booking', 'faq', 'security', 'confirmation', 'production', 'routing', 'multi-turn'] as const
 type Category = (typeof CATEGORIES)[number]
 
 const CATEGORY_STYLES: Record<string, { badge: string }> = {

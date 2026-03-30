@@ -579,6 +579,8 @@ async def run_edge_case(clinic_id: str, request: Request, user=Depends(verify_gi
         chat_body["phone"] = patient_phone
     if patient_name:
         chat_body["name"] = patient_name
+    if history:
+        chat_body["history"] = history
 
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/chat"
     try:
@@ -630,6 +632,8 @@ async def run_all_edge_cases(clinic_id: str, request: Request, user=Depends(veri
                 chat_body["phone"] = case["patient_phone"]
             if case.get("patient_name"):
                 chat_body["name"] = case["patient_name"]
+            if case.get("history"):
+                chat_body["history"] = case["history"]
 
             try:
                 r = await client.post(url, json=chat_body)
