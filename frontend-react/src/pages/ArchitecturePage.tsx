@@ -434,9 +434,8 @@ export function ArchitecturePage() {
       {/* 3D Graph — takes remaining space */}
       <div className="flex-1 relative min-w-0">
         <div className="w-full h-full" ref={graphRef} />
-        {/* Legend */}
-        {Object.keys(vizConfig).length > 0 && (
-          <VizLegend
+        {/* Legend — always visible */}
+        <VizLegend
             vizConfig={vizConfig}
             onConfigChange={(newConfig) => {
               setVizConfig(newConfig)
@@ -448,7 +447,6 @@ export function ArchitecturePage() {
               refreshNodeVisuals()
             }}
           />
-        )}
         {/* Bottom bar: orbit button + version */}
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
           <button

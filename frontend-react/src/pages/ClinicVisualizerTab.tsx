@@ -145,22 +145,20 @@ export function ClinicVisualizerTab() {
       {/* Main area */}
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 relative min-w-0">
-          {/* Legend */}
-          {Object.keys(vizConfig).length > 0 && (
-            <VizLegend
-              vizConfig={vizConfig}
-              onConfigChange={(newConfig) => {
-                setVizConfig(newConfig)
-                // Update graphData so ForceGraph3D re-renders with new colors
-                if (graphData) {
-                  setGraphData({
-                    ...graphData,
-                    meta: { ...graphData.meta, viz_config: newConfig },
-                  })
-                }
-              }}
-            />
-          )}
+          {/* Legend — always visible */}
+          <VizLegend
+            vizConfig={vizConfig}
+            onConfigChange={(newConfig) => {
+              setVizConfig(newConfig)
+              // Update graphData so ForceGraph3D re-renders with new colors
+              if (graphData) {
+                setGraphData({
+                  ...graphData,
+                  meta: { ...graphData.meta, viz_config: newConfig },
+                })
+              }
+            }}
+          />
           <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
             style={{
               background: 'rgba(0,0,0,0.7)',

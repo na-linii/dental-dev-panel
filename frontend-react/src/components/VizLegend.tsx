@@ -73,13 +73,9 @@ export function VizLegend({ vizConfig, onConfigChange }: VizLegendProps) {
           if (!entry) return null
           return (
             <div key={group}>
-              {/* Legend row */}
+              {/* Legend row — shape icon is already colored */}
               <div className="flex items-center gap-2 py-[3px]">
-                <div
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ background: entry.color }}
-                />
-                <ShapeIcon shape={entry.shape} color={entry.color} size={13} />
+                <ShapeIcon shape={entry.shape} color={entry.color} size={16} />
                 <span className="text-[11px] text-[#cbd5e1] flex-1">
                   {LABELS[group] || group}
                 </span>
