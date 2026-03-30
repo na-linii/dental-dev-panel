@@ -142,14 +142,51 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
 
             env_content = "\n".join(env_lines)
 
+            # Each clinic gets its own directory: /opt/dental-clinics/{clinic_id}/
+            cid = clinic["clinic_id"]
+            clinic_dir = f"/opt/dental-clinics/{cid}"
+
+            # Generate docker-compose.prod.yml with unique project name and port
+            compose_content = f"""version: '3.8'
+services:
+  agent-postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: agent
+      POSTGRES_DB: agent
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent"]
+      interval: 5s
+      retries: 5
+
+  agent:
+    build: ./agent
+    ports:
+      - "{port}:8080"
+    depends_on:
+      agent-postgres:
+        condition: service_healthy
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pgdata:
+"""
+
             # SSH commands to execute sequentially
             steps = [
                 ("connecting", f"echo 'Connected to {ssh_host}'"),
-                ("cloning", "test -d /opt/dental-core/.git && (cd /opt/dental-core && git fetch origin main && git reset --hard FETCH_HEAD) || git clone https://github.com/na-linii/dental-core.git /opt/dental-core"),
-                ("configuring", f"cat > /opt/dental-core/.env << 'ENVEOF'\n{env_content}\nENVEOF"),
-                ("building", "cd /opt/dental-core && docker compose -f docker-compose.prod.yml build agent 2>&1 | tail -5"),
-                ("starting", "cd /opt/dental-core && docker compose -f docker-compose.prod.yml up -d 2>&1"),
-                ("health_check", f"sleep 10 && curl -sf http://localhost:{port}/health && echo ' OK' || echo 'FAIL'"),
+                ("preparing", f"mkdir -p {clinic_dir}"),
+                ("cloning", f"test -d {clinic_dir}/agent/.git && (cd {clinic_dir}/agent && git fetch origin main && git reset --hard FETCH_HEAD) || git clone https://github.com/na-linii/dental-core.git {clinic_dir}/agent"),
+                ("configuring_env", f"cat > {clinic_dir}/.env << 'ENVEOF'\n{env_content}\nENVEOF"),
+                ("configuring_compose", f"cat > {clinic_dir}/docker-compose.yml << 'COMPEOF'\n{compose_content}\nCOMPEOF"),
+                ("building", f"cd {clinic_dir} && docker compose -p {cid} build agent 2>&1 | tail -5"),
+                ("starting", f"cd {clinic_dir} && docker compose -p {cid} up -d 2>&1"),
+                ("health_check", f"sleep 15 && curl -sf http://localhost:{port}/health && echo ' OK' || echo 'FAIL'"),
             ]
 
             deploy_log = []
