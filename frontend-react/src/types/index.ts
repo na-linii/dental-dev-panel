@@ -161,3 +161,28 @@ export interface AdminUser {
   clinic_id: string | null
   created_at: string
 }
+
+export interface ClinicCreateData {
+  id: string
+  name: string
+  server_host: string
+  server_port: number
+  clinic_id: string
+  ssh_user: string
+  ssh_auth_type: 'key' | 'password'
+  hub_url: string
+  config: {
+    telegram_bot_token?: string
+    google_sheets_id?: string
+    google_sa_key_path?: string
+    openai_api_key?: string
+    openai_api_base?: string
+    openai_proxy_secret?: string
+  }
+}
+
+export interface DeployStep {
+  step: string
+  status: 'running' | 'done' | 'failed' | 'pending'
+  output?: string
+}
