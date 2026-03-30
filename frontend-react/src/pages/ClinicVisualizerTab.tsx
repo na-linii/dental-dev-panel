@@ -35,12 +35,21 @@ export function ClinicVisualizerTab() {
       .catch(() => setGraphError('Failed to load graph'))
   }, [clinicId])
 
-  const { data: traces } = useQuery({
+  const { data: traces, isError: tracesError } = useQuery({
     queryKey: ['live-traces', clinicId],
     queryFn: () => tracesApi.list(clinicId!),
     refetchInterval: 5000,
     enabled: !!clinicId && mode === 'live',
   })
+
+  const { data: health } = useQuery({
+    queryKey: ['clinic-health', clinicId],
+    queryFn: () => clinicsApi.health(clinicId!),
+    refetchInterval: 15000,
+    enabled: !!clinicId,
+  })
+
+  const isOnline = health?.status === 'ok'
 
   useEffect(() => {
     if (mode !== 'live' || !traces || !graphRef.current) return
@@ -112,11 +121,25 @@ export function ClinicVisualizerTab() {
           <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md text-[11px] font-medium"
             style={{
               background: 'rgba(0,0,0,0.7)',
-              color: mode === 'live' ? '#4ade80' : '#facc15',
-              border: `1px solid ${mode === 'live' ? '#4ade8040' : '#facc1540'}`,
+              color: mode === 'replay'
+                ? '#facc15'
+                : isOnline
+                  ? (tracesError ? '#fb923c' : '#4ade80')
+                  : '#f87171',
+              border: `1px solid ${
+                mode === 'replay'
+                  ? '#facc1540'
+                  : isOnline
+                    ? (tracesError ? '#fb923c40' : '#4ade8040')
+                    : '#f8717140'
+              }`,
             }}
           >
-            {mode === 'live' ? '🟢 LIVE' : `▶ REPLAY ${replayTraceId?.slice(0, 8)}...`}
+            {mode === 'replay'
+              ? `▶ REPLAY ${replayTraceId?.slice(0, 8)}...`
+              : isOnline
+                ? (tracesError ? '⚠ LIVE (traces error)' : '● LIVE')
+                : '● OFFLINE'}
           </div>
           {/* Version badge */}
           {graphData?.meta?.version && (
