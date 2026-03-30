@@ -7,15 +7,8 @@ interface Props {
   onClick: () => void
 }
 
-const DEPLOY_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  not_deployed: { bg: 'bg-[#1e1b4b]', text: 'text-[#a5b4fc]', label: 'NOT DEPLOYED' },
-  deploying: { bg: 'bg-[#422006]', text: 'text-[#fbbf24]', label: 'DEPLOYING' },
-  deployed: { bg: 'bg-[#052e16]', text: 'text-[#4ade80]', label: 'DEPLOYED' },
-  failed: { bg: 'bg-[#450a0a]', text: 'text-[#f87171]', label: 'FAILED' },
-}
-
 export function ClinicCard({ clinic, onClick }: Props) {
-  const { data: health } = useQuery({
+  const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['health', clinic.id],
     queryFn: () => clinicsApi.health(clinic.id),
     refetchInterval: 30_000,
@@ -23,57 +16,62 @@ export function ClinicCard({ clinic, onClick }: Props) {
   })
 
   const isOnline = health?.status === 'ok'
-  const deployStatus = (clinic.config?.deploy_status as string) || 'not_deployed'
-  const badge = DEPLOY_BADGE[deployStatus] || DEPLOY_BADGE.not_deployed
+  const isChecking = healthLoading && !health
+
+  // deploy_status comes from DB column, not config JSONB
+  const deployStatus = (clinic as unknown as Record<string, unknown>).deploy_status as string || 'not_deployed'
 
   return (
     <div
       onClick={onClick}
-      className="bg-[#111127] border border-[#1e293b] rounded-xl p-4 cursor-pointer hover:border-[#7dd3fc]/40 transition-colors"
+      className="bg-[#111127] border border-[#1e293b] rounded-xl p-5 cursor-pointer hover:border-[#7dd3fc]/40 transition-colors flex flex-col"
     >
-      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-        <span
-          className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#4ade80]' : 'bg-[#f87171]'}`}
-        />
-        {clinic.name}
-      </h3>
+      {/* Header: name + status dot */}
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+          isChecking ? 'bg-[#facc15] animate-pulse' : isOnline ? 'bg-[#4ade80]' : 'bg-[#f87171]'
+        }`} />
+        <h3 className="text-sm font-semibold text-white truncate">{clinic.name}</h3>
+      </div>
 
-      <table className="w-full text-xs">
-        <tbody>
-          <tr>
-            <td className="text-[#64748b] py-0.5 pr-2">ID</td>
-            <td>{clinic.clinic_id}</td>
-          </tr>
-          <tr>
-            <td className="text-[#64748b] py-0.5 pr-2">Server</td>
-            <td>{clinic.server_host}:{clinic.server_port}</td>
-          </tr>
-          <tr>
-            <td className="text-[#64748b] py-0.5 pr-2">Health</td>
-            <td>
-              <span
-                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                  isOnline
-                    ? 'bg-[#052e16] text-[#4ade80]'
-                    : 'bg-[#450a0a] text-[#f87171]'
-                }`}
-              >
-                {isOnline ? 'ONLINE' : 'OFFLINE'}
-              </span>
-            </td>
-          </tr>
-          <tr>
-            <td className="text-[#64748b] py-0.5 pr-2">Deploy</td>
-            <td>
-              <span
-                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.bg} ${badge.text}`}
-              >
-                {badge.label}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* Info rows */}
+      <div className="space-y-1.5 text-xs mb-3 flex-1">
+        <div className="flex justify-between">
+          <span className="text-[#64748b]">ID</span>
+          <span className="text-[#cbd5e1] font-mono">{clinic.clinic_id}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[#64748b]">Server</span>
+          <span className="text-[#cbd5e1] font-mono">{clinic.server_host}:{clinic.server_port}</span>
+        </div>
+      </div>
+
+      {/* Badges row */}
+      <div className="flex items-center gap-2">
+        {/* Health badge */}
+        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+          isChecking
+            ? 'bg-[#422006] text-[#fbbf24]'
+            : isOnline
+              ? 'bg-[#052e16] text-[#4ade80]'
+              : 'bg-[#450a0a] text-[#f87171]'
+        }`}>
+          {isChecking ? 'CHECKING...' : isOnline ? 'ONLINE' : 'OFFLINE'}
+        </span>
+
+        {/* Deploy badge */}
+        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+          deployStatus === 'deployed' ? 'bg-[#052e16] text-[#4ade80]' :
+          deployStatus === 'deploying' ? 'bg-[#422006] text-[#fbbf24]' :
+          deployStatus === 'failed' ? 'bg-[#450a0a] text-[#f87171]' :
+          'bg-[#1e1b4b] text-[#a5b4fc]'
+        }`}>
+          {deployStatus === 'deployed' ? 'DEPLOYED' :
+           deployStatus === 'deploying' ? 'DEPLOYING' :
+           deployStatus === 'failed' ? 'FAILED' :
+           'NOT DEPLOYED'}
+        </span>
+      </div>
     </div>
   )
 }

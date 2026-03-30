@@ -13,17 +13,8 @@ export function ClinicsPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold">Clinics</h2>
-        <button
-          onClick={() => navigate('/clinics/new')}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1e1e3a] hover:bg-[#2a2a4a] text-[#818cf8] border border-[#2a2a4a] transition-colors text-lg font-bold"
-          title="Add clinic"
-        >
-          +
-        </button>
-      </div>
-      <p className="text-xs text-[#64748b] mb-4">
+      <h2 className="text-lg font-semibold mb-1">Clinics</h2>
+      <p className="text-xs text-[#64748b] mb-5">
         Connected dental clinic agents. Health checks every 30s.
       </p>
 
@@ -39,13 +30,18 @@ export function ClinicsPage() {
             onClick={() => navigate(`/clinic/${c.clinic_id}`)}
           />
         ))}
-      </div>
 
-      {clinics && clinics.length === 0 && (
-        <div className="text-[#64748b] text-sm mt-4">
-          No clinics registered. Click + to add one.
+        {/* Add clinic card — same size as clinic cards, in the grid */}
+        <div
+          onClick={() => navigate('/clinics/new')}
+          className="bg-[#111127] border border-dashed border-[#2a2a4a] rounded-xl p-5 cursor-pointer hover:border-[#818cf8]/50 hover:bg-[#111130] transition-colors flex flex-col items-center justify-center min-h-[160px]"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#1e1e3a] flex items-center justify-center mb-2">
+            <span className="text-[#818cf8] text-xl font-light">+</span>
+          </div>
+          <span className="text-[#64748b] text-xs">Add Clinic</span>
         </div>
-      )}
+      </div>
     </div>
   )
 }
