@@ -51,7 +51,7 @@ export function ClinicConfigTab() {
   const features: string[] = knowledge.features || []
 
   return (
-    <div className="p-6 max-w-[900px] mx-auto overflow-y-auto space-y-4" style={{ height: '100%' }}>
+    <div className="p-6 max-w-[900px] mx-auto overflow-y-auto space-y-4 h-full">
 
       {/* Red Button */}
       <div className="p-4 bg-[#111127] border border-[#1e293b] rounded-xl">
@@ -98,6 +98,11 @@ export function ClinicConfigTab() {
       <ConfigSection title="Basic Info" color={SECTION_COLORS.basic}>
         <ConfigField label="Name" value={cfg.name} />
         <ConfigField label="Clinic ID" value={cfg.clinic_id} type="badge" />
+        <ConfigField label="Telegram Bot" value={
+          cfg.telegram_bot_username
+          || modules.telegram?.config?.bot_username
+          || cfg.gateway?.telegram?.bot_username
+        } />
       </ConfigSection>
 
       {/* ── Section 2: Server ── */}

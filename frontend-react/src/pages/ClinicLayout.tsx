@@ -56,7 +56,7 @@ export function ClinicLayout() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <Outlet />
       </div>
     </div>
