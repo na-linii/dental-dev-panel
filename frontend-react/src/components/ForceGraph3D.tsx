@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 
 import ForceGraph3DLib from '3d-force-graph'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
-import { COLORS, WIREFRAME, GRAPH_BG, CHARGE_STRENGTH, LINK_DISTANCE, nodeRadius, buildGeometry } from '../config/viz'
+import { WIREFRAME, GRAPH_BG, CHARGE_STRENGTH, LINK_DISTANCE, nodeRadius, buildGeometry } from '../config/viz'
 import type { GraphData, GraphNode } from '../types'
 
 export interface AnimStep {
@@ -26,12 +26,10 @@ interface ForceGraph3DProps {
   onNodeClick?: (nodeId: string) => void
 }
 
-const C: Record<string, string> = { ...COLORS, connector: COLORS.plugin }
-
 function buildNodeObject(node: GraphNode): THREE.Group {
   const group = new THREE.Group()
   const r = nodeRadius(node.val)
-  const color = C[node.group] || '#888'
+  const color = node.color || '#888'
 
   const geo = buildGeometry(node.shape, r, THREE) as THREE.BufferGeometry
 
@@ -199,7 +197,7 @@ export const ForceGraph3D = forwardRef<ForceGraph3DHandle, ForceGraph3DProps>(
         graph = (ForceGraph3DLib as any)()(el)
           .backgroundColor(GRAPH_BG)
           .nodeVal((n: GraphNode) => Math.max(4, (n.val || 5) * 0.6))
-          .nodeColor((n: GraphNode) => C[n.group] || '#888')
+          .nodeColor((n: GraphNode) => n.color || '#888')
           .nodeOpacity(0.85)
           // Forward links visible, reverse links invisible
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

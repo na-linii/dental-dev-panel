@@ -1,28 +1,10 @@
 /* viz.ts — Single source of truth for 3D visualization styles.
- * Ported from frontend/js/viz-config.js
+ * Colors and shapes come from API (meta.viz_config in /graph response).
  */
 
 export const HUB_VERSION = '0.1.0'
 
-export const COLORS: Record<string, string> = {
-  router: '#22d3ee',
-  agent: '#facc15',
-  tool: '#a855f7',
-  gateway: '#22c55e',
-  plugin: '#f97316',
-  storage: '#ec4899',
-}
-
 export const WIREFRAME = '#ffffff'
-
-export const SHAPES: Record<string, string> = {
-  tool: 'tetrahedron',      // 4 грани — самый простой
-  plugin: 'octahedron',     // 5-8 граней — ромбик
-  storage: 'box',           // 6 граней — куб
-  gateway: 'dodecahedron',  // 8-12 граней
-  router: 'icosahedron',    // 10-20 граней
-  agent: 'sphere',          // 16+ граней — почти сфера
-}
 
 export const LABELS: Record<string, string> = {
   router: 'Router',
@@ -33,9 +15,9 @@ export const LABELS: Record<string, string> = {
   storage: 'Storage',
 }
 
-export function getColor(group: string, planned?: boolean): string {
+export function getColor(group: string, planned?: boolean, colors?: Record<string, string>): string {
   if (planned) return 'rgba(255,255,255,0.06)'
-  return COLORS[group] || '#888'
+  return colors?.[group] || '#888'
 }
 
 export function getOpacity(planned?: boolean): number {

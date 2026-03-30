@@ -96,6 +96,13 @@ export interface JiraTask {
   updated: string
 }
 
+export const settingsApi = {
+  getVizConfig: () =>
+    architectureApi.graph().then((data) => data.meta?.viz_config || {}),
+  saveVizConfig: (config: Record<string, { shape: string; color: string; val: number }>) =>
+    api.put('/settings/viz-config', config).then((r) => r.data),
+}
+
 export const roadmapApi = {
   tasks: () =>
     api.get<{ tasks: JiraTask[]; total: number }>('/roadmap/tasks').then((r) => r.data.tasks),

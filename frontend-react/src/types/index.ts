@@ -42,6 +42,7 @@ export interface GraphNode {
   group: string
   val: number
   shape: string
+  color?: string
   planned?: boolean
   description?: string
   connects_to?: string[]
@@ -57,11 +58,18 @@ export interface GraphLink {
   target: string
 }
 
+export interface VizConfigEntry {
+  shape: string
+  color: string
+  val: number
+}
+
 export interface GraphMeta {
   version?: string
   model?: string
   clinic_id?: string
   fallback_model?: string
+  viz_config?: Record<string, VizConfigEntry>
 }
 
 export interface GraphData {
