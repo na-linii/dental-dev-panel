@@ -6,7 +6,7 @@ const tabs = [
   { to: '/architecture', label: 'Architecture' },
   // TODO: перенести Edge Cases в Clinix
   // { to: '/edge-cases', label: 'Edge Cases' },
-  { to: '/roadmap', label: 'Roadmap' },
+  { to: '/roadmap', label: 'Project Board' },
 ]
 
 export function Layout() {

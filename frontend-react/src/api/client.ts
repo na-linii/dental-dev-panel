@@ -2,6 +2,7 @@ import axios from 'axios'
 import type {
   Clinic, ChatRequest, ChatResponse, GraphData,
   EdgeCaseItem, HealthResponse, TraceFlow, TraceSummary, AdminUser,
+  EpicsResponse,
 } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -81,4 +82,24 @@ export const architectureApi = {
 export const langfuseApi = {
   url: () =>
     api.get<{ url: string }>('/langfuse-url').then((r) => r.data.url),
+}
+
+export interface JiraTask {
+  key: string
+  summary: string
+  status: string
+  statusCategory: string // new, indeterminate, done
+  assignee: string | null
+  assigneeAvatar: string | null
+  url: string
+  created: string
+  updated: string
+}
+
+export const roadmapApi = {
+  tasks: () =>
+    api.get<{ tasks: JiraTask[]; total: number }>('/roadmap/tasks').then((r) => r.data.tasks),
+
+  epics: () =>
+    api.get<EpicsResponse>('/roadmap/epics').then((r) => r.data.epics),
 }

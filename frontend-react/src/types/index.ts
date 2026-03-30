@@ -113,6 +113,36 @@ export interface User {
   name: string
 }
 
+export interface EpicTask {
+  key: string
+  summary: string
+  status: string
+  statusCategory: string
+  assignee: string | null
+  assigneeAvatar: string | null
+  url: string
+}
+
+export interface EpicProgress {
+  total: number
+  done: number
+  in_progress: number
+  todo: number
+  percent: number
+}
+
+export interface Epic {
+  key: string
+  summary: string
+  status: string
+  progress: EpicProgress
+  tasks: EpicTask[]
+}
+
+export interface EpicsResponse {
+  epics: Epic[]
+}
+
 export interface AdminUser {
   id: number
   username: string
