@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import { Layout } from './components/Layout'
 import { Login } from './components/Login'
 import { ClinicsPage } from './pages/ClinicsPage'
+import { ClinicCreatePage } from './pages/ClinicCreatePage'
 import { ClinicLayout } from './pages/ClinicLayout'
 import { ClinicVisualizerTab } from './pages/ClinicVisualizerTab'
 import { ClinicConfigTab } from './pages/ClinicConfigTab'
@@ -32,6 +33,7 @@ export default function App() {
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<ClinicsPage />} />
+              <Route path="/clinics/new" element={<ClinicCreatePage />} />
               <Route path="/clinic/:clinicId" element={<ClinicLayout />}>
                 <Route index element={<ClinicVisualizerTab />} />
                 <Route path="config" element={<ClinicConfigTab />} />

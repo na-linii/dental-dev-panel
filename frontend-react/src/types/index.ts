@@ -162,6 +162,26 @@ export interface AdminUser {
   created_at: string
 }
 
+export interface ServiceItem {
+  name: string
+  category: string
+  price_from: number | ''
+  price_to: number | ''
+  duration_min: number | ''
+  description: string
+}
+
+export interface DoctorItem {
+  name: string
+  specialty: string
+  description: string
+}
+
+export interface FaqItem {
+  question: string
+  answer: string
+}
+
 export interface ClinicCreateData {
   id: string
   name: string
@@ -172,12 +192,64 @@ export interface ClinicCreateData {
   ssh_auth_type: 'key' | 'password'
   hub_url: string
   config: {
-    telegram_bot_token?: string
-    google_sheets_id?: string
-    google_sa_key_path?: string
-    openai_api_key?: string
-    openai_api_base?: string
-    openai_proxy_secret?: string
+    // Modules
+    telegram_enabled: boolean
+    telegram_bot_token: string
+    telegram_streaming: boolean
+    google_sheets_enabled: boolean
+    google_sheets_id: string
+    google_sa_key_path: string
+    google_sheets_can_book: boolean
+    google_sheets_can_cancel: boolean
+    google_sheets_can_register_patient: boolean
+    google_sheets_can_confirm: boolean
+
+    // Channels
+    channels: {
+      [key: string]: {
+        enabled: boolean
+        tone: 'friendly' | 'formal' | 'neutral'
+        greeting: string
+        features: string[]
+      }
+    }
+
+    // Booking
+    pricing_mode: 'range' | 'exact' | 'hidden'
+    show_doctors: boolean
+    allow_primary: boolean
+    advance_days: number
+    primary_patients: 'always' | 'never' | 'ask'
+    max_retries: number
+    handoff_notify_via: 'telegram' | 'email' | 'none'
+    require_phone_for: string[]
+
+    // Confirmation
+    confirmation_enabled: boolean
+    confirmation_schedule_hours: string
+    confirmation_advance_days: number
+    confirmation_message_template: string
+
+    // Handoff
+    handoff_admin_chat_id: string
+    handoff_cooldown_minutes: number
+
+    // OpenAI / LLM
+    openai_api_key: string
+    openai_api_base: string
+    openai_proxy_secret: string
+    openai_model: string
+    openai_fallback_model: string
+
+    // Knowledge Base
+    knowledge_about: string
+    knowledge_address: string
+    knowledge_phone: string
+    knowledge_working_hours: string
+    knowledge_features: string[]
+    knowledge_services: ServiceItem[]
+    knowledge_doctors: DoctorItem[]
+    knowledge_faq: FaqItem[]
   }
 }
 
