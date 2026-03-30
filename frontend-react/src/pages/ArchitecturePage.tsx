@@ -164,7 +164,13 @@ export function ArchitecturePage() {
     // This ensures smooth transition — camera continues from where it is
     const cam = fgRef.current.cameraPosition()
     os.angle = Math.atan2(cam.x - nx, cam.z - nz)
-    // Keep camY constant — don't update it during orbit
+
+    // Update OrbitControls target to new pivot
+    const controls = fgRef.current.controls()
+    if (controls) {
+      controls.target.set(nx, ny, nz)
+      controls.update()
+    }
 
     // If orbit is OFF, do a smooth camera transition with lookAt
     if (!os.on) {
@@ -205,6 +211,12 @@ export function ArchitecturePage() {
       if (fgRef.current) {
         const cam = fgRef.current.cameraPosition()
         os.angle = Math.atan2(cam.x - os.pivot.x, cam.z - os.pivot.z)
+        // Update OrbitControls target back to origin
+        const controls = fgRef.current.controls()
+        if (controls) {
+          controls.target.set(0, 0, 0)
+          controls.update()
+        }
       }
       return
     }
@@ -328,11 +340,19 @@ export function ArchitecturePage() {
         const dx = cam.x - os.pivot.x
         const dz = cam.z - os.pivot.z
         const dist = Math.sqrt(dx * dx + dz * dz) || 200
-        fgRef.current.cameraPosition({
+        const newPos = {
           x: os.pivot.x + dist * Math.sin(os.angle),
           y: os.camY,
           z: os.pivot.z + dist * Math.cos(os.angle),
-        })
+        }
+        fgRef.current.cameraPosition(newPos)
+
+        // Update OrbitControls target so the orbit center matches our pivot
+        const controls = fgRef.current.controls()
+        if (controls) {
+          controls.target.set(os.pivot.x, os.pivot.y, os.pivot.z)
+          controls.update()
+        }
       }
       animFrameRef.current = requestAnimationFrame(orbitFrame)
     }
@@ -484,6 +504,12 @@ export function ArchitecturePage() {
                 if (cam) {
                   os.angle = Math.atan2(cam.x - os.pivot.x, cam.z - os.pivot.z)
                   os.camY = cam.y
+                }
+                // Update OrbitControls target to pivot
+                const controls = fgRef.current?.controls()
+                if (controls) {
+                  controls.target.set(os.pivot.x, os.pivot.y, os.pivot.z)
+                  controls.update()
                 }
                 os.on = true
                 setOrbiting(true)
