@@ -642,22 +642,29 @@ async def _get_clinic_for_admin(admin_user: dict):
     return clinic
 
 
+HUB_SERVICE_SECRET = os.getenv("HUB_SERVICE_SECRET", "hub-to-agent-secret-2026")
+
+
 async def _proxy_to_clinic(clinic: dict, method: str, path: str, body: dict | None = None, params: dict | None = None):
-    """Proxy a request to the clinic agent API."""
+    """Proxy a request to the clinic agent API with service-level auth."""
     base_url = f"http://{clinic['server_host']}:{clinic['server_port']}"
     url = f"{base_url}{path}"
+
+    # Hub authenticates to agent via shared service secret
+    headers = {"X-Hub-Secret": HUB_SERVICE_SECRET}
+
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             if method == "GET":
-                r = await client.get(url, params=params)
+                r = await client.get(url, params=params, headers=headers)
             elif method == "POST":
-                r = await client.post(url, json=body)
+                r = await client.post(url, json=body, headers=headers)
             elif method == "PATCH":
-                r = await client.patch(url, json=body)
+                r = await client.patch(url, json=body, headers=headers)
             elif method == "DELETE":
-                r = await client.delete(url, params=params)
+                r = await client.delete(url, params=params, headers=headers)
             elif method == "PUT":
-                r = await client.put(url, json=body)
+                r = await client.put(url, json=body, headers=headers)
             else:
                 raise HTTPException(405, f"Method {method} not supported")
 
