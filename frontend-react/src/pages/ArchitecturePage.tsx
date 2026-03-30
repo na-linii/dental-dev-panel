@@ -45,6 +45,13 @@ function Chevron({ expanded }: { expanded: boolean }) {
   )
 }
 
+/** Shared mutable orbit state — lives outside React to avoid stale closures */
+interface OrbitState {
+  on: boolean
+  angle: number
+  pivot: { x: number; y: number; z: number }
+}
+
 export function ArchitecturePage() {
   const graphRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,6 +64,8 @@ export function ArchitecturePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [orbiting, setOrbiting] = useState(true)
+  const orbitState = useRef<OrbitState>({ on: true, angle: 0, pivot: { x: 0, y: 0, z: 0 } })
+  const animFrameRef = useRef<number>(0)
 
   // Load graph data
   useEffect(() => {
@@ -125,27 +134,24 @@ export function ArchitecturePage() {
     } catch { /* ignore */ }
   }, [])
 
-  const focusNode = useCallback((node: RuntimeNode) => {
+  const focusNode = useCallback((node: RuntimeNode, restartOrbit: boolean) => {
     if (!fgRef.current) return
     const nx = node.x || 0, ny = node.y || 0, nz = node.z || 0
+    const os = orbitState.current
 
-    const ctrl = (fgRef.current as Record<string, unknown>)._orbitCtrl as {
-      setPivot: (p: { x: number; y: number; z: number }) => void
-      start: () => void
-      isActive: () => boolean
-    } | undefined
-
-    // Set this node as orbit center
-    if (ctrl) ctrl.setPivot({ x: nx, y: ny, z: nz })
+    // Update orbit pivot to this node
+    os.pivot = { x: nx, y: ny, z: nz }
 
     // Smoothly move camera to look at this node from a nice distance
     const cam = fgRef.current.cameraPosition()
     const currentDist = Math.sqrt(
       (cam.x - nx) ** 2 + (cam.z - nz) ** 2,
     ) || 200
-    // Use current distance but clamp to minimum
     const targetDist = Math.max(currentDist, 80)
     const angleToNode = Math.atan2(cam.x - nx, cam.z - nz)
+
+    // Sync orbit angle so it continues smoothly after camera transition
+    os.angle = angleToNode
 
     fgRef.current.cameraPosition(
       {
@@ -156,14 +162,27 @@ export function ArchitecturePage() {
       { x: nx, y: ny, z: nz }, // lookAt
       800, // transition ms
     )
+
+    // If orbit was on, keep it on (pivot just changed). Don't restart if it was off.
+    if (restartOrbit && !os.on) {
+      os.on = true
+      setOrbiting(true)
+    }
   }, [])
 
   const selectModule = useCallback((nodeId: string) => {
-    // Toggle: if already expanded, collapse
+    // Toggle: if already expanded, collapse and return pivot to origin
     if (expandedIdRef.current === nodeId) {
       expandedIdRef.current = ''
       setExpandedId(null)
       refreshNodeVisuals()
+      // Return orbit pivot to origin
+      const os = orbitState.current
+      os.pivot = { x: 0, y: 0, z: 0 }
+      if (fgRef.current) {
+        const cam = fgRef.current.cameraPosition()
+        os.angle = Math.atan2(cam.x - os.pivot.x, cam.z - os.pivot.z)
+      }
       return
     }
     expandedIdRef.current = nodeId
@@ -174,7 +193,8 @@ export function ArchitecturePage() {
     if (fgRef.current) {
       const data = fgRef.current.graphData()
       const runtimeNode = data.nodes.find((n: object) => (n as RuntimeNode).id === nodeId)
-      if (runtimeNode) focusNode(runtimeNode as RuntimeNode)
+      // Do NOT restart orbit — just change pivot. If orbit was on, it stays on around new node.
+      if (runtimeNode) focusNode(runtimeNode as RuntimeNode, false)
     }
   }, [refreshNodeVisuals, focusNode])
 
@@ -258,59 +278,44 @@ export function ArchitecturePage() {
     fgRef.current = fg
 
     // ======= ORBIT SYSTEM =======
-    // Simple orbit: rotate camera around pivot on XZ plane.
-    // Reads current camera distance each frame so wheel-zoom is preserved.
-    // Only mousedown (drag) stops orbit. Wheel does NOT stop it.
-    let orbitOn = true
-    let angle = 0
-    const pivot = { x: 0, y: 0, z: 0 }
+    // Single rAF loop that runs ALWAYS. Inside: if orbitState.on, rotate. If off, noop.
+    // Reads camera distance each frame so wheel zoom is seamless.
+    // Left-click drag stops orbit. Wheel does NOT.
+    const os = orbitState.current
+    os.on = true
+    os.angle = 0
+    os.pivot = { x: 0, y: 0, z: 0 }
     const ORBIT_SPEED = 0.0015
+
     function orbitFrame() {
-      if (!fgRef.current) return
-      if (orbitOn) {
-        angle += ORBIT_SPEED
+      if (!fgRef.current) {
+        // Graph destroyed — stop loop
+        return
+      }
+      if (os.on) {
+        os.angle += ORBIT_SPEED
         const cam = fgRef.current.cameraPosition()
-        // Read current distance (respects wheel zoom done by OrbitControls)
-        const dx = cam.x - pivot.x
-        const dz = cam.z - pivot.z
+        const dx = cam.x - os.pivot.x
+        const dz = cam.z - os.pivot.z
         const dist = Math.sqrt(dx * dx + dz * dz) || 200
         fgRef.current.cameraPosition({
-          x: pivot.x + dist * Math.sin(angle),
-          y: cam.y, // keep Y as-is (OrbitControls may change it)
-          z: pivot.z + dist * Math.cos(angle),
+          x: os.pivot.x + dist * Math.sin(os.angle),
+          y: cam.y,
+          z: os.pivot.z + dist * Math.cos(os.angle),
         })
       }
-      requestAnimationFrame(orbitFrame)
+      animFrameRef.current = requestAnimationFrame(orbitFrame)
     }
-    requestAnimationFrame(orbitFrame)
-
-    // Expose orbit controller
-    const orbitCtrl = {
-      setPivot(p: { x: number; y: number; z: number }) {
-        pivot.x = p.x; pivot.y = p.y; pivot.z = p.z
-        // Sync angle so camera doesn't jump
-        const cam = fgRef.current?.cameraPosition()
-        if (cam) angle = Math.atan2(cam.x - pivot.x, cam.z - pivot.z)
-      },
-      start() {
-        if (orbitOn) return
-        // Sync angle from current position
-        const cam = fgRef.current?.cameraPosition()
-        if (cam) angle = Math.atan2(cam.x - pivot.x, cam.z - pivot.z)
-        orbitOn = true
-      },
-      stop() { orbitOn = false },
-      isActive() { return orbitOn },
-    }
-    ;(fg as Record<string, unknown>)._orbitCtrl = orbitCtrl
+    animFrameRef.current = requestAnimationFrame(orbitFrame)
 
     // Only left-click drag stops orbit (not wheel, not right-click)
-    el.addEventListener('mousedown', (e: MouseEvent) => {
-      if (e.button === 0 && orbitOn) { // left button only
-        orbitOn = false
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 0 && os.on) {
+        os.on = false
         el.dispatchEvent(new CustomEvent('orbit-stopped'))
       }
-    })
+    }
+    el.addEventListener('mousedown', onMouseDown)
 
     // Resize — observe container div, not just window
     const ro = new ResizeObserver(() => {
@@ -322,6 +327,8 @@ export function ArchitecturePage() {
 
     return () => {
       ro.disconnect()
+      el.removeEventListener('mousedown', onMouseDown)
+      cancelAnimationFrame(animFrameRef.current)
       if (fgRef.current) {
         fgRef.current._destructor?.()
         fgRef.current = null
@@ -414,21 +421,25 @@ export function ArchitecturePage() {
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
           <button
             onClick={() => {
-              const ctrl = (fgRef.current as Record<string, unknown>)?._orbitCtrl as { start: () => void; stop: () => void; isActive: () => boolean; setPivot: (p: { x: number; y: number; z: number }) => void } | undefined
-              if (!ctrl) return
-              if (ctrl.isActive()) {
-                ctrl.stop()
+              const os = orbitState.current
+              if (os.on) {
+                os.on = false
                 setOrbiting(false)
               } else {
                 // If a module is selected, orbit around it
                 if (expandedIdRef.current && fgRef.current) {
                   const data = fgRef.current.graphData()
                   const rn = data.nodes.find((n: object) => (n as RuntimeNode).id === expandedIdRef.current) as RuntimeNode | undefined
-                  if (rn) ctrl.setPivot({ x: rn.x || 0, y: rn.y || 0, z: rn.z || 0 })
+                  if (rn) {
+                    os.pivot = { x: rn.x || 0, y: rn.y || 0, z: rn.z || 0 }
+                  }
                 } else {
-                  ctrl.setPivot({ x: 0, y: 0, z: 0 })
+                  os.pivot = { x: 0, y: 0, z: 0 }
                 }
-                ctrl.start()
+                // Sync angle from current camera position
+                const cam = fgRef.current?.cameraPosition()
+                if (cam) os.angle = Math.atan2(cam.x - os.pivot.x, cam.z - os.pivot.z)
+                os.on = true
                 setOrbiting(true)
               }
             }}
