@@ -221,6 +221,49 @@ EDGE_CASES = [
         "expected_output": "FAQ response about pediatric dentistry from knowledge base.",
         "metadata": {"category": "faq", "id": "faq-pediatric"},
     },
+    # --- starsmile_test (Элайнер.РФ) specific ---
+    {
+        "input": "Сколько стоят элайнеры?",
+        "expected_output": "Price from knowledge base: элайнеры Star Smile IQ от 10 970 ₽/мес, рассрочка 0%. Offer to book consultation.",
+        "metadata": {"category": "faq", "id": "faq-aligner-price", "clinic_id": "starsmile_test"},
+    },
+    {
+        "input": "Какие врачи-ортодонты у вас принимают?",
+        "expected_output": "Lists orthodontists: Нагаева В.Н., Александрова Е.Н. — эксперты Star Smile.",
+        "metadata": {"category": "faq", "id": "faq-orthodontists", "clinic_id": "starsmile_test"},
+    },
+    {
+        "input": "Можно записаться на консультацию по брекетам?",
+        "expected_output": "Booking flow: check availability for orthodontist consultation. Mention free consultation.",
+        "metadata": {"category": "booking", "id": "book-braces-consult", "clinic_id": "starsmile_test",
+                     "patient_phone": "+79001234567", "patient_name": "Смирнова Алиса", "is_identified": True},
+    },
+    {
+        "input": "У вас есть детский стоматолог?",
+        "expected_output": "FAQ: Да, Федулова С.С., приём детей от 0 лет.",
+        "metadata": {"category": "faq", "id": "faq-pediatric-starsmile", "clinic_id": "starsmile_test"},
+    },
+    {
+        "input": "Как долго длится лечение на элайнерах?",
+        "expected_output": "FAQ response about treatment duration from knowledge base. Offer free consultation for personal plan.",
+        "metadata": {"category": "faq", "id": "faq-aligner-duration", "clinic_id": "starsmile_test"},
+    },
+    # --- TG channel-specific ---
+    {
+        "input": "Добрый день!",
+        "expected_output": "Short greeting + 'How can I help?' Appropriate for TG Business channel.",
+        "metadata": {"category": "faq", "id": "tg-business-greeting", "channel": "tg_business"},
+    },
+    {
+        "input": "Какие у вас цены на имплантацию?",
+        "expected_output": "FAQ response with implant pricing. Follows prior booking context from bot channel.",
+        "metadata": {"category": "multi-turn", "id": "multi-bot-then-business",
+                     "channel": "tg_business",
+                     "history": [
+                         {"role": "user", "content": "Хочу записаться на чистку"},
+                         {"role": "assistant", "content": "Записала вас на чистку 30 марта в 10:00."},
+                     ]},
+    },
 ]
 
 
@@ -376,10 +419,12 @@ def call_agent(*, item, **kwargs) -> str:
     thread_id = f"eval-{meta.get('id', 'x')}-{int(time.time())}"
     clinic_id = meta.get("clinic_id", "zubatka")
 
+    channel = meta.get("channel", "tg_bot")
+
     body = {
         "message": message,
         "clinic_id": clinic_id,
-        "channel": "tg_bot",
+        "channel": channel,
         "channel_user_id": "eval-runner",
         "thread_id": thread_id,
     }
@@ -481,9 +526,11 @@ def main():
         print("  Done (seed only)")
         return
 
-    # Set clinic_id in metadata
+    # Set clinic_id in metadata (only if not already set per-case)
     for item in EDGE_CASES:
-        item.setdefault("metadata", {})["clinic_id"] = args.clinic
+        item.setdefault("metadata", {})
+        if "clinic_id" not in item["metadata"]:
+            item["metadata"]["clinic_id"] = args.clinic
 
     exp_name = args.name or f"eval-{args.clinic}-{time.strftime('%m%d-%H%M')}"
 
