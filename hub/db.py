@@ -34,6 +34,13 @@ async def init_db():
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
+        # New columns for deploy support
+        await conn.execute("ALTER TABLE hub.clinics ADD COLUMN IF NOT EXISTS ssh_user TEXT DEFAULT ''")
+        await conn.execute("ALTER TABLE hub.clinics ADD COLUMN IF NOT EXISTS ssh_auth_type TEXT DEFAULT 'key'")
+        await conn.execute("ALTER TABLE hub.clinics ADD COLUMN IF NOT EXISTS hub_url TEXT DEFAULT ''")
+        await conn.execute("ALTER TABLE hub.clinics ADD COLUMN IF NOT EXISTS deploy_status TEXT DEFAULT 'not_deployed'")
+        await conn.execute("ALTER TABLE hub.clinics ADD COLUMN IF NOT EXISTS deploy_log TEXT DEFAULT ''")
+
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS hub.admin_users (
                 id SERIAL PRIMARY KEY,
@@ -96,20 +103,26 @@ async def add_clinic(data: dict):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO hub.clinics (id, name, server_host, server_port, clinic_id, status, config)
-            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+            INSERT INTO hub.clinics (id, name, server_host, server_port, clinic_id, status, config, ssh_user, ssh_auth_type, hub_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)
             ON CONFLICT (id) DO UPDATE SET
                 name = EXCLUDED.name,
                 server_host = EXCLUDED.server_host,
                 server_port = EXCLUDED.server_port,
                 clinic_id = EXCLUDED.clinic_id,
                 config = EXCLUDED.config,
+                ssh_user = EXCLUDED.ssh_user,
+                ssh_auth_type = EXCLUDED.ssh_auth_type,
+                hub_url = EXCLUDED.hub_url,
                 updated_at = NOW()
         """, data["id"], data["name"], data["server_host"],
             data.get("server_port", 8080),
             data.get("clinic_id", data["id"]),
             "active",
-            json.dumps(data.get("config", {})))
+            json.dumps(data.get("config", {})),
+            data.get("ssh_user", ""),
+            data.get("ssh_auth_type", "key"),
+            data.get("hub_url", ""))
     return data
 
 
@@ -151,3 +164,11 @@ async def delete_admin_user(admin_id: int, clinic_id: str = None):
                 admin_id, clinic_id)
             return result  # "DELETE 1" or "DELETE 0"
         await conn.execute("DELETE FROM hub.admin_users WHERE id = $1", admin_id)
+
+
+async def update_clinic_deploy(clinic_id: str, deploy_status: str, deploy_log: str):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE hub.clinics SET deploy_status = $1, deploy_log = $2, updated_at = NOW() WHERE id = $3",
+            deploy_status, deploy_log, clinic_id)
