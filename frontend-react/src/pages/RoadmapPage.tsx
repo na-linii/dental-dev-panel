@@ -186,7 +186,7 @@ export function RoadmapPage() {
 
   return (
     <div className="overflow-y-auto p-6" style={{ height: 'calc(100vh - 48px)' }}>
-      <div className="max-w-[1100px] mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <h2 className="text-lg font-semibold mb-1">Project Board</h2>
         <p className="text-xs text-[#64748b] mb-5">Jira epics and tasks</p>
 
@@ -236,7 +236,7 @@ export function RoadmapPage() {
 
         {/* Epic cards */}
         {!loading && !error && (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
             {epics.map((epic) => (
               <EpicCard key={epic.key} epic={epic} />
             ))}
