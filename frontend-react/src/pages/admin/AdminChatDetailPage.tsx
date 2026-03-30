@@ -1,44 +1,24 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
-import { getAdminSession, sendAdminMessage, updateAdminSessionStatus } from '../../api/adminClient'
+import { getAdminSession, sendAdminMessage, updateSessionController } from '../../api/adminClient'
 import type { AdminSessionDetail, AdminMessage } from '../../api/adminClient'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
-const STATUS_LABELS: Record<string, string> = {
-  agent_chat: 'С агентом',
-  operator_chat: 'С оператором',
-  awaiting_operator: 'Ожидает оператора',
-  chat_completed: 'Завершён',
-  visit_reminder: 'Напоминание',
-  confirm_in_mis: 'Подтвердите в МИС',
-  visit_confirmed: 'Подтверждён',
-  visit_not_confirmed: 'Не подтверждён',
-  cancel_in_mis: 'Отмените в МИС',
-  cancelled: 'Отменён',
-  reschedule_in_mis: 'Перенесите в МИС',
-  rescheduled: 'Перенесён',
+const CONTROLLER_LABELS: Record<string, string> = {
+  bot: 'С ботом',
+  operator: 'С оператором',
+  closed: 'Завершён',
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  agent_chat: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
-  operator_chat: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
-  awaiting_operator: 'bg-red-500/15 text-red-300 border-red-500/25',
-  chat_completed: 'bg-gray-500/15 text-gray-300 border-gray-500/25',
-  visit_reminder: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
-  confirm_in_mis: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
-  visit_confirmed: 'bg-gray-500/15 text-gray-300 border-gray-500/25',
-  visit_not_confirmed: 'bg-red-500/15 text-red-300 border-red-500/25',
-  cancel_in_mis: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
-  cancelled: 'bg-gray-500/15 text-gray-300 border-gray-500/25',
-  reschedule_in_mis: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
-  rescheduled: 'bg-gray-500/15 text-gray-300 border-gray-500/25',
+const CONTROLLER_COLORS: Record<string, string> = {
+  bot: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+  operator: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
+  closed: 'bg-gray-500/15 text-gray-300 border-gray-500/25',
 }
 
-const CHANGEABLE_STATUSES = [
-  'operator_chat', 'chat_completed', 'visit_confirmed', 'cancelled', 'rescheduled',
-]
+const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
 
 export function AdminChatDetailPage() {
   const { sessionId } = useParams()
@@ -47,13 +27,13 @@ export function AdminChatDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [messageText, setMessageText] = useState('')
   const [isSending, setIsSending] = useState(false)
-  const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [showControllerMenu, setShowControllerMenu] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const prevMsgCount = useRef(0)
 
-  const loadSession = async (id: number, silent = false) => {
+  const loadSession = async (id: string, silent = false) => {
     if (!silent) setIsLoading(true)
     try {
       setSession(await getAdminSession(id))
@@ -67,7 +47,7 @@ export function AdminChatDetailPage() {
   useEffect(() => {
     if (sessionId) {
       prevMsgCount.current = 0
-      loadSession(Number(sessionId))
+      loadSession(sessionId)
     }
   }, [sessionId])
 
@@ -88,7 +68,7 @@ export function AdminChatDetailPage() {
   useEffect(() => {
     if (!sessionId) return
     const id = setInterval(() => {
-      if (!document.hidden) loadSession(Number(sessionId), true)
+      if (!document.hidden) loadSession(sessionId, true)
     }, 5000)
     return () => clearInterval(id)
   }, [sessionId])
@@ -100,9 +80,17 @@ export function AdminChatDetailPage() {
     setIsSending(true)
     try {
       const result = await sendAdminMessage(session.id, text)
+      // Backend returns {success, message_id, delivered} — add optimistic message
+      const optimisticMsg: AdminMessage = {
+        id: result.message_id || String(Date.now()),
+        role: 'operator',
+        content: text,
+        metadata: null,
+        created_at: new Date().toISOString(),
+      }
       setSession((prev) => {
         if (!prev) return prev
-        return { ...prev, messages: [...prev.messages, result.message], awaiting_operator: false }
+        return { ...prev, messages: [...prev.messages, optimisticMsg] }
       })
     } catch (e) {
       console.error('Send message error:', e)
@@ -117,14 +105,14 @@ export function AdminChatDetailPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleControllerChange = async (newController: string) => {
     if (!session) return
-    setShowStatusMenu(false)
+    setShowControllerMenu(false)
     try {
-      await updateAdminSessionStatus(session.id, newStatus)
-      setSession((prev) => prev ? { ...prev, status: newStatus } : prev)
+      await updateSessionController(session.id, newController)
+      setSession((prev) => prev ? { ...prev, controller: newController } : prev)
     } catch (e) {
-      console.error('Status update error:', e)
+      console.error('Controller update error:', e)
     }
   }
 
@@ -156,27 +144,27 @@ export function AdminChatDetailPage() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold text-white truncate">{session.patient_name}</h1>
-            {/* Status badge (clickable) */}
+            <h1 className="text-lg font-bold text-white truncate">{session.patient?.name || 'Без имени'}</h1>
+            {/* Controller badge (clickable) */}
             <div className="relative">
               <button
-                onClick={() => setShowStatusMenu(!showStatusMenu)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors ${STATUS_COLORS[session.status] || 'bg-gray-500/15 text-gray-300 border-gray-500/25'}`}
+                onClick={() => setShowControllerMenu(!showControllerMenu)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors ${CONTROLLER_COLORS[session.controller] || 'bg-gray-500/15 text-gray-300 border-gray-500/25'}`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                {STATUS_LABELS[session.status] || session.status_label || session.status}
+                {CONTROLLER_LABELS[session.controller] || session.controller}
               </button>
-              {showStatusMenu && (
+              {showControllerMenu && (
                 <div className="absolute top-full mt-1 left-0 z-50 bg-[#1a1a2e] border border-white/[0.1] rounded-xl shadow-xl py-1 min-w-[180px]">
-                  {CHANGEABLE_STATUSES.map((s) => (
+                  {CHANGEABLE_CONTROLLERS.map((c) => (
                     <button
-                      key={s}
-                      onClick={() => handleStatusChange(s)}
+                      key={c}
+                      onClick={() => handleControllerChange(c)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-white/[0.06] transition-colors ${
-                        s === session.status ? 'text-[#51ff97]' : 'text-[#94a3b8]'
+                        c === session.controller ? 'text-[#51ff97]' : 'text-[#94a3b8]'
                       }`}
                     >
-                      {STATUS_LABELS[s] || s}
+                      {CONTROLLER_LABELS[c] || c}
                     </button>
                   ))}
                 </div>
@@ -184,8 +172,8 @@ export function AdminChatDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-4 mt-1 text-sm text-[#64748b]">
-            {session.patient_phone && <span>{session.patient_phone}</span>}
-            {session.doctor_name && <span>Врач: {session.doctor_name}</span>}
+            {session.patient?.phone && <span>{session.patient.phone}</span>}
+            {session.channel && <span>Канал: {session.channel}</span>}
           </div>
         </div>
       </div>
@@ -193,12 +181,12 @@ export function AdminChatDetailPage() {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto py-5 px-3 space-y-3 min-h-0">
         {session.messages.map((msg, i) => {
-          const msgDate = format(new Date(msg.timestamp), 'yyyy-MM-dd')
-          const prevDate = i > 0 ? format(new Date(session.messages[i - 1].timestamp), 'yyyy-MM-dd') : null
+          const msgDate = format(new Date(msg.created_at), 'yyyy-MM-dd')
+          const prevDate = i > 0 ? format(new Date(session.messages[i - 1].created_at), 'yyyy-MM-dd') : null
           const showSeparator = msgDate !== prevDate
           return (
             <div key={msg.id}>
-              {showSeparator && <DateSeparator date={new Date(msg.timestamp)} />}
+              {showSeparator && <DateSeparator date={new Date(msg.created_at)} />}
               <MessageBubble message={msg} />
             </div>
           )
@@ -237,30 +225,35 @@ export function AdminChatDetailPage() {
 }
 
 function MessageBubble({ message }: { message: AdminMessage }) {
-  const isPatient = message.author_type === 'patient'
-  const isAgent = message.author_type === 'agent'
-  const isAdmin = message.author_type === 'admin'
+  // Backend uses 'role': 'user' | 'assistant' | 'operator' | 'system'
+  const isPatient = message.role === 'user'
+  const isAgent = message.role === 'assistant'
+  const isOperator = message.role === 'operator'
 
   let align = 'justify-start'
   let bubble = 'bg-white/[0.04] border-white/[0.06]'
   let authorColor = 'text-[#64748b]'
   let AuthorIcon = User
+  let authorLabel = message.role
 
   if (isPatient) {
     align = 'justify-start'
     bubble = 'bg-white/[0.04] border-white/[0.06]'
     authorColor = 'text-[#64748b]'
     AuthorIcon = User
+    authorLabel = 'Пациент'
   } else if (isAgent) {
     align = 'justify-end'
     bubble = 'bg-[#51ff97]/[0.08] border-[#51ff97]/15'
     authorColor = 'text-[#51ff97]/60'
     AuthorIcon = Bot
-  } else if (isAdmin) {
+    authorLabel = 'Агент'
+  } else if (isOperator) {
     align = 'justify-end'
     bubble = 'bg-indigo-500/[0.08] border-indigo-500/15'
     authorColor = 'text-indigo-400/60'
     AuthorIcon = ShieldCheck
+    authorLabel = 'Администратор'
   }
 
   return (
@@ -268,12 +261,10 @@ function MessageBubble({ message }: { message: AdminMessage }) {
       <div className={`max-w-[85%] md:max-w-[70%] border rounded-2xl px-4 py-3 ${bubble}`}>
         <div className={`flex items-center gap-1.5 mb-1 ${authorColor}`}>
           <AuthorIcon className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">
-            {isAgent ? 'Агент' : isAdmin ? 'Администратор' : message.author}
-          </span>
-          <span className="text-[11px] text-[#475569] ml-auto">{format(new Date(message.timestamp), 'HH:mm')}</span>
+          <span className="text-xs font-medium">{authorLabel}</span>
+          <span className="text-[11px] text-[#475569] ml-auto">{format(new Date(message.created_at), 'HH:mm')}</span>
         </div>
-        <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{message.text}</p>
+        <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{message.content}</p>
       </div>
     </div>
   )

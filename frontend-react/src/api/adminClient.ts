@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-// ── Types ──
+// ── Types (matching actual backend responses) ──
 
 export interface AdminUser {
   user_id: number
@@ -15,82 +15,90 @@ export interface AdminLoginResponse {
   user: AdminUser
 }
 
+// Backend: GET /admin/api/dashboard/stats
 export interface AdminDashboardStats {
-  active_chats: number
-  awaiting_operator: number
-  confirmations_today: number
+  sessions: { bot: number; operator: number; closed: number }
+  confirmations: Record<string, number>
   pending_actions: number
+  total_patients: number
 }
 
+// Backend: GET /admin/api/sessions — returns array of these
 export interface AdminSessionSummary {
-  id: number
-  patient_name: string
-  patient_phone: string
-  doctor_name: string
-  status: string
-  status_label?: string
-  awaiting_operator: boolean
-  last_message_time: string | null
-  last_message: string
+  id: string
+  channel: string
+  thread_id: string
   controller: string
+  confirmation_status: string | null
+  crm_sync_status: string | null
+  updated_at: string | null
+  created_at: string | null
+  patient: { id: string | null; name: string | null; phone: string | null } | null
+  last_message: string | null
+  last_message_at: string | null
 }
 
-export interface AdminSessionsResponse {
-  items: AdminSessionSummary[]
-  total: number
-}
-
+// Backend: GET /admin/api/sessions/:id
 export interface AdminMessage {
-  id: number
-  author: string
-  author_type: 'agent' | 'patient' | 'admin'
-  text: string
-  timestamp: string
+  id: string
+  role: string
+  content: string
+  metadata: Record<string, unknown> | null
+  created_at: string
 }
 
 export interface AdminSessionDetail {
-  id: number
-  patient_name: string
-  patient_phone: string
-  doctor_name: string
-  status: string
-  status_label?: string
+  id: string
+  clinic_id: string
+  channel: string
+  thread_id: string
   controller: string
-  awaiting_operator: boolean
+  operator_id: string | null
+  cooldown_until: string | null
+  confirmation_status: string | null
+  confirmation_appointment_id: string | null
+  crm_sync_status: string | null
+  crm_sync_error: string | null
+  created_at: string | null
+  updated_at: string | null
+  patient: { id: string | null; name: string | null; phone: string | null; ident_patient_id: string | null } | null
   messages: AdminMessage[]
 }
 
 export interface AdminSendMessageResponse {
-  message: AdminMessage
+  success: boolean
+  message_id: string
+  delivered: boolean
 }
 
+// Backend: GET /admin/api/actions — returns array of these
 export interface AdminAction {
-  id: number
-  type: string
-  description: string
-  patient_name: string
-  created_at: string
+  id: string
+  action_type: string
+  patient_id: string | null
+  description: string | null
+  data: Record<string, unknown> | null
   status: string
+  created_at: string | null
+  completed_at: string | null
 }
 
-export interface AdminActionsResponse {
-  items: AdminAction[]
-  total: number
-}
-
+// Backend: GET /admin/api/settings/bot
 export interface AdminBotStatus {
   bot_enabled: boolean
   reason: string | null
   toggled_at: string | null
+  toggled_by: string | null
 }
 
+// Backend: GET /admin/api/settings/blocklist — returns array of these
 export interface AdminBlocklistItem {
-  id: number
+  id: string
   phone: string | null
-  telegram_user_id: number | null
-  display_name: string | null
+  telegram_user_id: string | null
   reason: string | null
-  created_at: string
+  created_by: string | null
+  created_at: string | null
 }
 
 // ── API Client ──
@@ -133,30 +141,35 @@ export const getAdminDashboardStats = async () =>
   (await adminApi.get<AdminDashboardStats>('/dashboard/stats')).data
 
 // ── Sessions ──
+// Backend returns flat array, not {items, total}
 
 export const getAdminSessions = async (params?: {
-  status?: string
-  awaiting_operator?: boolean
+  controller?: string
+  confirmation_status?: string
   search?: string
   limit?: number
   offset?: number
-}) => (await adminApi.get<AdminSessionsResponse>('/sessions', { params })).data
+}) => (await adminApi.get<AdminSessionSummary[]>('/sessions', { params })).data
 
-export const getAdminSession = async (id: number) =>
+export const getAdminSession = async (id: string) =>
   (await adminApi.get<AdminSessionDetail>(`/sessions/${id}`)).data
 
-export const sendAdminMessage = async (sessionId: number, text: string) =>
+export const sendAdminMessage = async (sessionId: string, text: string) =>
   (await adminApi.post<AdminSendMessageResponse>(`/sessions/${sessionId}/messages`, { text })).data
 
-export const updateAdminSessionStatus = async (sessionId: number, status: string) =>
-  (await adminApi.patch(`/sessions/${sessionId}/status`, { status })).data
+export const updateSessionController = async (sessionId: string, controller: string) =>
+  (await adminApi.patch(`/sessions/${sessionId}/controller`, { controller })).data
+
+export const updateSessionConfirmation = async (sessionId: string, confirmation_status: string) =>
+  (await adminApi.patch(`/sessions/${sessionId}/confirmation`, { confirmation_status })).data
 
 // ── Actions ──
+// Backend returns flat array
 
-export const getAdminActions = async () =>
-  (await adminApi.get<AdminActionsResponse>('/actions')).data
+export const getAdminActions = async (params?: { status?: string }) =>
+  (await adminApi.get<AdminAction[]>('/actions', { params })).data
 
-export const updateAdminAction = async (actionId: number, status: 'done' | 'failed') =>
+export const updateAdminAction = async (actionId: string, status: 'done' | 'failed') =>
   (await adminApi.patch(`/actions/${actionId}`, { status })).data
 
 // ── Settings ──
@@ -165,13 +178,13 @@ export const getAdminBotStatus = async () =>
   (await adminApi.get<AdminBotStatus>('/bot/status')).data
 
 export const toggleAdminBot = async (enabled: boolean, reason?: string) =>
-  (await adminApi.post<AdminBotStatus>('/bot/toggle', { enabled, reason })).data
+  (await adminApi.post<{ success: boolean; bot_enabled: boolean }>('/bot/toggle', { enabled, reason })).data
 
 export const getAdminBlocklist = async () =>
-  (await adminApi.get<{ items: AdminBlocklistItem[] }>('/blocklist')).data
+  (await adminApi.get<AdminBlocklistItem[]>('/blocklist')).data
 
-export const addAdminBlocklistEntry = async (body: { phone?: string; telegram_user_id?: number; reason?: string }) =>
+export const addAdminBlocklistEntry = async (body: { phone?: string; telegram_user_id?: string; reason?: string }) =>
   (await adminApi.post('/blocklist', body)).data
 
-export const removeAdminBlocklistEntry = async (id: number) =>
+export const removeAdminBlocklistEntry = async (id: string) =>
   (await adminApi.delete(`/blocklist/${id}`)).data

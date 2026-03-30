@@ -50,8 +50,9 @@ function RedButtonSection() {
     setError(null)
     try {
       const newEnabled = !status.bot_enabled
-      const data = await toggleAdminBot(newEnabled, newEnabled ? undefined : reason || undefined)
-      setStatus(data)
+      await toggleAdminBot(newEnabled, newEnabled ? undefined : reason || undefined)
+      // Re-fetch full status after toggle (backend returns {success, bot_enabled}, not full status)
+      await fetchStatus()
       setShowConfirm(false)
       setReason('')
     } catch {
@@ -191,7 +192,7 @@ function BlocklistSection() {
 
   useEffect(() => {
     getAdminBlocklist()
-      .then((r) => setItems(r.items))
+      .then((data) => setItems(Array.isArray(data) ? data : []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
   }, [])
@@ -203,10 +204,10 @@ function BlocklistSection() {
     try {
       const body = inputType === 'phone'
         ? { phone: trimmed.replace(/[^\d+]/g, ''), reason: reason || undefined }
-        : { telegram_user_id: Number(trimmed), reason: reason || undefined }
+        : { telegram_user_id: trimmed, reason: reason || undefined }
       await addAdminBlocklistEntry(body)
-      const updated = await getAdminBlocklist()
-      setItems(updated.items)
+      const data = await getAdminBlocklist()
+      setItems(Array.isArray(data) ? data : [])
       setInput('')
       setReason('')
       setShowAdd(false)
@@ -217,7 +218,7 @@ function BlocklistSection() {
     }
   }
 
-  const handleRemove = async (id: number) => {
+  const handleRemove = async (id: string) => {
     try {
       await removeAdminBlocklistEntry(id)
       setItems((prev) => prev.filter((i) => i.id !== id))
@@ -336,14 +337,14 @@ function BlocklistSection() {
                   ? <Send className="w-4 h-4 text-blue-400 flex-shrink-0" />
                   : <Phone className="w-4 h-4 text-[#64748b] flex-shrink-0" />}
                 <div className="min-w-0">
-                  {item.display_name && (
-                    <p className="text-sm font-medium text-white truncate">{item.display_name}</p>
-                  )}
-                  <p className={`text-xs tabular-nums truncate ${item.display_name ? 'text-[#475569]' : 'text-sm font-medium text-white'}`}>
+                  <p className="text-sm font-medium text-white tabular-nums truncate">
                     {item.telegram_user_id ? `TG ID: ${item.telegram_user_id}` : item.phone || '---'}
                   </p>
                   {item.reason && (
                     <p className="text-xs text-[#475569] truncate mt-0.5">{item.reason}</p>
+                  )}
+                  {item.created_by && (
+                    <p className="text-xs text-[#475569] truncate mt-0.5">Добавил: {item.created_by}</p>
                   )}
                 </div>
               </div>

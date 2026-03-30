@@ -59,26 +59,36 @@ export function AdminDashboardPage() {
     )
   }
 
+  // Derive display values from backend format:
+  // stats.sessions = {bot, operator, closed}
+  // stats.confirmations = {sent: N, confirmed: N, ...}
+  // stats.pending_actions, stats.total_patients
+  const activeChats = (stats?.sessions?.bot ?? 0) + (stats?.sessions?.operator ?? 0)
+  const operatorChats = stats?.sessions?.operator ?? 0
+  const totalConfirmations = stats?.confirmations
+    ? Object.values(stats.confirmations).reduce((a, b) => a + b, 0)
+    : 0
+
   const cards = [
     {
       title: 'Активные чаты',
-      value: stats?.active_chats ?? 0,
+      value: activeChats,
       icon: MessageCircle,
       accent: 'text-emerald-400',
       bg: 'bg-emerald-500/10',
       border: 'hover:border-emerald-500/20',
     },
     {
-      title: 'Ожидает оператора',
-      value: stats?.awaiting_operator ?? 0,
+      title: 'С оператором',
+      value: operatorChats,
       icon: AlertTriangle,
       accent: 'text-red-400',
       bg: 'bg-red-500/10',
       border: 'hover:border-red-500/20',
     },
     {
-      title: 'Подтверждения сегодня',
-      value: stats?.confirmations_today ?? 0,
+      title: 'Подтверждения',
+      value: totalConfirmations,
       icon: Bell,
       accent: 'text-blue-400',
       bg: 'bg-blue-500/10',
@@ -121,9 +131,9 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Alert box */}
-      {(stats?.awaiting_operator ?? 0) > 0 && (
+      {operatorChats > 0 && (
         <button
-          onClick={() => navigate('/admin/chats?awaiting=1')}
+          onClick={() => navigate('/admin/chats?controller=operator')}
           className="w-full bg-red-500/[0.08] border border-red-500/20 hover:border-red-500/30 rounded-2xl p-5 text-left transition-all duration-200 group"
         >
           <div className="flex items-center gap-3">
@@ -131,8 +141,8 @@ export function AdminDashboardPage() {
               <AlertTriangle className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white tabular-nums">{stats?.awaiting_operator ?? 0}</p>
-              <p className="text-xs text-[#94a3b8]">Ожидает действий администратора</p>
+              <p className="text-2xl font-bold text-white tabular-nums">{operatorChats}</p>
+              <p className="text-xs text-[#94a3b8]">Чатов с оператором</p>
             </div>
           </div>
         </button>
