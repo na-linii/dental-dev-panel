@@ -188,7 +188,7 @@ export function RoadmapPage() {
     <div className="overflow-y-auto p-6" style={{ height: 'calc(100vh - 48px)' }}>
       <div className="max-w-[1100px] mx-auto">
         <h2 className="text-lg font-semibold mb-1">Project Board</h2>
-        <p className="text-xs text-[#64748b] mb-6">Jira epics and tasks</p>
+        <p className="text-xs text-[#64748b] mb-5">Jira epics and tasks</p>
 
         {/* Loading state */}
         {loading && (

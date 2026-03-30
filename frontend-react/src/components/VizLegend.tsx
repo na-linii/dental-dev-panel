@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { ShapeIcon } from './ShapeIcon'
 import { settingsApi } from '../api/client'
 import { LABELS } from '../config/viz'
@@ -15,6 +15,16 @@ interface VizLegendProps {
 export function VizLegend({ vizConfig, onConfigChange }: VizLegendProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // On mount, load from DB — DB config takes priority over graph data
+  useEffect(() => {
+    settingsApi.getVizConfig().then((dbConfig) => {
+      if (Object.keys(dbConfig).length > 0) {
+        onConfigChange?.(dbConfig)
+      }
+    }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleChange = useCallback((group: string, field: keyof VizConfigEntry, value: string | number) => {
     const updated = {

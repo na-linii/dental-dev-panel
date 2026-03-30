@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import ForceGraph3D from '3d-force-graph'
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
-import { architectureApi } from '../api/client'
+import { architectureApi, settingsApi } from '../api/client'
 import {
   WIREFRAME, LABELS, HUB_VERSION,
   GRAPH_BG, CHARGE_STRENGTH, LINK_DISTANCE,
@@ -70,35 +70,48 @@ export function ArchitecturePage() {
   const orbitState = useRef<OrbitState>({ on: true, angle: 0, pivot: { x: 0, y: 0, z: 0 } })
   const animFrameRef = useRef<number>(0)
 
-  // Load graph data
+  // Load vizConfig from DB first, then graph data (DB colors take priority)
   useEffect(() => {
-    architectureApi.graph()
-      .then((data) => {
-        // Extract color map from viz_config
-        const vc = data.meta?.viz_config
-        if (vc) {
-          const colorMap: Record<string, string> = {}
-          for (const [group, cfg] of Object.entries(vc)) {
-            colorMap[group] = cfg.color
-          }
-          setColors(colorMap)
-          setVizConfig(vc)
-        }
+    let dbVizConfig: Record<string, VizConfigEntry> = {}
 
-        const runtimeNodes: RuntimeNode[] = (data.nodes || []).map((n) => ({
-          ...n,
-          type: n.group || 'tool',
-          shape: n.shape || 'octahedron',
-        }))
-        const runtimeLinks: RuntimeLink[] = (data.links || []).map((l) => ({ ...l }))
-        setNodes(runtimeNodes)
-        setLinks(runtimeLinks)
-        setLoading(false)
+    settingsApi.getVizConfig()
+      .then((dbConfig) => {
+        if (Object.keys(dbConfig).length > 0) {
+          dbVizConfig = dbConfig
+        }
       })
-      .catch((e) => {
-        console.error('Failed to load arch graph:', e)
-        setError('Failed to load graph data')
-        setLoading(false)
+      .catch(() => {})
+      .finally(() => {
+        architectureApi.graph()
+          .then((data) => {
+            // Merge: DB config takes priority over graph.json viz_config
+            const graphVc = data.meta?.viz_config || {}
+            const merged = { ...graphVc, ...dbVizConfig }
+
+            if (Object.keys(merged).length > 0) {
+              const colorMap: Record<string, string> = {}
+              for (const [group, cfg] of Object.entries(merged)) {
+                colorMap[group] = cfg.color
+              }
+              setColors(colorMap)
+              setVizConfig(merged)
+            }
+
+            const runtimeNodes: RuntimeNode[] = (data.nodes || []).map((n) => ({
+              ...n,
+              type: n.group || 'tool',
+              shape: n.shape || 'octahedron',
+            }))
+            const runtimeLinks: RuntimeLink[] = (data.links || []).map((l) => ({ ...l }))
+            setNodes(runtimeNodes)
+            setLinks(runtimeLinks)
+            setLoading(false)
+          })
+          .catch((e) => {
+            console.error('Failed to load arch graph:', e)
+            setError('Failed to load graph data')
+            setLoading(false)
+          })
       })
   }, [])
 

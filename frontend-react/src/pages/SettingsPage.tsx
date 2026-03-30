@@ -102,8 +102,8 @@ export function SettingsPage() {
 
   return (
     <div className="p-6 max-w-[800px] mx-auto">
-      <h1 className="text-xl font-bold text-white mb-1">Settings</h1>
-      <p className="text-xs text-[#64748b] mb-6">
+      <h2 className="text-lg font-semibold mb-1">Settings</h2>
+      <p className="text-xs text-[#64748b] mb-5">
         Configure visualization styles for each module group. Changes are committed to dental-core via GitHub API.
       </p>
 
