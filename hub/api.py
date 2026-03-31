@@ -53,9 +53,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Dental Hub", lifespan=lifespan)
+_cors_origins = os.environ.get("CORS_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()] if _cors_origins else [
+    "http://158.160.85.19:8880",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
