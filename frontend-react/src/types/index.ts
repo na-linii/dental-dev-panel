@@ -145,6 +145,7 @@ export interface Epic {
   key: string
   summary: string
   status: string
+  url?: string
   progress: EpicProgress
   tasks: EpicTask[]
 }
