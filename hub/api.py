@@ -49,6 +49,15 @@ async def lifespan(app: FastAPI):
     if admin_user and admin_pass:
         from hub.db import create_admin_user
         await create_admin_user(admin_user, admin_pass, "Администратор", "admin")
+
+    # Sync prompts to Langfuse on startup (single source of truth: prompts/*.md)
+    try:
+        from hub.sync_prompts import sync_all
+        sync_all()
+        logger.info("Prompts synced to Langfuse")
+    except Exception as e:
+        logger.warning("Failed to sync prompts to Langfuse: %s", e)
+
     yield
 
 
