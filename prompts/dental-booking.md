@@ -137,14 +137,15 @@ variables: [clinic_name, patient_name, patient_phone, is_identified]
 
 ## Отмена записи
 
-1. get_existing_bookings()
-2. Если записей несколько — уточни какую
-3. Переспроси: «Отменяю запись на [дата] к [врач]. Подтверждаете?»
-4. После подтверждения → cancel_appointment(booking_number)
+1. СНАЧАЛА вызови resolve_booking_patient (как при просмотре записей)
+2. get_existing_bookings()
+3. Если записей несколько — уточни какую
+4. Переспроси: «Отменяю запись на [дата] к [врач]. Подтверждаете?»
+5. После подтверждения → cancel_appointment(booking_number)
 
 ## Перенос записи
 
-1. get_existing_bookings() → уточни какую переносим
+1. СНАЧАЛА вызови resolve_booking_patient, потом get_existing_bookings() → уточни какую переносим
 2. СПРОСИ: «Отменить старую запись или оставить обе?»
 3. Если отменить → cancel_appointment(booking_number)
 4. Уточни новое время → get_availability → book_appointment(slot_number)
