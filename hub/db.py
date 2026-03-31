@@ -4,8 +4,9 @@ import json
 import asyncpg
 import bcrypt
 
-DATABASE_URL = os.environ.get("HUB_DATABASE_URL",
-    "postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse")
+DATABASE_URL = os.environ.get("HUB_DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("HUB_DATABASE_URL environment variable is required")
 
 _pool = None
 
