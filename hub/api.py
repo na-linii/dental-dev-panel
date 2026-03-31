@@ -64,7 +64,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Dental Hub", lifespan=lifespan)
 _cors_origins = os.environ.get("CORS_ORIGINS", "")
 _allowed_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()] if _cors_origins else [
-    "http://158.160.85.19:8880",
     "http://localhost:5173",
     "http://localhost:3000",
 ]
@@ -135,6 +134,8 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
             # Build the .env content for the clinic
             env_lines = [
                 f"CLINIC_ID={clinic['clinic_id']}",
+                # TODO(PD-295): generate a random password instead of default 'agent'
+                # Default credentials for Docker-internal network; matches docker-compose template below
                 f"DATABASE_URL=postgresql://agent:agent@agent-postgres:5432/agent",
             ]
             # Add config values as env vars
@@ -147,7 +148,7 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
             if clinic_config.get("telegram_bot_token"):
                 env_lines.append(f"TELEGRAM_BOT_TOKEN={clinic_config['telegram_bot_token']}")
             if clinic_config.get("google_sheets_id"):
-                env_lines.append(f"ZUBATKA_SHEET_ID={clinic_config['google_sheets_id']}")
+                env_lines.append(f"CRM_SPREADSHEET_ID={clinic_config['google_sheets_id']}")
             if clinic_config.get("google_sa_key_path"):
                 env_lines.append(f"GOOGLE_SA_KEY_PATH={clinic_config['google_sa_key_path']}")
             if hub_url:
@@ -168,7 +169,7 @@ services:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: agent
-      POSTGRES_PASSWORD: agent
+      POSTGRES_PASSWORD: agent  # TODO(PD-295): use generated password, sync with DATABASE_URL
       POSTGRES_DB: agent
     volumes:
       - pgdata:/var/lib/postgresql/data

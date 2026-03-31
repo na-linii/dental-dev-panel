@@ -143,7 +143,7 @@ function defaultForm(): ClinicCreateData {
       handoff_cooldown_minutes: 30,
 
       openai_api_key: '',
-      openai_api_base: 'http://139.59.142.48/v1',
+      openai_api_base: '',
       openai_proxy_secret: '',
       openai_model: 'gpt-5.4-mini',
       openai_fallback_model: 'openai/gpt-5.4-mini',
