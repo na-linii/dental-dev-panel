@@ -178,13 +178,14 @@ export function AdminChatsPage() {
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Время</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Пациент</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden md:table-cell">Канал</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Статус</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Контроль</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden lg:table-cell">Подтверждение</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-[#64748b]">
+                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
                       Загрузка...
@@ -193,7 +194,7 @@ export function AdminChatsPage() {
                 </tr>
               ) : sessions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-[#64748b]">
+                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
                     Диалоги не найдены
                   </td>
                 </tr>
@@ -231,7 +232,20 @@ export function AdminChatsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {(() => {
-                      const st = getSessionStatus(s)
+                      const st = STATUS_CONFIG[s.controller] || STATUS_CONFIG.bot
+                      const Icon = st.icon
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${st.badge}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                          {st.label}
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    {s.confirmation_status && (() => {
+                      const st = STATUS_CONFIG[s.confirmation_status]
+                      if (!st) return <span className="text-xs text-[#64748b]">{s.confirmation_status}</span>
                       const Icon = st.icon
                       return (
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${st.badge}`}>
