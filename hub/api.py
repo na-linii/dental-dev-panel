@@ -794,7 +794,7 @@ async def _get_dc_jwt(clinic: dict) -> str:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 r = await client.post(
-                    f"{base_url}/api/auth/login",
+                    f"{base_url}/admin/api/auth/login",
                     json={"username": username, "password": password},
                 )
             if r.status_code != 200:
@@ -862,73 +862,49 @@ async def _proxy_to_clinic(clinic: dict, method: str, path: str, body: dict | No
             raise HTTPException(502, "Proxy error")
 
 
-from hub.admin_transform import (
-    transform_sessions_list,
-    transform_session_detail,
-    transform_send_message_response,
-)
-
 # --- Dashboard ---
 
 @app.get("/admin/api/dashboard/stats")
 async def admin_dashboard_stats(admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", "/api/dashboard/stats")
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/dashboard/stats")
 
 
-# --- Sessions (proxy to /api/conversations on dental-core) ---
+# --- Sessions (proxy to dental-core /admin/api/sessions) ---
 
 @app.get("/admin/api/sessions")
 async def admin_sessions(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    hub_params = dict(request.query_params)
-    dc_params: dict = {}
-    if "limit" in hub_params:
-        dc_params["limit"] = hub_params["limit"]
-    if "offset" in hub_params:
-        dc_params["offset"] = hub_params["offset"]
-    controller = hub_params.get("controller")
-    if controller == "operator":
-        dc_params["awaiting_operator"] = "true"
-    if "confirmation_status" in hub_params:
-        dc_params["status"] = hub_params["confirmation_status"]
-
-    dc_response = await _proxy_to_clinic(clinic, "GET", "/api/conversations", params=dc_params)
-    items = transform_sessions_list(dc_response)
-
-    if controller == "closed":
-        items = [s for s in items if s["controller"] == "closed"]
-
-    return items
+    params = dict(request.query_params)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/sessions", params=params)
 
 
 @app.get("/admin/api/sessions/{session_id}")
 async def admin_session_detail(session_id: int, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    dc = await _proxy_to_clinic(clinic, "GET", f"/api/conversations/{session_id}")
-    return transform_session_detail(dc, clinic["clinic_id"])
+    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/sessions/{session_id}")
 
 
 @app.post("/admin/api/sessions/{session_id}/messages")
 async def admin_send_message(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    dc = await _proxy_to_clinic(clinic, "POST", f"/api/conversations/{session_id}/messages", body=body)
-    return transform_send_message_response(dc)
+    body["admin_username"] = admin_user.get("username", "admin")
+    return await _proxy_to_clinic(clinic, "POST", f"/admin/api/sessions/{session_id}/messages", body=body)
 
 
 @app.patch("/admin/api/sessions/{session_id}/controller")
 async def admin_update_controller(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "PATCH", f"/api/confirmations/{session_id}/status", body=body)
+    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/controller", body=body)
 
 
-@app.patch("/admin/api/sessions/{session_id}/status")
-async def admin_update_session_status(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+@app.patch("/admin/api/sessions/{session_id}/confirmation")
+async def admin_update_confirmation(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "PATCH", f"/api/confirmations/{session_id}/status", body=body)
+    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/confirmation", body=body)
 
 
 # --- Actions ---
@@ -937,14 +913,14 @@ async def admin_update_session_status(session_id: int, request: Request, admin_u
 async def admin_actions(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     params = dict(request.query_params)
-    return await _proxy_to_clinic(clinic, "GET", "/api/actions", params=params)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/actions", params=params)
 
 
 @app.patch("/admin/api/actions/{action_id}")
 async def admin_update_action(action_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "PATCH", f"/api/actions/{action_id}", body=body)
+    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/actions/{action_id}", body=body)
 
 
 # --- Bot settings ---
@@ -952,14 +928,14 @@ async def admin_update_action(action_id: int, request: Request, admin_user=Depen
 @app.get("/admin/api/bot/status")
 async def admin_bot_status(admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", "/api/bot/status")
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/bot")
 
 
 @app.post("/admin/api/bot/toggle")
 async def admin_bot_toggle(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "POST", "/api/bot/toggle", body=body)
+    return await _proxy_to_clinic(clinic, "POST", "/admin/api/settings/bot/toggle", body=body)
 
 
 # --- Blocklist ---
@@ -968,20 +944,20 @@ async def admin_bot_toggle(request: Request, admin_user=Depends(_get_admin_user)
 async def admin_blocklist(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     params = dict(request.query_params)
-    return await _proxy_to_clinic(clinic, "GET", "/api/blocklist", params=params)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/blocklist", params=params)
 
 
 @app.post("/admin/api/blocklist")
 async def admin_blocklist_add(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "POST", "/api/blocklist", body=body)
+    return await _proxy_to_clinic(clinic, "POST", "/admin/api/settings/blocklist", body=body)
 
 
 @app.delete("/admin/api/blocklist/{entry_id}")
 async def admin_blocklist_remove(entry_id: int, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "DELETE", f"/api/blocklist/{entry_id}")
+    return await _proxy_to_clinic(clinic, "DELETE", f"/admin/api/settings/blocklist/{entry_id}")
 
 
 # --- Clinic Admin Users API (used by Hub frontend) ---
