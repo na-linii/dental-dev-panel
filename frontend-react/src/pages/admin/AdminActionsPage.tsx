@@ -5,10 +5,14 @@ import type { AdminAction } from '../../api/adminClient'
 import { format } from 'date-fns'
 
 const TYPE_LABELS: Record<string, string> = {
-  confirm_visit: 'Подтвердить визит',
-  cancel_visit: 'Отменить визит',
-  reschedule_visit: 'Перенести визит',
-  call_patient: 'Позвонить пациенту',
+  cancel_appointment: 'Отменить запись',
+  book_appointment: 'Записать пациента',
+  register_patient: 'Зарегистрировать пациента',
+  update_booking_status: 'Обновить статус записи',
+  confirm: 'Подтвердить визит',
+  cancel: 'Отмена визита (подтверждение)',
+  reschedule: 'Перенести визит',
+  callback_requested: 'Перезвонить пациенту',
   operator_needed: 'Требуется оператор',
 }
 
@@ -27,9 +31,8 @@ export function AdminActionsPage() {
     setIsLoading(true)
     setError(null)
     try {
-      // Backend returns flat array
       const data = await getAdminActions()
-      setActions(Array.isArray(data) ? data : [])
+      setActions(Array.isArray(data) ? data : (data as any)?.items ?? [])
     } catch (e) {
       console.error('Actions load error:', e)
       setError('Не удалось загрузить действия')
@@ -46,7 +49,7 @@ export function AdminActionsPage() {
     const id = setInterval(() => {
       if (!document.hidden) {
         getAdminActions()
-          .then((data) => setActions(Array.isArray(data) ? data : []))
+          .then((data) => setActions(Array.isArray(data) ? data : (data as any)?.items ?? []))
           .catch(() => {})
       }
     }, 15000)
