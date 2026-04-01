@@ -5,7 +5,7 @@ import logging
 import asyncio
 import ipaddress
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import secrets
 import httpx
@@ -764,122 +764,224 @@ async def _get_clinic_for_admin(admin_user: dict):
 
 HUB_SERVICE_SECRET = os.getenv("HUB_SERVICE_SECRET", "hub-to-agent-secret-2026")
 
+# Per-clinic JWT cache for dental-core authentication
+_dc_jwt_cache: dict[str, dict] = {}
+_dc_jwt_locks: dict[str, asyncio.Lock] = {}
+
+
+async def _get_dc_jwt(clinic: dict) -> str:
+    """Get or acquire a dental-core JWT for the given clinic."""
+    clinic_id = clinic["clinic_id"]
+
+    cached = _dc_jwt_cache.get(clinic_id)
+    if cached and cached["expires_at"] > datetime.now(timezone.utc):
+        return cached["token"]
+
+    if clinic_id not in _dc_jwt_locks:
+        _dc_jwt_locks[clinic_id] = asyncio.Lock()
+    async with _dc_jwt_locks[clinic_id]:
+        cached = _dc_jwt_cache.get(clinic_id)
+        if cached and cached["expires_at"] > datetime.now(timezone.utc):
+            return cached["token"]
+
+        config = clinic.get("config") or {}
+        username = config.get("dc_admin_username", "")
+        password = config.get("dc_admin_password", "")
+        if not username or not password:
+            raise HTTPException(503, "Dental-core admin credentials not configured for this clinic")
+
+        base_url = f"http://{clinic['server_host']}:{clinic['server_port']}"
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"{base_url}/api/auth/login",
+                    json={"username": username, "password": password},
+                )
+            if r.status_code != 200:
+                logger.error("DC login failed for clinic %s: %s", clinic_id, r.text[:200])
+                raise HTTPException(502, "Failed to authenticate with dental-core")
+            data = r.json()
+        except httpx.ConnectError:
+            raise HTTPException(502, "Failed to connect to clinic agent for auth")
+        except httpx.TimeoutException:
+            raise HTTPException(504, "Clinic agent auth timed out")
+
+        token = data["access_token"]
+        _dc_jwt_cache[clinic_id] = {
+            "token": token,
+            "expires_at": datetime.now(timezone.utc) + timedelta(hours=23),
+        }
+        return token
+
+
+def _invalidate_dc_jwt(clinic_id: str):
+    """Remove cached JWT for a clinic (e.g. on 401)."""
+    _dc_jwt_cache.pop(clinic_id, None)
+
 
 async def _proxy_to_clinic(clinic: dict, method: str, path: str, body: dict | None = None, params: dict | None = None):
-    """Proxy a request to the clinic agent API with service-level auth."""
+    """Proxy request to dental-core with JWT auth and auto-retry on 401."""
     base_url = f"http://{clinic['server_host']}:{clinic['server_port']}"
     url = f"{base_url}{path}"
 
-    # Hub authenticates to agent via shared service secret
-    headers = {"X-Hub-Secret": HUB_SERVICE_SECRET}
+    for attempt in range(2):
+        token = await _get_dc_jwt(clinic)
+        headers = {"Authorization": f"Bearer {token}"}
 
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            if method == "GET":
-                r = await client.get(url, params=params, headers=headers)
-            elif method == "POST":
-                r = await client.post(url, json=body, headers=headers)
-            elif method == "PATCH":
-                r = await client.patch(url, json=body, headers=headers)
-            elif method == "DELETE":
-                r = await client.delete(url, params=params, headers=headers)
-            elif method == "PUT":
-                r = await client.put(url, json=body, headers=headers)
-            else:
-                raise HTTPException(405, f"Method {method} not supported")
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                if method == "GET":
+                    r = await client.get(url, params=params, headers=headers)
+                elif method == "POST":
+                    r = await client.post(url, json=body, headers=headers)
+                elif method == "PATCH":
+                    r = await client.patch(url, json=body, headers=headers)
+                elif method == "DELETE":
+                    r = await client.delete(url, params=params, headers=headers)
+                elif method == "PUT":
+                    r = await client.put(url, json=body, headers=headers)
+                else:
+                    raise HTTPException(405, f"Method {method} not supported")
 
-            if r.status_code >= 400:
-                logger.error("Clinic proxy error %s %s: %s %s", method, url, r.status_code, r.text[:200])
-                raise HTTPException(r.status_code, r.text[:500])
-            return r.json()
-    except httpx.ConnectError:
-        raise HTTPException(502, "Failed to connect to clinic agent")
-    except httpx.TimeoutException:
-        raise HTTPException(504, "Clinic agent timed out")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Clinic proxy unexpected error %s %s: %s", method, url, e)
-        raise HTTPException(502, "Proxy error")
+                if r.status_code == 401 and attempt == 0:
+                    _invalidate_dc_jwt(clinic["clinic_id"])
+                    continue
 
+                if r.status_code >= 400:
+                    logger.error("Clinic proxy error %s %s: %s %s", method, url, r.status_code, r.text[:200])
+                    raise HTTPException(r.status_code, r.text[:500])
+                return r.json()
+        except httpx.ConnectError:
+            raise HTTPException(502, "Failed to connect to clinic agent")
+        except httpx.TimeoutException:
+            raise HTTPException(504, "Clinic agent timed out")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Clinic proxy unexpected error %s %s: %s", method, url, e)
+            raise HTTPException(502, "Proxy error")
+
+
+from hub.admin_transform import (
+    transform_sessions_list,
+    transform_session_detail,
+    transform_send_message_response,
+)
+
+# --- Dashboard ---
 
 @app.get("/admin/api/dashboard/stats")
 async def admin_dashboard_stats(admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", "/admin/api/dashboard/stats")
+    return await _proxy_to_clinic(clinic, "GET", "/api/dashboard/stats")
 
+
+# --- Sessions (proxy to /api/conversations on dental-core) ---
 
 @app.get("/admin/api/sessions")
 async def admin_sessions(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    params = dict(request.query_params)
-    return await _proxy_to_clinic(clinic, "GET", "/admin/api/sessions", params=params)
+    hub_params = dict(request.query_params)
+    dc_params: dict = {}
+    if "limit" in hub_params:
+        dc_params["limit"] = hub_params["limit"]
+    if "offset" in hub_params:
+        dc_params["offset"] = hub_params["offset"]
+    controller = hub_params.get("controller")
+    if controller == "operator":
+        dc_params["awaiting_operator"] = "true"
+    if "confirmation_status" in hub_params:
+        dc_params["status"] = hub_params["confirmation_status"]
+
+    dc_response = await _proxy_to_clinic(clinic, "GET", "/api/conversations", params=dc_params)
+    items = transform_sessions_list(dc_response)
+
+    if controller == "closed":
+        items = [s for s in items if s["controller"] == "closed"]
+
+    return items
 
 
 @app.get("/admin/api/sessions/{session_id}")
 async def admin_session_detail(session_id: int, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/sessions/{session_id}")
+    dc = await _proxy_to_clinic(clinic, "GET", f"/api/conversations/{session_id}")
+    return transform_session_detail(dc, clinic["clinic_id"])
 
 
 @app.post("/admin/api/sessions/{session_id}/messages")
 async def admin_send_message(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    body["admin_username"] = admin_user.get("username", "admin")
-    return await _proxy_to_clinic(clinic, "POST", f"/admin/api/sessions/{session_id}/messages", body=body)
+    dc = await _proxy_to_clinic(clinic, "POST", f"/api/conversations/{session_id}/messages", body=body)
+    return transform_send_message_response(dc)
+
+
+@app.patch("/admin/api/sessions/{session_id}/controller")
+async def admin_update_controller(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "PATCH", f"/api/confirmations/{session_id}/status", body=body)
 
 
 @app.patch("/admin/api/sessions/{session_id}/status")
 async def admin_update_session_status(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/status", body=body)
+    return await _proxy_to_clinic(clinic, "PATCH", f"/api/confirmations/{session_id}/status", body=body)
 
+
+# --- Actions ---
 
 @app.get("/admin/api/actions")
-async def admin_actions(admin_user=Depends(_get_admin_user)):
+async def admin_actions(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", "/admin/api/actions")
+    params = dict(request.query_params)
+    return await _proxy_to_clinic(clinic, "GET", "/api/actions", params=params)
 
 
 @app.patch("/admin/api/actions/{action_id}")
 async def admin_update_action(action_id: int, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/actions/{action_id}", body=body)
+    return await _proxy_to_clinic(clinic, "PATCH", f"/api/actions/{action_id}", body=body)
 
+
+# --- Bot settings ---
 
 @app.get("/admin/api/bot/status")
 async def admin_bot_status(admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/bot")
+    return await _proxy_to_clinic(clinic, "GET", "/api/bot/status")
 
 
 @app.post("/admin/api/bot/toggle")
 async def admin_bot_toggle(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "POST", "/admin/api/settings/bot/toggle", body=body)
+    return await _proxy_to_clinic(clinic, "POST", "/api/bot/toggle", body=body)
 
+
+# --- Blocklist ---
 
 @app.get("/admin/api/blocklist")
-async def admin_blocklist(admin_user=Depends(_get_admin_user)):
+async def admin_blocklist(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/blocklist")
+    params = dict(request.query_params)
+    return await _proxy_to_clinic(clinic, "GET", "/api/blocklist", params=params)
 
 
 @app.post("/admin/api/blocklist")
 async def admin_blocklist_add(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
-    return await _proxy_to_clinic(clinic, "POST", "/admin/api/settings/blocklist", body=body)
+    return await _proxy_to_clinic(clinic, "POST", "/api/blocklist", body=body)
 
 
 @app.delete("/admin/api/blocklist/{entry_id}")
 async def admin_blocklist_remove(entry_id: int, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "DELETE", f"/admin/api/settings/blocklist/{entry_id}")
+    return await _proxy_to_clinic(clinic, "DELETE", f"/api/blocklist/{entry_id}")
 
 
 # --- Clinic Admin Users API (used by Hub frontend) ---
@@ -904,10 +1006,20 @@ async def add_clinic_admin(clinic_id: str, request: Request, user=Depends(verify
     if role not in ("operator", "admin", "superadmin"):
         raise HTTPException(400, "role must be operator, admin, or superadmin")
 
-    from hub.db import create_clinic_admin
+    from hub.db import create_clinic_admin, update_clinic_config
     admin = await create_clinic_admin(username, password, full_name, role, clinic_id)
     if not admin:
         raise HTTPException(409, f"Username '{username}' already exists")
+
+    # Store DC credentials in clinic config for proxy auth (first admin only)
+    clinic = await get_clinic(clinic_id)
+    if clinic:
+        config = clinic.get("config") or {}
+        if not config.get("dc_admin_username"):
+            config["dc_admin_username"] = username
+            config["dc_admin_password"] = password
+            await update_clinic_config(clinic_id, config)
+
     return {"admin": admin}
 
 

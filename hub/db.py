@@ -157,6 +157,15 @@ async def add_clinic(data: dict):
     return data
 
 
+async def update_clinic_config(clinic_id: str, config: dict):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE hub.clinics SET config = $1::jsonb, updated_at = NOW() WHERE id = $2",
+            json.dumps(config), clinic_id,
+        )
+
+
 async def remove_clinic(clinic_id: str):
     pool = await get_pool()
     async with pool.acquire() as conn:
