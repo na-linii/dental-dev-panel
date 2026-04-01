@@ -32,7 +32,7 @@ export function AdminActionsPage() {
     setError(null)
     try {
       const data = await getAdminActions()
-      setActions(Array.isArray(data) ? data : (data as any)?.items ?? [])
+      setActions(Array.isArray(data) ? data : [])
     } catch (e) {
       console.error('Actions load error:', e)
       setError('Не удалось загрузить действия')
@@ -49,7 +49,7 @@ export function AdminActionsPage() {
     const id = setInterval(() => {
       if (!document.hidden) {
         getAdminActions()
-          .then((data) => setActions(Array.isArray(data) ? data : (data as any)?.items ?? []))
+          .then((data) => setActions(Array.isArray(data) ? data : []))
           .catch(() => {})
       }
     }, 15000)
