@@ -227,7 +227,7 @@ export function AdminChatDetailPage() {
 function MessageBubble({ message }: { message: AdminMessage }) {
   // Backend uses 'role': 'patient' | 'agent' | 'operator' | 'system'
   const isPatient = message.role === 'patient'
-  const isAgent = message.role === 'agent'
+  const isAgent = message.role === 'agent' || message.role === 'bot'
   const isOperator = message.role === 'operator'
 
   let align = 'justify-start'
