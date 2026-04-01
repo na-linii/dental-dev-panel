@@ -196,7 +196,7 @@ export const toggleAdminBot = async (enabled: boolean, reason?: string) =>
   (await adminApi.post<{ success: boolean; bot_enabled: boolean }>('/bot/toggle', { enabled, reason })).data
 
 export const getAdminBlocklist = async () => {
-  const res = await adminApi.get<PaginatedResponse<AdminBlocklistItem>>('/blocklist')
+  const res = await adminApi.get<PaginatedResponse<AdminBlocklistItem>>('/blocklist', { params: { limit: 200 } })
   return res.data.items ?? res.data
 }
 

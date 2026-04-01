@@ -46,26 +46,26 @@ export function AdminConfirmationsPage() {
     if (!silent) setIsLoading(true)
     setError(null)
     try {
-      // Load all confirmation sessions to get counts
-      const allData = await getAdminSessions({ limit: 200 })
-      const withConfirmation = (Array.isArray(allData) ? allData : []).filter(
-        (s) => s.confirmation_status != null,
-      )
+      // Load confirmation sessions — filter on backend, not locally
+      const params: Record<string, unknown> = { limit: 200 }
+      if (activeFilter) params.confirmation_status = activeFilter
 
-      // Calculate counts per status
-      const newCounts: Record<string, number> = {}
-      for (const s of withConfirmation) {
-        if (s.confirmation_status) {
-          newCounts[s.confirmation_status] = (newCounts[s.confirmation_status] || 0) + 1
-        }
-      }
-      setCounts(newCounts)
-
-      // Apply filter
-      const filtered = activeFilter
-        ? withConfirmation.filter((s) => s.confirmation_status === activeFilter)
-        : withConfirmation
+      const filteredData = await getAdminSessions(params as Parameters<typeof getAdminSessions>[0])
+      const filtered = Array.isArray(filteredData) ? filteredData : []
       setSessions(filtered)
+
+      // Load counts for all statuses (separate call without filter)
+      if (!silent) {
+        const allData = await getAdminSessions({ limit: 200 } as Parameters<typeof getAdminSessions>[0])
+        const all = Array.isArray(allData) ? allData : []
+        const newCounts: Record<string, number> = {}
+        for (const s of all) {
+          if (s.confirmation_status) {
+            newCounts[s.confirmation_status] = (newCounts[s.confirmation_status] || 0) + 1
+          }
+        }
+        setCounts(newCounts)
+      }
     } catch (e) {
       console.error('Confirmations load error:', e)
       setError('Не удалось загрузить записи')

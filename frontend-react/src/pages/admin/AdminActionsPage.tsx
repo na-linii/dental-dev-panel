@@ -12,8 +12,6 @@ const TYPE_LABELS: Record<string, string> = {
   confirm: 'Подтвердить визит',
   cancel: 'Отмена визита (подтверждение)',
   reschedule: 'Перенести визит',
-  callback_requested: 'Перезвонить пациенту',
-  operator_needed: 'Требуется оператор',
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -31,7 +29,7 @@ export function AdminActionsPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await getAdminActions()
+      const data = await getAdminActions({ status: 'pending' })
       setActions(Array.isArray(data) ? data : [])
     } catch (e) {
       console.error('Actions load error:', e)
@@ -48,7 +46,7 @@ export function AdminActionsPage() {
   useEffect(() => {
     const id = setInterval(() => {
       if (!document.hidden) {
-        getAdminActions()
+        getAdminActions({ status: 'pending' })
           .then((data) => setActions(Array.isArray(data) ? data : []))
           .catch(() => {})
       }
