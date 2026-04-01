@@ -1,37 +1,46 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search, AlertCircle, Filter } from 'lucide-react'
+import { RefreshCw, Search, AlertCircle, Filter, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, Headphones, MessageSquare } from 'lucide-react'
 import { getAdminSessions } from '../../api/adminClient'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { format } from 'date-fns'
+import type { LucideIcon } from 'lucide-react'
 
-const CONTROLLER_LABELS: Record<string, string> = {
-  bot: 'С ботом',
-  operator: 'С оператором',
-  closed: 'Завершён',
+interface StatusConfig {
+  label: string
+  icon: LucideIcon
+  badge: string
+  dot: string
 }
 
-const CONTROLLER_COLORS: Record<string, string> = {
-  bot: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
-  operator: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
-  closed: 'bg-gray-500/15 text-gray-300 border-gray-500/25',
+// Unified status config — same as legacy admin panel
+const STATUS_CONFIG: Record<string, StatusConfig> = {
+  // Confirmation statuses
+  sent:                { label: 'Напоминание о визите',       icon: Bell,           badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', dot: 'bg-emerald-400' },
+  awaiting_confirm:    { label: 'Подтвердите в МИС',          icon: ClipboardCheck, badge: 'bg-orange-500/15 text-orange-300 border-orange-500/25',    dot: 'bg-orange-400' },
+  awaiting_cancel:     { label: 'Отмените в МИС',             icon: Ban,            badge: 'bg-orange-500/15 text-orange-300 border-orange-500/25',    dot: 'bg-orange-400' },
+  awaiting_reschedule: { label: 'Перенесите в МИС',           icon: Timer,          badge: 'bg-orange-500/15 text-orange-300 border-orange-500/25',    dot: 'bg-orange-400' },
+  confirmed:           { label: 'Визит подтверждён',           icon: CircleCheck,    badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
+  cancelled:           { label: 'Отменён',                     icon: CircleX,        badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
+  rescheduled:         { label: 'Перенесён',                   icon: RefreshCw,      badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
+  // Chat controller statuses (when no confirmation)
+  bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', dot: 'bg-emerald-400' },
+  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-500/15 text-red-300 border-red-500/25',            dot: 'bg-red-400' },
+  closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
 }
 
-const CONFIRMATION_LABELS: Record<string, string> = {
-  sent: 'Отправлено',
-  confirmed: 'Подтверждён',
-  cancelled: 'Отменён',
-  rescheduled: 'Перенесён',
+function getSessionStatus(s: AdminSessionSummary): StatusConfig {
+  if (s.confirmation_status && STATUS_CONFIG[s.confirmation_status]) {
+    return STATUS_CONFIG[s.confirmation_status]
+  }
+  return STATUS_CONFIG[s.controller] || STATUS_CONFIG.bot
 }
 
-const CONFIRMATION_COLORS: Record<string, string> = {
-  sent: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
-  confirmed: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
-  cancelled: 'bg-red-500/15 text-red-300 border-red-500/25',
-  rescheduled: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
-}
-
-const FILTER_CONTROLLERS = ['bot', 'operator', 'closed']
+const FILTER_CONTROLLERS = [
+  { value: 'bot', label: 'Разговор с агентом' },
+  { value: 'operator', label: 'Ожидает администратора' },
+  { value: 'closed', label: 'Завершён' },
+]
 
 export function AdminChatsPage() {
   const [sessions, setSessions] = useState<AdminSessionSummary[]>([])
@@ -139,8 +148,8 @@ export function AdminChatsPage() {
             className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#51ff97]/40 transition-all duration-200 cursor-pointer"
           >
             <option value="">Все</option>
-            {FILTER_CONTROLLERS.map((s) => (
-              <option key={s} value={s}>{CONTROLLER_LABELS[s] || s}</option>
+            {FILTER_CONTROLLERS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
         </div>
@@ -169,14 +178,13 @@ export function AdminChatsPage() {
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Время</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Пациент</th>
                 <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden md:table-cell">Канал</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Контроль</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden lg:table-cell">Подтверждение</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Статус</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
+                  <td colSpan={4} className="px-4 py-12 text-center text-[#64748b]">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
                       Загрузка...
@@ -185,7 +193,7 @@ export function AdminChatsPage() {
                 </tr>
               ) : sessions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
+                  <td colSpan={4} className="px-4 py-12 text-center text-[#64748b]">
                     Диалоги не найдены
                   </td>
                 </tr>
@@ -222,20 +230,16 @@ export function AdminChatsPage() {
                     {s.channel || '---'}
                   </td>
                   <td className="px-4 py-3">
-                    {s.controller && (
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${CONTROLLER_COLORS[s.controller] || 'bg-gray-500/15 text-gray-300 border-gray-500/25'}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                        {CONTROLLER_LABELS[s.controller] || s.controller}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    {s.confirmation_status && (
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${CONFIRMATION_COLORS[s.confirmation_status] || 'bg-gray-500/15 text-gray-300 border-gray-500/25'}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                        {CONFIRMATION_LABELS[s.confirmation_status] || s.confirmation_status}
-                      </span>
-                    )}
+                    {(() => {
+                      const st = getSessionStatus(s)
+                      const Icon = st.icon
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${st.badge}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                          {st.label}
+                        </span>
+                      )
+                    })()}
                   </td>
                 </tr>
               ))}
