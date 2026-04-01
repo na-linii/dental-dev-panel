@@ -5,13 +5,11 @@ import type { AdminAction } from '../../api/adminClient'
 import { format } from 'date-fns'
 
 const TYPE_LABELS: Record<string, string> = {
-  cancel_appointment: 'Отменить запись',
-  book_appointment: 'Записать пациента',
-  register_patient: 'Зарегистрировать пациента',
-  update_booking_status: 'Обновить статус записи',
-  confirm: 'Подтвердить визит',
-  cancel: 'Отмена визита (подтверждение)',
-  reschedule: 'Перенести визит',
+  cancel_appointment: 'Отменить запись в IDENT',
+  cancel: 'Пациент отказался от визита',
+  reschedule: 'Пациент просит перенести визит',
+  confirm: 'Пациент подтвердил визит',
+  update_booking_status: 'Обновить статус записи в IDENT',
 }
 
 const STATUS_STYLES: Record<string, string> = {
