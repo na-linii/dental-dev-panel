@@ -78,7 +78,10 @@ async def authenticate_admin(username: str, password: str):
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM hub.admin_users WHERE username = $1",
+            """SELECT a.*, c.name AS clinic_name
+               FROM hub.admin_users a
+               LEFT JOIN hub.clinics c ON c.id = a.clinic_id
+               WHERE a.username = $1""",
             username)
         if row and _verify_password(password, row["password_hash"]):
             return dict(row)

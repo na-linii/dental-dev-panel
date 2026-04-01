@@ -21,7 +21,7 @@ export function AdminLoginPage() {
     setIsLoading(true)
     try {
       const result = await adminLogin(username, password)
-      localStorage.setItem('admin_token', result.token)
+      localStorage.setItem('admin_token', result.access_token)
       localStorage.setItem('admin_user', JSON.stringify(result.user))
       navigate('/admin/dashboard', { replace: true })
     } catch {

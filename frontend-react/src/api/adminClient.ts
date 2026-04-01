@@ -3,16 +3,25 @@ import axios from 'axios'
 // ── Types (matching actual backend responses) ──
 
 export interface AdminUser {
-  user_id: number
+  id: number
   username: string
   full_name: string
   role: string
   clinic_id: string
+  clinic_name: string
 }
 
 export interface AdminLoginResponse {
-  token: string
+  access_token: string
+  token_type: string
   user: AdminUser
+}
+
+interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  limit: number
+  offset: number
 }
 
 // Backend: GET /admin/api/dashboard/stats
@@ -57,12 +66,15 @@ export interface AdminSessionDetail {
   cooldown_until: string | null
   confirmation_status: string | null
   confirmation_appointment_id: string | null
+  confirmation_appointment_date: string | null
+  confirmation_doctor_name: string | null
   crm_sync_status: string | null
   crm_sync_error: string | null
   created_at: string | null
   updated_at: string | null
   patient: { id: string | null; name: string | null; phone: string | null; ident_patient_id: string | null } | null
   messages: AdminMessage[]
+  has_more_messages?: boolean
 }
 
 export interface AdminSendMessageResponse {
@@ -141,7 +153,6 @@ export const getAdminDashboardStats = async () =>
   (await adminApi.get<AdminDashboardStats>('/dashboard/stats')).data
 
 // ── Sessions ──
-// Backend returns flat array, not {items, total}
 
 export const getAdminSessions = async (params?: {
   controller?: string
@@ -149,7 +160,10 @@ export const getAdminSessions = async (params?: {
   search?: string
   limit?: number
   offset?: number
-}) => (await adminApi.get<AdminSessionSummary[]>('/sessions', { params })).data
+}) => {
+  const res = await adminApi.get<PaginatedResponse<AdminSessionSummary>>('/sessions', { params })
+  return res.data.items ?? res.data
+}
 
 export const getAdminSession = async (id: string) =>
   (await adminApi.get<AdminSessionDetail>(`/sessions/${id}`)).data
@@ -164,10 +178,11 @@ export const updateSessionConfirmation = async (sessionId: string, confirmation_
   (await adminApi.patch(`/sessions/${sessionId}/confirmation`, { confirmation_status })).data
 
 // ── Actions ──
-// Backend returns flat array
 
-export const getAdminActions = async (params?: { status?: string }) =>
-  (await adminApi.get<AdminAction[]>('/actions', { params })).data
+export const getAdminActions = async (params?: { status?: string }) => {
+  const res = await adminApi.get<PaginatedResponse<AdminAction>>('/actions', { params })
+  return res.data.items ?? res.data
+}
 
 export const updateAdminAction = async (actionId: string, status: 'done' | 'failed') =>
   (await adminApi.patch(`/actions/${actionId}`, { status })).data
@@ -180,8 +195,10 @@ export const getAdminBotStatus = async () =>
 export const toggleAdminBot = async (enabled: boolean, reason?: string) =>
   (await adminApi.post<{ success: boolean; bot_enabled: boolean }>('/bot/toggle', { enabled, reason })).data
 
-export const getAdminBlocklist = async () =>
-  (await adminApi.get<AdminBlocklistItem[]>('/blocklist')).data
+export const getAdminBlocklist = async () => {
+  const res = await adminApi.get<PaginatedResponse<AdminBlocklistItem>>('/blocklist')
+  return res.data.items ?? res.data
+}
 
 export const addAdminBlocklistEntry = async (body: { phone?: string; telegram_user_id?: string; reason?: string }) =>
   (await adminApi.post('/blocklist', body)).data

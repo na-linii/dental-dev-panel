@@ -705,15 +705,16 @@ async def admin_login(request: Request):
     if not hasattr(app, '_admin_tokens'):
         app._admin_tokens = {}
     app._admin_tokens[token] = {
-        "user_id": user["id"],
+        "id": user["id"],
         "username": user["username"],
         "full_name": user["full_name"],
         "role": user["role"],
         "clinic_id": user["clinic_id"],
+        "clinic_name": user.get("clinic_name", ""),
         "created_at": datetime.now(timezone.utc),
     }
     user_data = {k: v for k, v in app._admin_tokens[token].items() if k != "created_at"}
-    return {"token": token, "user": user_data}
+    return {"access_token": token, "token_type": "bearer", "user": user_data}
 
 
 @app.get("/admin/api/me")
