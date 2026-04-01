@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search, AlertCircle, Filter, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, Headphones, MessageSquare } from 'lucide-react'
+import { RefreshCw, Search, AlertCircle, Filter, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, MessageSquare } from 'lucide-react'
 import { getAdminSessions } from '../../api/adminClient'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { format } from 'date-fns'
