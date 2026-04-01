@@ -820,13 +820,13 @@ async def admin_sessions(request: Request, admin_user=Depends(_get_admin_user)):
 
 
 @app.get("/admin/api/sessions/{session_id}")
-async def admin_session_detail(session_id: int, admin_user=Depends(_get_admin_user)):
+async def admin_session_detail(session_id: str, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     return await _proxy_to_clinic(clinic, "GET", f"/admin/api/sessions/{session_id}")
 
 
 @app.post("/admin/api/sessions/{session_id}/messages")
-async def admin_send_message(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+async def admin_send_message(session_id: str, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
     body["admin_username"] = admin_user.get("username", "admin")
@@ -834,14 +834,14 @@ async def admin_send_message(session_id: int, request: Request, admin_user=Depen
 
 
 @app.patch("/admin/api/sessions/{session_id}/controller")
-async def admin_update_controller(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+async def admin_update_controller(session_id: str, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
     return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/controller", body=body)
 
 
 @app.patch("/admin/api/sessions/{session_id}/confirmation")
-async def admin_update_confirmation(session_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+async def admin_update_confirmation(session_id: str, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
     return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/confirmation", body=body)
@@ -857,7 +857,7 @@ async def admin_actions(request: Request, admin_user=Depends(_get_admin_user)):
 
 
 @app.patch("/admin/api/actions/{action_id}")
-async def admin_update_action(action_id: int, request: Request, admin_user=Depends(_get_admin_user)):
+async def admin_update_action(action_id: str, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
     return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/actions/{action_id}", body=body)
@@ -895,7 +895,7 @@ async def admin_blocklist_add(request: Request, admin_user=Depends(_get_admin_us
 
 
 @app.delete("/admin/api/blocklist/{entry_id}")
-async def admin_blocklist_remove(entry_id: int, admin_user=Depends(_get_admin_user)):
+async def admin_blocklist_remove(entry_id: str, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     return await _proxy_to_clinic(clinic, "DELETE", f"/admin/api/settings/blocklist/{entry_id}")
 
