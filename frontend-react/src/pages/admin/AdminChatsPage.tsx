@@ -29,12 +29,6 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
 }
 
-function getSessionStatus(s: AdminSessionSummary): StatusConfig {
-  if (s.confirmation_status && STATUS_CONFIG[s.confirmation_status]) {
-    return STATUS_CONFIG[s.confirmation_status]
-  }
-  return STATUS_CONFIG[s.controller] || STATUS_CONFIG.bot
-}
 
 const FILTER_CONTROLLERS = [
   { value: 'bot', label: 'Разговор с агентом' },
