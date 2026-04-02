@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, CalendarCheck, Clock, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Ban, Timer, AlertCircle } from 'lucide-react'
-import { getAdminSessions } from '../../api/adminClient'
 import type { AdminSessionSummary } from '../../api/adminClient'
+import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 
 const CONFIRMATION_FILTERS = [
@@ -51,57 +51,27 @@ const STATUS_ICONS: Record<string, typeof Clock> = {
 }
 
 export function AdminConfirmationsPage() {
-  const [sessions, setSessions] = useState<AdminSessionSummary[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState('')
-  const [counts, setCounts] = useState<Record<string, number>>({})
   const navigate = useNavigate()
 
-  const loadSessions = async (silent = false) => {
-    if (!silent) setIsLoading(true)
-    setError(null)
-    try {
-      // Load confirmation sessions — filter on backend, not locally
-      const params: Record<string, unknown> = { limit: 200 }
-      if (activeFilter) params.confirmation_status = activeFilter
+  // Filtered query
+  const { data: filteredData, isLoading, error: queryError, refetch } = useAdminSessions({
+    limit: 200,
+    ...(activeFilter ? { confirmation_status: activeFilter } : {}),
+  })
+  const sessions: AdminSessionSummary[] = Array.isArray(filteredData) ? filteredData : []
+  const error = queryError ? 'Не удалось загрузить записи' : null
 
-      const filteredData = await getAdminSessions(params as Parameters<typeof getAdminSessions>[0])
-      const filtered = Array.isArray(filteredData) ? filteredData : []
-      setSessions(filtered)
-
-      // Load counts for all statuses (separate call without filter)
-      if (!silent) {
-        const allData = await getAdminSessions({ limit: 200 } as Parameters<typeof getAdminSessions>[0])
-        const all = Array.isArray(allData) ? allData : []
-        const newCounts: Record<string, number> = {}
-        for (const s of all) {
-          if (s.confirmation_status) {
-            newCounts[s.confirmation_status] = (newCounts[s.confirmation_status] || 0) + 1
-          }
-        }
-        setCounts(newCounts)
-      }
-    } catch (e) {
-      console.error('Confirmations load error:', e)
-      setError('Не удалось загрузить записи')
-      setSessions([])
-    } finally {
-      setIsLoading(false)
+  // All sessions for counts
+  const { data: allData } = useAdminSessions({ limit: 200 })
+  const counts = useMemo(() => {
+    const all = Array.isArray(allData) ? allData : []
+    const c: Record<string, number> = {}
+    for (const s of all) {
+      if (s.confirmation_status) c[s.confirmation_status] = (c[s.confirmation_status] || 0) + 1
     }
-  }
-
-  useEffect(() => {
-    loadSessions()
-  }, [activeFilter])
-
-  // Auto-refresh every 10s
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (!document.hidden) loadSessions(true)
-    }, 10000)
-    return () => clearInterval(id)
-  }, [activeFilter])
+    return c
+  }, [allData])
 
   const totalCount = Object.values(counts).reduce((a, b) => a + b, 0)
 
@@ -114,7 +84,7 @@ export function AdminConfirmationsPage() {
           <p className="text-[#64748b] mt-1">Подтверждение записей на прием</p>
         </div>
         <button
-          onClick={() => loadSessions()}
+          onClick={() => refetch()}
           className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-[#94a3b8] hover:text-white hover:border-[#51ff97]/20 transition-all duration-200"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />

@@ -1,40 +1,10 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, AlertTriangle, Bell, ClipboardList, RefreshCw } from 'lucide-react'
-import { getAdminDashboardStats } from '../../api/adminClient'
-import type { AdminDashboardStats } from '../../api/adminClient'
+import { useAdminDashboard } from '../../hooks/useAdminQueries'
 
 export function AdminDashboardPage() {
-  const [stats, setStats] = useState<AdminDashboardStats | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: stats, isLoading, error, refetch } = useAdminDashboard()
   const navigate = useNavigate()
-
-  const loadStats = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const s = await getAdminDashboardStats()
-      setStats(s)
-    } catch (e) {
-      console.error('Dashboard stats error:', e)
-      setError('Не удалось загрузить статистику')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => { loadStats() }, [])
-
-  // Auto-refresh every 30s
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (!document.hidden) {
-        getAdminDashboardStats().then(setStats).catch(() => {})
-      }
-    }, 30000)
-    return () => clearInterval(id)
-  }, [])
 
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('admin_user') || '{}') } catch { return {} }
@@ -51,8 +21,8 @@ export function AdminDashboardPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p className="text-[#94a3b8]">{error}</p>
-        <button onClick={loadStats} className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-[#94a3b8] hover:text-white transition-colors">
+        <p className="text-[#94a3b8]">Не удалось загрузить статистику</p>
+        <button onClick={() => refetch()} className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-[#94a3b8] hover:text-white transition-colors">
           <RefreshCw className="w-4 h-4" /> Повторить
         </button>
       </div>

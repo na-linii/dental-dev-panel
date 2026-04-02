@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
-import { getAdminSession, sendAdminMessage, updateSessionController } from '../../api/adminClient'
+import { sendAdminMessage, updateSessionController } from '../../api/adminClient'
 import type { AdminSessionDetail, AdminMessage } from '../../api/adminClient'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -23,8 +25,8 @@ const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
 export function AdminChatDetailPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const [session, setSession] = useState<AdminSessionDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const { data: session, isLoading } = useAdminSessionDetail(sessionId)
   const [messageText, setMessageText] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showControllerMenu, setShowControllerMenu] = useState(false)
@@ -32,24 +34,6 @@ export function AdminChatDetailPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const prevMsgCount = useRef(0)
-
-  const loadSession = async (id: string, silent = false) => {
-    if (!silent) setIsLoading(true)
-    try {
-      setSession(await getAdminSession(id))
-    } catch (e) {
-      console.error('Session load error:', e)
-    } finally {
-      if (!silent) setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (sessionId) {
-      prevMsgCount.current = 0
-      loadSession(sessionId)
-    }
-  }, [sessionId])
 
   // Scroll to bottom on new messages
   useLayoutEffect(() => {
@@ -63,15 +47,6 @@ export function AdminChatDetailPage() {
     }
     prevMsgCount.current = count
   }, [session])
-
-  // Auto-refresh every 5s
-  useEffect(() => {
-    if (!sessionId) return
-    const id = setInterval(() => {
-      if (!document.hidden) loadSession(sessionId, true)
-    }, 5000)
-    return () => clearInterval(id)
-  }, [sessionId])
 
   const handleSend = async () => {
     if (!messageText.trim() || !session || isSending) return
@@ -88,7 +63,7 @@ export function AdminChatDetailPage() {
         metadata: null,
         created_at: new Date().toISOString(),
       }
-      setSession((prev) => {
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => {
         if (!prev) return prev
         return { ...prev, messages: [...prev.messages, optimisticMsg] }
       })
@@ -110,7 +85,7 @@ export function AdminChatDetailPage() {
     setShowControllerMenu(false)
     try {
       await updateSessionController(session.id, newController)
-      setSession((prev) => prev ? { ...prev, controller: newController } : prev)
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => prev ? { ...prev, controller: newController } : prev)
     } catch (e) {
       console.error('Controller update error:', e)
     }

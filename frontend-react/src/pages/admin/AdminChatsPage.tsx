@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, AlertCircle, Filter, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, MessageSquare } from 'lucide-react'
-import { getAdminSessions } from '../../api/adminClient'
 import type { AdminSessionSummary } from '../../api/adminClient'
+import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import type { LucideIcon } from 'lucide-react'
 
@@ -38,43 +38,19 @@ const FILTER_CONTROLLERS = [
 ]
 
 export function AdminChatsPage() {
-  const [sessions, setSessions] = useState<AdminSessionSummary[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [controllerFilter, setControllerFilter] = useState(() => searchParams.get('controller') || '')
   const navigate = useNavigate()
 
-  const loadSessions = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const params: Record<string, unknown> = { limit: 100 }
-      if (controllerFilter) params.controller = controllerFilter
-      if (searchQuery) params.search = searchQuery
-      // Backend returns flat array
-      const data = await getAdminSessions(params as Parameters<typeof getAdminSessions>[0])
-      setSessions(Array.isArray(data) ? data : [])
-    } catch (e) {
-      console.error('Sessions load error:', e)
-      setError('Не удалось загрузить чаты')
-      setSessions([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => { loadSessions() }, [controllerFilter, searchQuery])
-
-  // Auto-refresh every 10s
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (!document.hidden) loadSessions()
-    }, 10000)
-    return () => clearInterval(id)
-  }, [controllerFilter, searchQuery])
+  const { data, isLoading, error: queryError, refetch } = useAdminSessions({
+    limit: 100,
+    ...(controllerFilter ? { controller: controllerFilter } : {}),
+    ...(searchQuery ? { search: searchQuery } : {}),
+  })
+  const sessions: AdminSessionSummary[] = Array.isArray(data) ? data : []
+  const error = queryError ? 'Не удалось загрузить чаты' : null
 
   const handleSearch = () => setSearchQuery(searchInput)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
@@ -98,7 +74,7 @@ export function AdminChatsPage() {
           <p className="text-[#64748b] mt-1">{sessions.length} диалогов</p>
         </div>
         <button
-          onClick={loadSessions}
+          onClick={() => refetch()}
           className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-[#94a3b8] hover:text-white hover:border-[#51ff97]/20 transition-all duration-200"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { RefreshCw, CheckCircle, XCircle } from 'lucide-react'
-import { getAdminActions, updateAdminAction } from '../../api/adminClient'
+import { updateAdminAction } from '../../api/adminClient'
 import type { AdminAction } from '../../api/adminClient'
+import { useAdminActions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -21,38 +22,14 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export function AdminActionsPage() {
+  const { data, isLoading, error: queryError, refetch } = useAdminActions({ status: 'pending' })
   const [actions, setActions] = useState<AdminAction[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const error = queryError ? 'Не удалось загрузить действия' : null
 
-  const loadActions = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await getAdminActions({ status: 'pending' })
-      setActions(Array.isArray(data) ? data : [])
-    } catch (e) {
-      console.error('Actions load error:', e)
-      setError('Не удалось загрузить действия')
-      setActions([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => { loadActions() }, [])
-
-  // Auto-refresh every 15s
+  // Sync from React Query
   useEffect(() => {
-    const id = setInterval(() => {
-      if (!document.hidden) {
-        getAdminActions({ status: 'pending' })
-          .then((data) => setActions(Array.isArray(data) ? data : []))
-          .catch(() => {})
-      }
-    }, 15000)
-    return () => clearInterval(id)
-  }, [])
+    if (data) setActions(Array.isArray(data) ? data : [])
+  }, [data])
 
   const handleAction = async (actionId: string, status: 'done' | 'failed') => {
     try {
@@ -72,7 +49,7 @@ export function AdminActionsPage() {
           <p className="text-[#64748b] mt-1">Задачи, требующие внимания администратора</p>
         </div>
         <button
-          onClick={loadActions}
+          onClick={() => refetch()}
           className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-[#94a3b8] hover:text-white hover:border-[#51ff97]/20 transition-all duration-200"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
