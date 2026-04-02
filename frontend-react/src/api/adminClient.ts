@@ -30,6 +30,7 @@ export interface AdminDashboardStats {
   confirmations: Record<string, number>
   pending_actions: number
   total_patients: number
+  prev_month?: { total: number; confirmed: number; rescheduled: number; cancelled: number }
 }
 
 // Backend: GET /admin/api/sessions — returns array of these

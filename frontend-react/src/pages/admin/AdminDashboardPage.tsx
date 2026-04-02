@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, AlertTriangle, Bell, ClipboardList, RefreshCw } from 'lucide-react'
+import { MessageCircle, AlertTriangle, CheckCircle2, XCircle, ArrowRightLeft, TrendingUp, Users, RefreshCw } from 'lucide-react'
 import { useAdminDashboard } from '../../hooks/useAdminQueries'
 
 export function AdminDashboardPage() {
@@ -29,53 +29,19 @@ export function AdminDashboardPage() {
     )
   }
 
-  // Derive display values from backend format:
-  // stats.sessions = {bot, operator, closed}
-  // stats.confirmations = {sent: N, confirmed: N, ...}
-  // stats.pending_actions, stats.total_patients
-  const activeChats = (stats?.sessions?.bot ?? 0) + (stats?.sessions?.operator ?? 0)
+  const totalSessions = (stats?.sessions?.bot ?? 0) + (stats?.sessions?.operator ?? 0) + (stats?.sessions?.closed ?? 0)
+  const confirmed = stats?.confirmations?.confirmed ?? 0
+  const rescheduled = stats?.confirmations?.rescheduled ?? 0
+  const cancelled = stats?.confirmations?.cancelled ?? 0
+  const awaitingConfirm = stats?.confirmations?.awaiting_confirm ?? 0
+  const awaitingReschedule = stats?.confirmations?.awaiting_reschedule ?? 0
+  const awaitingCancel = stats?.confirmations?.awaiting_cancel ?? 0
   const operatorChats = stats?.sessions?.operator ?? 0
-  const totalConfirmations = stats?.confirmations
-    ? Object.values(stats.confirmations).reduce((a, b) => a + b, 0)
-    : 0
 
-  const cards = [
-    {
-      title: 'Активные чаты',
-      value: activeChats,
-      icon: MessageCircle,
-      accent: 'text-emerald-400',
-      bg: 'bg-emerald-500/10',
-      border: 'hover:border-emerald-500/20',
-    },
-    {
-      title: 'С оператором',
-      value: operatorChats,
-      icon: AlertTriangle,
-      accent: 'text-red-400',
-      bg: 'bg-red-500/10',
-      border: 'hover:border-red-500/20',
-    },
-    {
-      title: 'Подтверждения',
-      value: totalConfirmations,
-      icon: Bell,
-      accent: 'text-blue-400',
-      bg: 'bg-blue-500/10',
-      border: 'hover:border-blue-500/20',
-    },
-    {
-      title: 'Ожидает действий',
-      value: stats?.pending_actions ?? 0,
-      icon: ClipboardList,
-      accent: 'text-amber-400',
-      bg: 'bg-amber-500/10',
-      border: 'hover:border-amber-500/20',
-    },
-  ]
+  const cardBase = 'bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 md:p-5 transition-all duration-200 hover:bg-white/[0.05] group'
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3 md:space-y-4">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">
@@ -84,39 +50,105 @@ export function AdminDashboardPage() {
         <p className="text-[#64748b] mt-1">{user.clinic_id}</p>
       </div>
 
-      {/* Stat cards */}
+      {/* Top row: 4 stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {cards.map((c) => (
-          <div
-            key={c.title}
-            className={`bg-white/[0.03] border border-white/[0.06] ${c.border} rounded-2xl p-4 md:p-5 transition-all duration-200 hover:bg-white/[0.05] group`}
-          >
-            <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${c.bg} flex items-center justify-center ${c.accent} mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200`}>
-              <c.icon className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-            </div>
-            <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{c.value}</p>
-            <p className="text-xs md:text-sm text-[#64748b] mt-0.5">{c.title}</p>
+        {/* Всего диалогов */}
+        <div className={cardBase}>
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-[#51ff97]/10 flex items-center justify-center text-[#51ff97] mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">
+            <MessageCircle className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
-        ))}
+          <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{totalSessions}</p>
+          <p className="text-xs md:text-sm text-[#64748b] mt-0.5">Всего диалогов</p>
+        </div>
+
+        {/* Подтверждено */}
+        <div className={cardBase}>
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">
+            <CheckCircle2 className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{confirmed}</p>
+          <p className="text-xs md:text-sm text-[#64748b] mt-0.5">Подтверждено</p>
+          {awaitingConfirm > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 tabular-nums mt-1">+{awaitingConfirm} ожидает</p>
+          )}
+        </div>
+
+        {/* Перенесено */}
+        <div className={cardBase}>
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">
+            <ArrowRightLeft className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{rescheduled}</p>
+          <p className="text-xs md:text-sm text-[#64748b] mt-0.5">Перенесено</p>
+          {awaitingReschedule > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 tabular-nums mt-1">+{awaitingReschedule} ожидает</p>
+          )}
+        </div>
+
+        {/* Отменено */}
+        <div className={cardBase}>
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">
+            <XCircle className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{cancelled}</p>
+          <p className="text-xs md:text-sm text-[#64748b] mt-0.5">Отменено</p>
+          {awaitingCancel > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 tabular-nums mt-1">+{awaitingCancel} ожидает</p>
+          )}
+        </div>
       </div>
 
-      {/* Alert box */}
-      {operatorChats > 0 && (
+      {/* Bottom row: 2 squares + 1 rectangle */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {/* Ожидает оператора */}
         <button
           onClick={() => navigate('/admin/chats?controller=operator')}
-          className="w-full bg-red-500/[0.08] border border-red-500/20 hover:border-red-500/30 rounded-2xl p-5 text-left transition-all duration-200 group"
+          className={`${cardBase} text-left cursor-pointer hover:border-red-500/20`}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
-              <AlertTriangle className="w-[18px] h-[18px]" />
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">
+            <AlertTriangle className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{operatorChats}</p>
+          <p className="text-xs md:text-sm text-[#64748b] mt-0.5">Ожидает оператора</p>
+        </button>
+
+        {/* Всего переписок */}
+        <div className={cardBase}>
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/[0.06] flex items-center justify-center text-[#94a3b8] mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">
+            <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white tabular-nums">{totalSessions}</p>
+          <p className="text-xs md:text-sm text-[#64748b] mt-0.5">Всего переписок</p>
+        </div>
+
+        {/* Прошлый месяц — spans 2 cols on lg */}
+        <div className={`${cardBase} lg:col-span-2`}>
+          <div className="flex items-center gap-2 mb-3 md:mb-4">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform duration-200">
+              <TrendingUp className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+            </div>
+            <p className="text-xs md:text-sm text-[#64748b]">Прошлый месяц</p>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-white tabular-nums">{stats?.prev_month?.total ?? '—'}</p>
+              <p className="text-[10px] md:text-xs text-[#64748b]">всего</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-white tabular-nums">{operatorChats}</p>
-              <p className="text-xs text-[#94a3b8]">Чатов с оператором</p>
+              <p className="text-lg md:text-2xl font-bold text-emerald-400 tabular-nums">{stats?.prev_month?.confirmed ?? '—'}</p>
+              <p className="text-[10px] md:text-xs text-[#64748b]">подтверждено</p>
+            </div>
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-blue-400 tabular-nums">{stats?.prev_month?.rescheduled ?? '—'}</p>
+              <p className="text-[10px] md:text-xs text-[#64748b]">перенесено</p>
+            </div>
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-red-400 tabular-nums">{stats?.prev_month?.cancelled ?? '—'}</p>
+              <p className="text-[10px] md:text-xs text-[#64748b]">отменено</p>
             </div>
           </div>
-        </button>
-      )}
+        </div>
+      </div>
     </div>
   )
 }
