@@ -67,6 +67,7 @@ export interface AdminSessionDetail {
   confirmation_status: string | null
   confirmation_appointment_id: string | null
   confirmation_appointment_date: string | null
+  confirmation_appointment_time: string | null
   confirmation_doctor_name: string | null
   crm_sync_status: string | null
   crm_sync_error: string | null

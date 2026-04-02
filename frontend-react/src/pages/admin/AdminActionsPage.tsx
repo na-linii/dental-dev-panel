@@ -10,6 +10,8 @@ const TYPE_LABELS: Record<string, string> = {
   reschedule: 'Пациент просит перенести визит',
   confirm: 'Пациент подтвердил визит',
   update_booking_status: 'Обновить статус записи в IDENT',
+  book_appointment: 'Новая запись',
+  register_patient: 'Регистрация пациента',
 }
 
 const STATUS_STYLES: Record<string, string> = {

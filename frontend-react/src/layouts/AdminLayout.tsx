@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, MessageCircle, CalendarCheck, ClipboardList, Settings, LogOut, Menu } from 'lucide-react'
+
+function NaLiniiLogo({ className = 'w-8 h-8' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 490 494" fill="none" className={className}>
+      <ellipse cx="245" cy="247" rx="230" ry="232" stroke="rgb(74,245,143)" strokeWidth="24" />
+      <line x1="245" y1="100" x2="245" y2="394" stroke="rgb(74,245,143)" strokeWidth="24" strokeLinecap="round" />
+      <line x1="108" y1="247" x2="382" y2="247" stroke="rgb(74,245,143)" strokeWidth="24" strokeLinecap="round" />
+    </svg>
+  )
+}
 import { adminMe } from '../api/adminClient'
 import type { AdminUser } from '../api/adminClient'
 
@@ -56,13 +66,18 @@ export function AdminLayout() {
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#111127] border-r border-[#1e293b] flex flex-col transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Clinic name */}
         <div className="px-5 py-4 border-b border-[#1e293b]">
-          <p className="text-xs text-[#64748b] uppercase tracking-wider">Clinic</p>
-          <p className="text-sm font-semibold text-white mt-0.5 truncate">{user.clinic_id}</p>
+          <div className="flex items-center gap-2.5">
+            <NaLiniiLogo className="w-8 h-8 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-[#64748b] uppercase tracking-wider">Clinic</p>
+              <p className="text-sm font-semibold text-white mt-0.5 truncate">{user.clinic_id}</p>
+            </div>
+          </div>
         </div>
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => (
+          {navItems.filter((item) => !(item.to === '/admin/actions' && user?.role === 'operator')).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, CalendarCheck, Clock, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react'
+import { RefreshCw, CalendarCheck, Clock, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Ban, Timer, AlertCircle } from 'lucide-react'
 import { getAdminSessions } from '../../api/adminClient'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { format } from 'date-fns'
@@ -8,30 +8,46 @@ import { format } from 'date-fns'
 const CONFIRMATION_FILTERS = [
   { value: '', label: 'Все' },
   { value: 'sent', label: 'Отправлено' },
+  { value: 'awaiting_confirm', label: 'Ожидает подтв.' },
+  { value: 'awaiting_cancel', label: 'Ожидает отмены' },
+  { value: 'awaiting_reschedule', label: 'Ожидает переноса' },
   { value: 'confirmed', label: 'Подтверждено' },
   { value: 'cancelled', label: 'Отменено' },
   { value: 'rescheduled', label: 'Перенесено' },
+  { value: 'no_response', label: 'Нет ответа' },
 ] as const
 
 const STATUS_LABELS: Record<string, string> = {
   sent: 'Отправлено',
+  awaiting_confirm: 'Ожидает подтв.',
+  awaiting_cancel: 'Ожидает отмены',
+  awaiting_reschedule: 'Ожидает переноса',
   confirmed: 'Подтверждено',
   cancelled: 'Отменено',
   rescheduled: 'Перенесено',
+  no_response: 'Нет ответа',
 }
 
 const STATUS_COLORS: Record<string, string> = {
   sent: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
+  awaiting_confirm: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
+  awaiting_cancel: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
+  awaiting_reschedule: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
   confirmed: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
   cancelled: 'bg-red-500/15 text-red-300 border-red-500/25',
   rescheduled: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
+  no_response: 'bg-gray-500/15 text-gray-400 border-gray-500/25',
 }
 
 const STATUS_ICONS: Record<string, typeof Clock> = {
   sent: Clock,
+  awaiting_confirm: ClipboardCheck,
+  awaiting_cancel: Ban,
+  awaiting_reschedule: Timer,
   confirmed: CheckCircle2,
   cancelled: XCircle,
   rescheduled: ArrowRightLeft,
+  no_response: AlertCircle,
 }
 
 export function AdminConfirmationsPage() {
@@ -108,7 +124,7 @@ export function AdminConfirmationsPage() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {(['sent', 'confirmed', 'cancelled', 'rescheduled'] as const).map((status) => {
+        {(['sent', 'awaiting_confirm', 'awaiting_cancel', 'awaiting_reschedule', 'confirmed', 'cancelled', 'rescheduled', 'no_response'] as const).map((status) => {
           const Icon = STATUS_ICONS[status]
           return (
             <button

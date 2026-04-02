@@ -820,9 +820,9 @@ async def admin_sessions(request: Request, admin_user=Depends(_get_admin_user)):
 
 
 @app.get("/admin/api/sessions/{session_id}")
-async def admin_session_detail(session_id: str, admin_user=Depends(_get_admin_user)):
+async def admin_session_detail(session_id: str, request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
-    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/sessions/{session_id}")
+    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/sessions/{session_id}", params=dict(request.query_params))
 
 
 @app.post("/admin/api/sessions/{session_id}/messages")
@@ -845,6 +845,13 @@ async def admin_update_confirmation(session_id: str, request: Request, admin_use
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
     return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/confirmation", body=body)
+
+
+@app.patch("/admin/api/sessions/{session_id}/phone")
+async def admin_update_phone(session_id: str, request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/phone", body=body)
 
 
 # --- Actions ---
@@ -876,6 +883,12 @@ async def admin_bot_toggle(request: Request, admin_user=Depends(_get_admin_user)
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
     return await _proxy_to_clinic(clinic, "POST", "/admin/api/settings/bot/toggle", body=body)
+
+
+@app.get("/admin/api/settings/clinic")
+async def admin_clinic_settings(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/clinic")
 
 
 # --- Blocklist ---
