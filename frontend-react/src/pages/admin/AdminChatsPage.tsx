@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search, AlertCircle, Filter, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, MessageSquare } from 'lucide-react'
+import { RefreshCw, Search, AlertCircle, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, MessageSquare } from 'lucide-react'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
@@ -30,12 +30,30 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
 }
 
-
-const FILTER_CONTROLLERS = [
-  { value: 'bot', label: 'Разговор с агентом' },
-  { value: 'operator', label: 'Ожидает администратора' },
+const CONTROLLER_TAGS = [
+  { value: '', label: 'Все' },
+  { value: 'bot', label: 'С агентом' },
+  { value: 'operator', label: 'С оператором' },
   { value: 'closed', label: 'Завершён' },
-]
+] as const
+
+function getChannelPill(channel: string | null | undefined) {
+  if (!channel) return null
+  if (channel === 'tg_bot') return { text: 'TG', cls: 'bg-blue-500/10 text-blue-400' }
+  if (channel === 'tg_business') return { text: 'BIZ', cls: 'bg-purple-500/10 text-purple-400' }
+  return { text: channel, cls: 'bg-gray-500/10 text-gray-400' }
+}
+
+function getDisplayTime(s: AdminSessionSummary): string | null {
+  const ts = s.last_message_at || s.updated_at
+  if (!ts) return null
+  return format(new Date(ts), 'HH:mm')
+}
+
+function getAvatarColor(controller: string): string {
+  if (controller === 'operator') return 'bg-red-500/20 text-red-400'
+  return 'bg-emerald-500/20 text-emerald-400'
+}
 
 export function AdminChatsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -51,6 +69,16 @@ export function AdminChatsPage() {
   })
   const sessions: AdminSessionSummary[] = Array.isArray(data) ? data : []
   const error = queryError ? 'Не удалось загрузить чаты' : null
+
+  // Count sessions per controller for tag badges
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = { '': sessions.length, bot: 0, operator: 0, closed: 0 }
+    for (const s of sessions) {
+      if (s.controller in counts) counts[s.controller]++
+    }
+    // When filtering, "Все" count is total shown; others count from current result set
+    return counts
+  }, [sessions])
 
   const handleSearch = () => setSearchQuery(searchInput)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
@@ -71,7 +99,7 @@ export function AdminChatsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Чаты</h1>
-          <p className="text-[#64748b] mt-1">{sessions.length} диалогов</p>
+          <p className="text-[#64748b] mt-1">{sessions.length} чатов</p>
         </div>
         <button
           onClick={() => refetch()}
@@ -89,10 +117,10 @@ export function AdminChatsPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Search + Tag Filters */}
+      <div className="space-y-3">
         {/* Search */}
-        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-sm">
+        <div className="relative sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#475569]" />
           <input
             type="text"
@@ -110,134 +138,110 @@ export function AdminChatsPage() {
           )}
         </div>
 
-        {/* Controller filter */}
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-[#64748b]" />
-          <select
-            value={controllerFilter}
-            onChange={(e) => handleControllerChange(e.target.value)}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#51ff97]/40 transition-all duration-200 cursor-pointer"
-          >
-            <option value="">Все</option>
-            {FILTER_CONTROLLERS.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
+        {/* Tag filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {CONTROLLER_TAGS.map((tag) => {
+            const isActive = controllerFilter === tag.value
+            const isOperator = tag.value === 'operator'
+            let cls: string
+            if (isActive && isOperator) {
+              cls = 'bg-red-500/10 text-red-400 border-red-500/20'
+            } else if (isActive) {
+              cls = 'bg-[#51ff97]/10 text-[#51ff97] border-[#51ff97]/20'
+            } else {
+              cls = 'bg-white/[0.03] text-[#64748b] border-white/[0.06]'
+            }
+            const count = tagCounts[tag.value] ?? 0
+            return (
+              <button
+                key={tag.value}
+                onClick={() => handleControllerChange(tag.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${cls}`}
+              >
+                {tag.label}
+                <span className="ml-1.5 opacity-60">{count}</span>
+              </button>
+            )
+          })}
         </div>
-
-        {/* Operator-only shortcut */}
-        <button
-          onClick={() => handleControllerChange(controllerFilter === 'operator' ? '' : 'operator')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm border transition-all duration-200 ${
-            controllerFilter === 'operator'
-              ? 'bg-red-500/15 border-red-500/25 text-red-400'
-              : 'bg-white/[0.04] border-white/[0.08] text-[#94a3b8] hover:text-white'
-          }`}
-        >
-          <AlertCircle className="w-4 h-4" />
-          <span className="hidden sm:inline">С оператором</span>
-          <span className="sm:hidden">Опер.</span>
-        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Время</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Пациент</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden md:table-cell">Канал</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Контроль</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden lg:table-cell">Подтверждение</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
-                      Загрузка...
-                    </div>
-                  </td>
-                </tr>
-              ) : sessions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-[#64748b]">
-                    Диалоги не найдены
-                  </td>
-                </tr>
-              ) : sessions.map((s) => (
-                <tr
-                  key={s.id}
-                  onClick={() => navigate(`/admin/chats/${s.id}`)}
-                  className={`border-b border-white/[0.04] transition-colors duration-150 cursor-pointer ${
-                    s.controller === 'operator'
-                      ? 'bg-red-500/[0.04] hover:bg-red-500/[0.07] border-l-2 border-l-red-400'
-                      : 'hover:bg-white/[0.03]'
-                  }`}
-                >
-                  <td className="px-4 py-3">
-                    {s.last_message_at ? (
-                      <>
-                        <p className="text-sm text-white whitespace-nowrap">{format(new Date(s.last_message_at), 'dd.MM.yyyy')}</p>
-                        <p className="text-xs text-[#64748b]">{format(new Date(s.last_message_at), 'HH:mm')}</p>
-                      </>
-                    ) : s.updated_at ? (
-                      <>
-                        <p className="text-sm text-white whitespace-nowrap">{format(new Date(s.updated_at), 'dd.MM.yyyy')}</p>
-                        <p className="text-xs text-[#64748b]">{format(new Date(s.updated_at), 'HH:mm')}</p>
-                      </>
-                    ) : (
-                      <p className="text-sm text-[#475569]">---</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-sm text-white truncate max-w-[160px]">{s.patient?.name || 'Без имени'}</p>
-                    {s.patient?.phone && <p className="text-xs text-[#64748b] truncate">{s.patient.phone}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-[#94a3b8] hidden md:table-cell truncate max-w-[120px]">
-                    {s.channel || '---'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {(() => {
-                      const st = STATUS_CONFIG[s.controller] || STATUS_CONFIG.bot
-                      const Icon = st.icon
-                      return (
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${st.badge}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                          {st.label}
-                        </span>
-                      )
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    {s.confirmation_status && (() => {
-                      const st = STATUS_CONFIG[s.confirmation_status]
-                      if (!st) return <span className="text-xs text-[#64748b]">{s.confirmation_status}</span>
-                      const Icon = st.icon
-                      return (
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${st.badge}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                          {st.label}
-                        </span>
-                      )
-                    })()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {!isLoading && sessions.length > 0 && (
-          <div className="text-center text-xs text-[#475569] py-3 border-t border-white/[0.04]">
-            Показано {sessions.length} диалогов
+      {/* Card List */}
+      <div className="space-y-2">
+        {isLoading ? (
+          <div className="py-12 text-center text-[#64748b]">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
+              Загрузка...
+            </div>
           </div>
-        )}
+        ) : sessions.length === 0 ? (
+          <div className="py-12 text-center text-[#64748b]">
+            Диалоги не найдены
+          </div>
+        ) : sessions.map((s) => {
+          const name = s.patient?.name || s.patient?.phone || 'Без имени'
+          const initial = name.charAt(0).toUpperCase()
+          const pill = getChannelPill(s.channel)
+          const time = getDisplayTime(s)
+          const isOperator = s.controller === 'operator'
+          const statusKey = s.confirmation_status || s.controller
+          const st = STATUS_CONFIG[statusKey] || STATUS_CONFIG.bot
+          const StIcon = st.icon
+
+          return (
+            <div
+              key={s.id}
+              onClick={() => navigate(`/admin/chats/${s.id}`)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                isOperator
+                  ? 'bg-red-500/[0.04] border-red-500/15 hover:bg-red-500/[0.07]'
+                  : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
+              }`}
+            >
+              {/* Avatar */}
+              <div className={`w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] max-sm:w-7 max-sm:h-7 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${getAvatarColor(s.controller)}`}>
+                {initial}
+              </div>
+
+              {/* Middle: name + channel + preview */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white truncate">{name}</span>
+                  {pill && (
+                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
+                      {pill.text}
+                    </span>
+                  )}
+                </div>
+                {s.last_message && (
+                  <p className="text-xs text-[#64748b] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {s.last_message}
+                  </p>
+                )}
+              </div>
+
+              {/* Right: time + status */}
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {time && (
+                  <span className="text-[11px] text-[#64748b]">{time}</span>
+                )}
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${st.badge}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                  <span className="hidden sm:inline">{st.label}</span>
+                </span>
+              </div>
+            </div>
+          )
+        })}
       </div>
+
+      {/* Footer */}
+      {!isLoading && sessions.length > 0 && (
+        <div className="text-center text-xs text-[#475569] py-2">
+          {sessions.length} чатов
+        </div>
+      )}
     </div>
   )
 }
