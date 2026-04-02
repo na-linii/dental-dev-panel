@@ -187,7 +187,6 @@ export function AdminChatsPage() {
           const isOperator = s.controller === 'operator'
           const statusKey = s.confirmation_status || s.controller
           const st = STATUS_CONFIG[statusKey] || STATUS_CONFIG.bot
-          const StIcon = st.icon
 
           return (
             <div
