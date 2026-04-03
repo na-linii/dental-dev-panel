@@ -122,14 +122,14 @@ export function AdminDashboardPage() {
         </div>
 
         {/* Прошлый месяц — spans 2 cols on lg */}
-        <div className={`${cardBase} lg:col-span-2`}>
+        <div className={`${cardBase} col-span-2 lg:col-span-2`}>
           <div className="flex items-center gap-2 mb-3 md:mb-4">
             <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform duration-200">
               <TrendingUp className="w-4 h-4 md:w-[18px] md:h-[18px]" />
             </div>
             <p className="text-xs md:text-sm text-[#64748b]">Прошлый месяц</p>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div>
               <p className="text-lg md:text-2xl font-bold text-white tabular-nums">{stats?.prev_month?.total ?? '—'}</p>
               <p className="text-[10px] md:text-xs text-[#64748b]">всего</p>

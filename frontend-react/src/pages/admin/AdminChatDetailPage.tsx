@@ -122,7 +122,7 @@ export function AdminChatDetailPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100dvh-4rem)]">
       {/* Header */}
       <div className="flex items-center gap-4 pb-4 border-b border-white/[0.06]">
         <button
@@ -133,7 +133,7 @@ export function AdminChatDetailPage() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold text-white truncate">{session.patient?.name || 'Без имени'}</h1>
+            <h1 className="text-lg font-bold text-white truncate max-w-[200px] sm:max-w-none">{session.patient?.name || 'Без имени'}</h1>
             {/* Controller badge (clickable) */}
             <div className="relative">
               <button
@@ -178,11 +178,11 @@ export function AdminChatDetailPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4 mt-1 text-sm text-[#64748b]">
+          <div className="flex items-center gap-2 sm:gap-4 mt-1 text-sm text-[#64748b] flex-wrap">
             {editingPhone ? (
               <span className="flex items-center gap-1.5">
                 <input value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)}
-                  className="bg-white/[0.04] border border-white/[0.08] rounded px-2 py-0.5 text-xs text-white w-32"
+                  className="bg-white/[0.04] border border-white/[0.08] rounded px-2 py-0.5 text-xs text-white w-24 sm:w-32"
                   autoFocus onKeyDown={(e) => { if (e.key === 'Enter') savePhone(); if (e.key === 'Escape') setEditingPhone(false) }} />
                 <button onClick={savePhone} className="text-[#51ff97] text-xs">✓</button>
                 <button onClick={() => setEditingPhone(false)} className="text-[#64748b] text-xs">✗</button>
@@ -272,7 +272,7 @@ export function AdminChatDetailPage() {
           <button
             onClick={handleSend}
             disabled={!messageText.trim() || isSending}
-            className="flex items-center justify-center w-11 h-11 bg-[#51ff97] text-[#0d0d1a] rounded-xl transition-all duration-200 hover:bg-[#51ff97]/90 hover:shadow-[0_0_16px_rgba(81,255,151,0.2)] disabled:opacity-30 disabled:hover:shadow-none active:scale-95"
+            className="flex items-center justify-center w-11 h-11 shrink-0 bg-[#51ff97] text-[#0d0d1a] rounded-xl transition-all duration-200 hover:bg-[#51ff97]/90 hover:shadow-[0_0_16px_rgba(81,255,151,0.2)] disabled:opacity-30 disabled:hover:shadow-none active:scale-95"
           >
             {isSending
               ? <span className="w-4 h-4 border-2 border-[#0d0d1a] border-t-transparent rounded-full animate-spin" />

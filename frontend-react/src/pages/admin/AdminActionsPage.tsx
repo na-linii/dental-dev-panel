@@ -64,8 +64,34 @@ export function AdminActionsPage() {
         </div>
       )}
 
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-2">
+        {actions.map((a) => (
+          <div key={a.id} className={`p-3 rounded-xl border ${STATUS_STYLES[a.status] || ''}`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-white">{TYPE_LABELS[a.action_type] || a.action_type}</span>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_STYLES[a.status] || ''}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                {a.status === 'pending' ? 'Ожидает' : a.status === 'done' ? 'Выполнено' : 'Ошибка'}
+              </span>
+            </div>
+            {a.description && <p className="text-xs text-[#94a3b8] mb-2 truncate">{a.description}</p>}
+            {a.status === 'pending' && (
+              <div className="flex gap-2">
+                <button onClick={() => handleAction(a.id, 'done')} className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium">
+                  <CheckCircle className="w-3 h-3" /> Готово
+                </button>
+                <button onClick={() => handleAction(a.id, 'failed')} className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs font-medium">
+                  <XCircle className="w-3 h-3" /> Ошибка
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* Table */}
-      <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="hidden sm:block bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
