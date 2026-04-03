@@ -158,6 +158,9 @@ export function AdminConfirmationsPage() {
                   <div className="text-sm font-semibold text-white truncate">
                     {s.confirmation_appointment_time || '\u2014'} &rarr; {s.confirmation_doctor_name || '\u2014'}
                   </div>
+                  {s.patient?.name && (
+                    <div className="text-xs text-[#64748b] truncate">{s.patient.name}</div>
+                  )}
                 </div>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shrink-0 ${statusColor}`}>
                   <StatusIcon className="w-3 h-3" />
