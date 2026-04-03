@@ -870,6 +870,15 @@ async def admin_update_action(action_id: str, request: Request, admin_user=Depen
     return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/actions/{action_id}", body=body)
 
 
+# --- Cached bookings ---
+
+@app.get("/admin/api/bookings")
+async def admin_bookings(request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    params = dict(request.query_params)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/bookings", params=params)
+
+
 # --- Bot settings ---
 
 @app.get("/admin/api/bot/status")
