@@ -55,20 +55,17 @@ export function AdminConfirmationsPage() {
   const [activeFilter, setActiveFilter] = useState('')
   const navigate = useNavigate()
 
-  // Filtered query
+  // Filtered query — always filter to sessions with confirmation data
   const { data: filteredData, isLoading, error: queryError, refetch } = useAdminSessions({
     limit: 200,
+    has_confirmation: true,
     ...(activeFilter ? { confirmation_status: activeFilter } : {}),
   })
-  const allSessions: AdminSessionSummary[] = Array.isArray(filteredData) ? filteredData : []
-  // Show only sessions that have confirmation data
-  const sessions = activeFilter
-    ? allSessions
-    : allSessions.filter((s) => s.confirmation_status != null)
+  const sessions: AdminSessionSummary[] = Array.isArray(filteredData) ? filteredData : []
   const error = queryError ? 'Не удалось загрузить записи' : null
 
-  // All sessions for counts
-  const { data: allData } = useAdminSessions({ limit: 200 })
+  // All confirmation sessions for counts
+  const { data: allData } = useAdminSessions({ limit: 200, has_confirmation: true })
   const counts = useMemo(() => {
     const all = Array.isArray(allData) ? allData : []
     const c: Record<string, number> = {}

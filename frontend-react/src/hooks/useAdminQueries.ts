@@ -19,6 +19,7 @@ export function useAdminDashboard() {
 export function useAdminSessions(params?: {
   controller?: string
   confirmation_status?: string
+  has_confirmation?: boolean
   search?: string
   limit?: number
 }) {

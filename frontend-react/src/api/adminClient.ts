@@ -162,6 +162,7 @@ export const getAdminDashboardStats = async () =>
 export const getAdminSessions = async (params?: {
   controller?: string
   confirmation_status?: string
+  has_confirmation?: boolean
   search?: string
   limit?: number
   offset?: number
