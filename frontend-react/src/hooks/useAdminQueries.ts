@@ -35,7 +35,7 @@ export function useAdminSessions(params?: {
 export function useAdminSessionDetail(sessionId: string | undefined) {
   return useQuery({
     queryKey: ['admin', 'session', sessionId],
-    queryFn: () => getAdminSession(sessionId!),
+    queryFn: () => getAdminSession(sessionId!, { messages_limit: 50 }),
     enabled: !!sessionId,
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,

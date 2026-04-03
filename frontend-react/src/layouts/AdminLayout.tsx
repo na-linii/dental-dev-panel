@@ -44,6 +44,26 @@ export function AdminLayout() {
     navigate('/admin/login', { replace: true })
   }
 
+  // Session inactivity timeout (4 hours)
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    const resetTimer = () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_user')
+        navigate('/admin/login', { replace: true })
+      }, 4 * 60 * 60 * 1000) // 4 hours
+    }
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
+    events.forEach((e) => document.addEventListener(e, resetTimer))
+    resetTimer()
+    return () => {
+      clearTimeout(timeout)
+      events.forEach((e) => document.removeEventListener(e, resetTimer))
+    }
+  }, [navigate])
+
   if (!user) return null
 
   return (

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
-import { sendAdminMessage, updateSessionController } from '../../api/adminClient'
+import { sendAdminMessage, updateSessionController, getAdminSession } from '../../api/adminClient'
 import type { AdminSessionDetail, AdminMessage } from '../../api/adminClient'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
@@ -27,6 +27,7 @@ export function AdminChatDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: session, isLoading } = useAdminSessionDetail(sessionId)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showControllerMenu, setShowControllerMenu] = useState(false)
@@ -42,11 +43,18 @@ export function AdminChatDetailPage() {
   useLayoutEffect(() => {
     if (!session) return
     const count = session.messages.length
+    const container = scrollRef.current
+    if (!container) return
+
     if (prevMsgCount.current === 0) {
-      const container = scrollRef.current
-      if (container) container.scrollTop = container.scrollHeight
+      // First load — jump to bottom
+      container.scrollTop = container.scrollHeight
     } else if (count > prevMsgCount.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // New messages — only scroll if user is near bottom
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+      if (isNearBottom) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
     }
     prevMsgCount.current = count
   }, [session])
@@ -222,6 +230,29 @@ export function AdminChatDetailPage() {
       {/* Messages */}
       {activeTab === 'chat' && (
       <div ref={scrollRef} className="flex-1 overflow-y-auto py-5 px-3 space-y-3 min-h-0">
+        {session.has_more_messages && (
+          <div className="text-center py-2">
+            <button
+              onClick={async () => {
+                if (!session || loadingOlder) return
+                setLoadingOlder(true)
+                try {
+                  const oldest = session.messages[0]
+                  const older = await getAdminSession(session.id, { messages_limit: 50, before_id: oldest.id })
+                  queryClient.setQueryData(['admin', 'session', sessionId], (prev: any) => {
+                    if (!prev) return prev
+                    return { ...prev, messages: [...older.messages, ...prev.messages], has_more_messages: older.has_more_messages }
+                  })
+                } catch (e) { if (import.meta.env.DEV) console.error(e) }
+                setLoadingOlder(false)
+              }}
+              disabled={loadingOlder}
+              className="text-xs text-[#51ff97] hover:text-[#51ff97]/80 transition-colors"
+            >
+              {loadingOlder ? 'Загрузка...' : '↑ Загрузить ранее'}
+            </button>
+          </div>
+        )}
         {session.messages.map((msg, i) => {
           const msgDate = format(new Date(msg.created_at), 'yyyy-MM-dd')
           const prevDate = i > 0 ? format(new Date(session.messages[i - 1].created_at), 'yyyy-MM-dd') : null

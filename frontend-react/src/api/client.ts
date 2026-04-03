@@ -34,6 +34,7 @@ export const clinicsApi = {
     api.post<{ ok: boolean; clinic: Clinic }>('/clinics', data).then((r) => r.data.clinic),
 
   deploy: (id: string) => {
+    // SSE (EventSource) cannot set Authorization header — token passed via query param
     const token = localStorage.getItem('dp_token')
     return `/api/clinics/${id}/deploy?token=${encodeURIComponent(token || '')}`
   },

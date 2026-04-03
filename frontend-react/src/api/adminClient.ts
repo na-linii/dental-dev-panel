@@ -177,8 +177,8 @@ export const getAdminSessions = async (params?: {
   return res.data.items ?? res.data
 }
 
-export const getAdminSession = async (id: string) =>
-  (await adminApi.get<AdminSessionDetail>(`/sessions/${id}`)).data
+export const getAdminSession = async (id: string, params?: { messages_limit?: number; before_id?: string }) =>
+  (await adminApi.get<AdminSessionDetail>(`/sessions/${id}`, { params })).data
 
 export const sendAdminMessage = async (sessionId: string, text: string) =>
   (await adminApi.post<AdminSendMessageResponse>(`/sessions/${sessionId}/messages`, { text })).data

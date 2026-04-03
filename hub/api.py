@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import secrets
+import time as _time
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,8 @@ from hub.auth import verify_github_token
 from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy
 
 logger = logging.getLogger(__name__)
+
+_http_client: httpx.AsyncClient | None = None
 
 ADMIN_TOKEN_TTL_HOURS = 24
 
@@ -42,6 +45,12 @@ def _validate_server_host(host: str) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _http_client
+    _http_client = httpx.AsyncClient(
+        timeout=15,
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+    )
+
     await init_db()
     # Create default admin from env vars (if set)
     admin_user = os.environ.get("HUB_ADMIN_USER")
@@ -59,6 +68,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Failed to sync prompts to Langfuse: %s", e)
 
     yield
+    await _http_client.aclose()
 
 
 app = FastAPI(title="Dental Hub", lifespan=lifespan)
@@ -271,9 +281,8 @@ async def proxy_health(clinic_id: str, user=Depends(verify_github_token)):
         raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/health"
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            r = await client.get(url)
-            return r.json()
+        r = await _http_client.get(url, timeout=5)
+        return r.json()
     except Exception as e:
         logger.error("proxy_health failed for %s: %s", clinic_id, e)
         return {"status": "unreachable", "error": "Failed to connect to clinic agent"}
@@ -289,9 +298,8 @@ async def proxy_config(clinic_id: str, user=Depends(verify_github_token)):
         raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/config"
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(url)
-            return r.json()
+        r = await _http_client.get(url, timeout=10)
+        return r.json()
     except Exception as e:
         logger.error("proxy_config failed for %s: %s", clinic_id, e)
         return {"config": {}, "error": "Failed to connect to clinic agent"}
@@ -308,11 +316,10 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
     body = await request.json()
     body["clinic_id"] = clinic.get("clinic_id", clinic_id)
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(url, json=body)
-            if r.status_code >= 400:
-                return {"response": "Сервис временно недоступен. Попробуйте позже.", "error": True}
-            return r.json()
+        r = await _http_client.post(url, json=body, timeout=30)
+        if r.status_code >= 400:
+            return {"response": "Сервис временно недоступен. Попробуйте позже.", "error": True}
+        return r.json()
     except Exception as e:
         logger.error("proxy_chat failed for %s: %s", clinic_id, e)
         raise HTTPException(502, "Failed to connect to clinic agent")
@@ -334,13 +341,13 @@ async def get_clinic_traces(clinic_id: str, limit: int = 30, since: str = "", us
         if since:
             params["fromTimestamp"] = since
 
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                f"{lf_host}/api/public/traces",
-                params=params,
-                auth=(lf_pk, lf_sk),
-            )
-            data = r.json()
+        r = await _http_client.get(
+            f"{lf_host}/api/public/traces",
+            params=params,
+            auth=(lf_pk, lf_sk),
+            timeout=10,
+        )
+        data = r.json()
 
         traces = []
         for t in data.get("data", []):
@@ -373,12 +380,12 @@ async def get_clinic_trace_detail(clinic_id: str, trace_id: str, user=Depends(ve
         return {"flow": [], "error": "Langfuse keys not configured"}
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                f"{lf_host}/api/public/traces/{trace_id}",
-                auth=(lf_pk, lf_sk),
-            )
-            trace = r.json()
+        r = await _http_client.get(
+            f"{lf_host}/api/public/traces/{trace_id}",
+            auth=(lf_pk, lf_sk),
+            timeout=10,
+        )
+        trace = r.json()
 
         flow = []
         for obs in trace.get("observations", []):
@@ -417,12 +424,12 @@ async def get_trace(trace_id: str, user=Depends(verify_github_token)):
         return {"observations": [], "error": "Langfuse keys not configured"}
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                f"{lf_host}/api/public/traces/{trace_id}",
-                auth=(lf_pk, lf_sk),
-            )
-            trace = r.json()
+        r = await _http_client.get(
+            f"{lf_host}/api/public/traces/{trace_id}",
+            auth=(lf_pk, lf_sk),
+            timeout=10,
+        )
+        trace = r.json()
 
         # Extract flow with full data
         flow = []
@@ -464,9 +471,8 @@ async def proxy_graph(clinic_id: str, request: Request, user=Depends(verify_gith
         raise HTTPException(400, "Invalid server_host: private IPs, localhost, and metadata endpoints are not allowed")
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/graph"
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(url, params=dict(request.query_params))
-            return r.json()
+        r = await _http_client.get(url, params=dict(request.query_params), timeout=10)
+        return r.json()
     except Exception as e:
         logger.error("proxy_graph failed for %s: %s", clinic_id, e)
         return {"nodes": [], "links": [], "error": "Failed to connect to clinic agent"}
@@ -485,15 +491,14 @@ async def architecture_graph(authorization: str = Header(default=""), user=Depen
     """
     gh_token = authorization.replace("Bearer ", "").strip()
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            headers = {
-                "Accept": "application/vnd.github.raw+json",
-                "Authorization": f"Bearer {gh_token}",
-            }
-            r = await client.get(GRAPH_JSON_URL, headers=headers, params={"ref": "main"})
-            if r.status_code == 200:
-                return r.json()
-            return {"nodes": [], "links": [], "error": f"GitHub API: {r.status_code}"}
+        headers = {
+            "Accept": "application/vnd.github.raw+json",
+            "Authorization": f"Bearer {gh_token}",
+        }
+        r = await _http_client.get(GRAPH_JSON_URL, headers=headers, params={"ref": "main"})
+        if r.status_code == 200:
+            return r.json()
+        return {"nodes": [], "links": [], "error": f"GitHub API: {r.status_code}"}
     except Exception as e:
         logger.error("architecture_graph failed: %s", e)
         return {"nodes": [], "links": [], "error": "Failed to fetch architecture graph"}
@@ -531,20 +536,21 @@ async def get_edge_cases(user=Depends(verify_github_token)):
         return {"items": [], "error": "Langfuse keys not configured"}
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                f"{lf_host}/api/public/v2/datasets/dental-edge-cases",
-                auth=(lf_pk, lf_sk),
-            )
-            if r.status_code == 404:
-                return {"items": [], "error": "Dataset 'dental-edge-cases' not found. Run: python scripts/run_eval.py --seed-only"}
-            dataset = r.json()
+        r = await _http_client.get(
+            f"{lf_host}/api/public/v2/datasets/dental-edge-cases",
+            auth=(lf_pk, lf_sk),
+            timeout=10,
+        )
+        if r.status_code == 404:
+            return {"items": [], "error": "Dataset 'dental-edge-cases' not found. Run: python scripts/run_eval.py --seed-only"}
+        dataset = r.json()
 
-            r2 = await client.get(
-                f"{lf_host}/api/public/dataset-items?datasetName=dental-edge-cases&limit=100",
-                auth=(lf_pk, lf_sk),
-            )
-            items_data = r2.json()
+        r2 = await _http_client.get(
+            f"{lf_host}/api/public/dataset-items?datasetName=dental-edge-cases&limit=100",
+            auth=(lf_pk, lf_sk),
+            timeout=10,
+        )
+        items_data = r2.json()
 
         items = []
         for item in items_data.get("data", []):
@@ -600,18 +606,17 @@ async def run_edge_case(clinic_id: str, request: Request, user=Depends(verify_gi
 
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/chat"
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(url, json=chat_body)
-            if r.status_code >= 400:
-                return {"response": "Agent returned error", "error": True, "case_id": case_id}
-            data = r.json()
-            return {
-                "case_id": case_id,
-                "response": data.get("response", ""),
-                "trace_id": data.get("trace_id"),
-                "thread_id": data.get("thread_id", chat_body["thread_id"]),
-                "error": data.get("error", False),
-            }
+        r = await _http_client.post(url, json=chat_body, timeout=60)
+        if r.status_code >= 400:
+            return {"response": "Agent returned error", "error": True, "case_id": case_id}
+        data = r.json()
+        return {
+            "case_id": case_id,
+            "response": data.get("response", ""),
+            "trace_id": data.get("trace_id"),
+            "thread_id": data.get("thread_id", chat_body["thread_id"]),
+            "error": data.get("error", False),
+        }
     except Exception as e:
         logger.error("run_edge_case failed for %s/%s: %s", clinic_id, case_id, e)
         return {"case_id": case_id, "response": f"Connection error: {e}", "error": True}
@@ -634,39 +639,38 @@ async def run_all_edge_cases(clinic_id: str, request: Request, user=Depends(veri
     results = []
     url = f"http://{clinic['server_host']}:{clinic['server_port']}/chat"
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        for case in cases:
-            case_id = case.get("id", "unknown")
-            chat_body = {
-                "message": case.get("message", ""),
-                "clinic_id": clinic.get("clinic_id", clinic_id),
-                "channel": "tg_bot",
-                "channel_user_id": "edge-case-tester",
-                "thread_id": f"ec-{case_id}-{int(datetime.now(timezone.utc).timestamp())}",
-            }
-            if case.get("patient_phone"):
-                chat_body["phone"] = case["patient_phone"]
-            if case.get("patient_name"):
-                chat_body["name"] = case["patient_name"]
-            if case.get("history"):
-                chat_body["history"] = case["history"]
+    for case in cases:
+        case_id = case.get("id", "unknown")
+        chat_body = {
+            "message": case.get("message", ""),
+            "clinic_id": clinic.get("clinic_id", clinic_id),
+            "channel": "tg_bot",
+            "channel_user_id": "edge-case-tester",
+            "thread_id": f"ec-{case_id}-{int(datetime.now(timezone.utc).timestamp())}",
+        }
+        if case.get("patient_phone"):
+            chat_body["phone"] = case["patient_phone"]
+        if case.get("patient_name"):
+            chat_body["name"] = case["patient_name"]
+        if case.get("history"):
+            chat_body["history"] = case["history"]
 
-            try:
-                r = await client.post(url, json=chat_body)
-                if r.status_code >= 400:
-                    results.append({"case_id": case_id, "response": "Agent returned error", "error": True})
-                else:
-                    data = r.json()
-                    results.append({
-                        "case_id": case_id,
-                        "response": data.get("response", ""),
-                        "trace_id": data.get("trace_id"),
-                        "thread_id": data.get("thread_id", chat_body["thread_id"]),
-                        "error": data.get("error", False),
-                    })
-            except Exception as e:
-                logger.error("run_all_edge_cases case %s failed: %s", case_id, e)
-                results.append({"case_id": case_id, "response": f"Connection error: {e}", "error": True})
+        try:
+            r = await _http_client.post(url, json=chat_body, timeout=60)
+            if r.status_code >= 400:
+                results.append({"case_id": case_id, "response": "Agent returned error", "error": True})
+            else:
+                data = r.json()
+                results.append({
+                    "case_id": case_id,
+                    "response": data.get("response", ""),
+                    "trace_id": data.get("trace_id"),
+                    "thread_id": data.get("thread_id", chat_body["thread_id"]),
+                    "error": data.get("error", False),
+                })
+        except Exception as e:
+            logger.error("run_all_edge_cases case %s failed: %s", case_id, e)
+            results.append({"case_id": case_id, "response": f"Connection error: {e}", "error": True})
 
     return {"results": results}
 
@@ -749,16 +753,28 @@ async def _get_admin_user(authorization: str = Header(default="")):
     return token_data
 
 
+_clinic_cache: dict[str, tuple[dict, float]] = {}
+_CLINIC_CACHE_TTL = 300  # 5 minutes
+
+
 async def _get_clinic_for_admin(admin_user: dict):
     """Resolve clinic connection details for an admin user."""
     clinic_id = admin_user.get("clinic_id")
     if not clinic_id:
         raise HTTPException(400, "Admin user has no clinic assigned")
+
+    # Check cache
+    cached = _clinic_cache.get(clinic_id)
+    if cached and (_time.time() - cached[1]) < _CLINIC_CACHE_TTL:
+        return cached[0]
+
     clinic = await get_clinic(clinic_id)
     if not clinic:
         raise HTTPException(404, f"Clinic {clinic_id} not found")
     if not _validate_server_host(clinic['server_host']):
         raise HTTPException(400, "Invalid clinic server_host")
+
+    _clinic_cache[clinic_id] = (clinic, _time.time())
     return clinic
 
 
@@ -773,24 +789,23 @@ async def _proxy_to_clinic(clinic: dict, method: str, path: str, body: dict | No
     headers = {"X-Hub-Secret": HUB_SERVICE_SECRET}
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            if method == "GET":
-                r = await client.get(url, params=params, headers=headers)
-            elif method == "POST":
-                r = await client.post(url, json=body, headers=headers)
-            elif method == "PATCH":
-                r = await client.patch(url, json=body, headers=headers)
-            elif method == "DELETE":
-                r = await client.delete(url, params=params, headers=headers)
-            elif method == "PUT":
-                r = await client.put(url, json=body, headers=headers)
-            else:
-                raise HTTPException(405, f"Method {method} not supported")
+        if method == "GET":
+            r = await _http_client.get(url, params=params, headers=headers)
+        elif method == "POST":
+            r = await _http_client.post(url, json=body, headers=headers)
+        elif method == "PATCH":
+            r = await _http_client.patch(url, json=body, headers=headers)
+        elif method == "DELETE":
+            r = await _http_client.delete(url, params=params, headers=headers)
+        elif method == "PUT":
+            r = await _http_client.put(url, json=body, headers=headers)
+        else:
+            raise HTTPException(405, f"Method {method} not supported")
 
-            if r.status_code >= 400:
-                logger.error("Clinic proxy error %s %s: %s %s", method, url, r.status_code, r.text[:200])
-                raise HTTPException(r.status_code, r.text[:500])
-            return r.json()
+        if r.status_code >= 400:
+            logger.error("Clinic proxy error %s %s: %s %s", method, url, r.status_code, r.text[:200])
+            raise HTTPException(r.status_code, r.text[:500])
+        return r.json()
     except httpx.ConnectError:
         raise HTTPException(502, "Failed to connect to clinic agent")
     except httpx.TimeoutException:
@@ -982,12 +997,11 @@ async def get_roadmap_tasks(user=Depends(verify_github_token)):
         "fields": "summary,status,assignee,created,updated,description",
     }
 
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
-            url,
-            params=params,
-            auth=(JIRA_EMAIL, JIRA_TOKEN),
-        )
+    resp = await _http_client.get(
+        url,
+        params=params,
+        auth=(JIRA_EMAIL, JIRA_TOKEN),
+    )
 
     if resp.status_code != 200:
         logger.error("Jira API error %s: %s", resp.status_code, resp.text[:200])
@@ -1023,16 +1037,15 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
 
     # 1. Fetch all epics in project
     epics_jql = f'project = {JIRA_PROJECT} AND issuetype = Epic ORDER BY created ASC'
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
-            base_url,
-            params={
-                "jql": epics_jql,
-                "maxResults": 50,
-                "fields": "summary,status",
-            },
-            auth=(JIRA_EMAIL, JIRA_TOKEN),
-        )
+    resp = await _http_client.get(
+        base_url,
+        params={
+            "jql": epics_jql,
+            "maxResults": 50,
+            "fields": "summary,status",
+        },
+        auth=(JIRA_EMAIL, JIRA_TOKEN),
+    )
 
     if resp.status_code != 200:
         logger.error("Jira API error (epics) %s: %s", resp.status_code, resp.text[:200])
@@ -1042,13 +1055,12 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
     epics = []
 
     # 2. For each epic, fetch child tasks
-    async with httpx.AsyncClient(timeout=30) as client:
-        for epic_issue in epics_data.get("issues", []):
+    for epic_issue in epics_data.get("issues", []):
             ef = epic_issue["fields"]
             epic_key = epic_issue["key"]
 
             children_jql = f"parent = {epic_key} ORDER BY created ASC"
-            children_resp = await client.get(
+            children_resp = await _http_client.get(
                 base_url,
                 params={
                     "jql": children_jql,
@@ -1056,6 +1068,7 @@ async def get_roadmap_epics(user=Depends(verify_github_token)):
                     "fields": "summary,status,assignee",
                 },
                 auth=(JIRA_EMAIL, JIRA_TOKEN),
+                timeout=30,
             )
 
             tasks = []
