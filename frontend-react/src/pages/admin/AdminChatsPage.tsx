@@ -189,9 +189,7 @@ export function AdminChatsPage() {
               <tr>
                 <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Пациент</th>
                 <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Последнее сообщение</th>
-                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Канал</th>
                 <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Статус</th>
-                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Время</th>
               </tr>
             </thead>
             <tbody>
@@ -210,27 +208,26 @@ export function AdminChatsPage() {
                     }`}
                   >
                     <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
-                      <div className="font-semibold text-white">{name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">{name}</span>
+                        {pill && (
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${pill.cls}`}>
+                            {pill.text}
+                          </span>
+                        )}
+                      </div>
                       {s.patient?.phone && <div className="text-xs text-gray-500">{s.patient.phone}</div>}
                     </td>
-                    <td className="text-sm px-4 py-3 border-b border-white/[0.04] text-[#94a3b8] max-w-[260px] truncate">
-                      {s.last_message || '—'}
-                    </td>
-                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
-                      {pill && (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${pill.cls}`}>
-                          {pill.text}
-                        </span>
-                      )}
+                    <td className="text-sm px-4 py-3 border-b border-white/[0.04] max-w-[360px]">
+                      <div className="text-[#94a3b8] truncate">{s.last_message || '—'}</div>
+                      {time && <div className="text-[10px] text-[#475569] mt-0.5">{time}</div>}
                     </td>
                     <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* Always show controller */}
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
                           {STATUS_CONFIG[s.controller]?.label}
                         </span>
-                        {/* Show confirmation if exists */}
                         {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
@@ -238,9 +235,6 @@ export function AdminChatsPage() {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
-                      {time && <span className="font-semibold text-white">{time}</span>}
                     </td>
                   </tr>
                 )
