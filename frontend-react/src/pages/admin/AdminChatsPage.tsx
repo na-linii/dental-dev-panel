@@ -94,7 +94,7 @@ export function AdminChatsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -258,7 +258,7 @@ export function AdminChatsPage() {
               <div
                 key={s.id}
                 onClick={() => navigate(`/admin/chats/${s.id}`)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
                   isOperator
                     ? 'bg-red-500/[0.04] border-red-500/15 hover:bg-red-500/[0.07]'
                     : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
@@ -290,18 +290,18 @@ export function AdminChatsPage() {
                 </div>
 
                 {/* Right: time + status */}
-                <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className="flex flex-col items-end gap-1 shrink-0 max-w-[110px]">
                   {time && (
                     <span className="text-[10px] text-[#64748b]">{time}</span>
                   )}
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
-                    {STATUS_CONFIG[s.controller]?.label}
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[8px] font-medium whitespace-nowrap ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
+                    <span className="truncate">{STATUS_CONFIG[s.controller]?.label}</span>
                   </span>
                   {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-                      {STATUS_CONFIG[s.confirmation_status].label}
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[8px] font-medium whitespace-nowrap ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.confirmation_status].dot}`} />
+                      <span className="truncate">{STATUS_CONFIG[s.confirmation_status].label}</span>
                     </span>
                   )}
                 </div>
