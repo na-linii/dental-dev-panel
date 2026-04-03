@@ -60,7 +60,11 @@ export function AdminConfirmationsPage() {
     limit: 200,
     ...(activeFilter ? { confirmation_status: activeFilter } : {}),
   })
-  const sessions: AdminSessionSummary[] = Array.isArray(filteredData) ? filteredData : []
+  const allSessions: AdminSessionSummary[] = Array.isArray(filteredData) ? filteredData : []
+  // Show only sessions that have confirmation data
+  const sessions = activeFilter
+    ? allSessions
+    : allSessions.filter((s) => s.confirmation_status != null)
   const error = queryError ? 'Не удалось загрузить записи' : null
 
   // All sessions for counts
