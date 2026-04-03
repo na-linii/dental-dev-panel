@@ -46,6 +46,9 @@ export interface AdminSessionSummary {
   patient: { id: string | null; name: string | null; phone: string | null } | null
   last_message: string | null
   last_message_at: string | null
+  confirmation_appointment_date: string | null
+  confirmation_appointment_time: string | null
+  confirmation_doctor_name: string | null
 }
 
 // Backend: GET /admin/api/sessions/:id
@@ -178,6 +181,9 @@ export const updateSessionController = async (sessionId: string, controller: str
 
 export const updateSessionConfirmation = async (sessionId: string, confirmation_status: string) =>
   (await adminApi.patch(`/sessions/${sessionId}/confirmation`, { confirmation_status })).data
+
+export const updatePatientPhone = async (sessionId: string, phone: string) =>
+  (await adminApi.patch(`/sessions/${sessionId}/phone`, { phone })).data
 
 // ── Actions ──
 

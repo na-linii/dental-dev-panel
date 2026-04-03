@@ -30,6 +30,9 @@ export function AdminChatDetailPage() {
   const [messageText, setMessageText] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showControllerMenu, setShowControllerMenu] = useState(false)
+  const [editingPhone, setEditingPhone] = useState(false)
+  const [phoneInput, setPhoneInput] = useState('')
+  const [activeTab, setActiveTab] = useState<'chat' | 'appointments'>('chat')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -91,6 +94,17 @@ export function AdminChatDetailPage() {
     }
   }
 
+  const savePhone = async () => {
+    if (!session || !phoneInput.trim()) return
+    try {
+      const { updatePatientPhone } = await import('../../api/adminClient')
+      await updatePatientPhone(session.id, phoneInput.trim())
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: any) =>
+        prev ? { ...prev, patient: { ...prev.patient, phone: phoneInput.trim() } } : prev)
+      setEditingPhone(false)
+    } catch (e) { console.error('Phone update error:', e) }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -145,15 +159,68 @@ export function AdminChatDetailPage() {
                 </div>
               )}
             </div>
+            {session.confirmation_status && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${
+                session.confirmation_status.startsWith('awaiting') ? 'bg-orange-500/15 text-orange-300 border-orange-500/25' :
+                session.confirmation_status === 'sent' ? 'bg-amber-500/15 text-amber-300 border-amber-500/25' :
+                session.confirmation_status === 'confirmed' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25' :
+                session.confirmation_status === 'no_response' ? 'bg-gray-500/15 text-gray-400 border-gray-500/25' :
+                'bg-gray-500/15 text-gray-300 border-gray-500/25'
+              }`}>{session.confirmation_status}</span>
+            )}
+            {session.channel && (
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                session.channel === 'tg_bot' ? 'bg-blue-500/10 text-blue-400' :
+                session.channel === 'tg_business' ? 'bg-purple-500/10 text-purple-400' :
+                'bg-gray-500/10 text-gray-400'
+              }`}>
+                {session.channel === 'tg_bot' ? 'TG Bot' : session.channel === 'tg_business' ? 'TG Biz' : session.channel}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4 mt-1 text-sm text-[#64748b]">
-            {session.patient?.phone && <span>{session.patient.phone}</span>}
-            {session.channel && <span>Канал: {session.channel}</span>}
+            {editingPhone ? (
+              <span className="flex items-center gap-1.5">
+                <input value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)}
+                  className="bg-white/[0.04] border border-white/[0.08] rounded px-2 py-0.5 text-xs text-white w-32"
+                  autoFocus onKeyDown={(e) => { if (e.key === 'Enter') savePhone(); if (e.key === 'Escape') setEditingPhone(false) }} />
+                <button onClick={savePhone} className="text-[#51ff97] text-xs">✓</button>
+                <button onClick={() => setEditingPhone(false)} className="text-[#64748b] text-xs">✗</button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-[#64748b]">
+                {session.patient?.phone || 'Нет телефона'}
+                <button onClick={() => { setPhoneInput(session.patient?.phone || ''); setEditingPhone(true) }}
+                  className="text-[#475569] hover:text-[#94a3b8] transition-colors">✏️</button>
+              </span>
+            )}
+            {session.confirmation_appointment_date && (
+              <span className="text-xs text-[#64748b]">
+                {session.confirmation_appointment_date}{session.confirmation_appointment_time ? `, ${session.confirmation_appointment_time}` : ''}
+              </span>
+            )}
+            {session.confirmation_doctor_name && (
+              <span className="text-xs text-[#64748b]">{session.confirmation_doctor_name}</span>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 pt-3">
+        <button onClick={() => setActiveTab('chat')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'chat' ? 'bg-[#51ff97]/10 text-[#51ff97] border border-[#51ff97]/20' : 'text-[#64748b] hover:text-[#94a3b8]'}`}>
+          Чат
+        </button>
+        <button onClick={() => setActiveTab('appointments')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'appointments' ? 'bg-[#51ff97]/10 text-[#51ff97] border border-[#51ff97]/20' : 'text-[#64748b] hover:text-[#94a3b8]'}`}>
+          Записи
+          {session.confirmation_appointment_id && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 text-[9px] font-bold">1</span>}
+        </button>
+      </div>
+
       {/* Messages */}
+      {activeTab === 'chat' && (
       <div ref={scrollRef} className="flex-1 overflow-y-auto py-5 px-3 space-y-3 min-h-0">
         {session.messages.map((msg, i) => {
           const msgDate = format(new Date(msg.created_at), 'yyyy-MM-dd')
@@ -168,6 +235,24 @@ export function AdminChatDetailPage() {
         })}
         <div ref={messagesEndRef} />
       </div>
+      )}
+
+      {/* Appointments */}
+      {activeTab === 'appointments' && (
+        <div className="flex-1 p-4">
+          {session.confirmation_appointment_date ? (
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
+              <div className="text-sm font-semibold text-white">
+                {session.confirmation_appointment_date} {session.confirmation_appointment_time && `в ${session.confirmation_appointment_time}`}
+              </div>
+              {session.confirmation_doctor_name && <div className="text-sm text-[#94a3b8] mt-1">{session.confirmation_doctor_name}</div>}
+              {session.confirmation_status && <div className="text-xs text-[#64748b] mt-1">Статус: {session.confirmation_status}</div>}
+            </div>
+          ) : (
+            <div className="text-center text-[#475569] py-8">Нет записей</div>
+          )}
+        </div>
+      )}
 
       {/* Input */}
       <div className="pt-4 pb-2 border-t border-white/[0.06]">

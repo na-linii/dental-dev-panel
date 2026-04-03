@@ -15,11 +15,11 @@ import { adminMe } from '../api/adminClient'
 import type { AdminUser } from '../api/adminClient'
 
 const navItems = [
-  { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/chats', label: 'Chats', icon: MessageCircle },
-  { to: '/admin/confirmations', label: 'Записи', icon: CalendarCheck },
-  { to: '/admin/actions', label: 'Actions', icon: ClipboardList },
-  { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/admin/dashboard', label: 'Дашборд', icon: LayoutDashboard },
+  { to: '/admin/chats', label: 'Чаты', icon: MessageCircle },
+  { to: '/admin/confirmations', label: 'Подтверждения', icon: CalendarCheck },
+  { to: '/admin/actions', label: 'Действия', icon: ClipboardList },
+  { to: '/admin/settings', label: 'Настройки', icon: Settings },
 ]
 
 export function AdminLayout() {
@@ -69,7 +69,7 @@ export function AdminLayout() {
           <div className="flex items-center gap-2.5">
             <NaLiniiLogo className="w-8 h-8 shrink-0" />
             <div className="min-w-0">
-              <p className="text-xs text-[#64748b] uppercase tracking-wider">Clinic</p>
+              <p className="text-xs text-[#64748b] uppercase tracking-wider">Личный кабинет</p>
               <p className="text-sm font-semibold text-white mt-0.5 truncate">{user.clinic_id}</p>
             </div>
           </div>

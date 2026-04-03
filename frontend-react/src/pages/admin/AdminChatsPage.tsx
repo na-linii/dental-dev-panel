@@ -166,74 +166,158 @@ export function AdminChatsPage() {
         </div>
       </div>
 
-      {/* Card List */}
-      <div className="space-y-2">
-        {isLoading ? (
-          <div className="py-12 text-center text-[#64748b]">
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
-              Загрузка...
-            </div>
+      {/* Loading / Empty states */}
+      {isLoading && (
+        <div className="py-12 text-center text-[#64748b]">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
+            Загрузка...
           </div>
-        ) : sessions.length === 0 ? (
-          <div className="py-12 text-center text-[#64748b]">
-            Диалоги не найдены
-          </div>
-        ) : sessions.map((s) => {
-          const name = s.patient?.name || s.patient?.phone || 'Без имени'
-          const initial = name.charAt(0).toUpperCase()
-          const pill = getChannelPill(s.channel)
-          const time = getDisplayTime(s)
-          const isOperator = s.controller === 'operator'
-          const statusKey = s.confirmation_status || s.controller
-          const st = STATUS_CONFIG[statusKey] || STATUS_CONFIG.bot
+        </div>
+      )}
+      {!isLoading && sessions.length === 0 && (
+        <div className="py-12 text-center text-[#64748b]">
+          Диалоги не найдены
+        </div>
+      )}
 
-          return (
-            <div
-              key={s.id}
-              onClick={() => navigate(`/admin/chats/${s.id}`)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-150 ${
-                isOperator
-                  ? 'bg-red-500/[0.04] border-red-500/15 hover:bg-red-500/[0.07]'
-                  : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
-              }`}
-            >
-              {/* Avatar */}
-              <div className={`w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] max-sm:w-7 max-sm:h-7 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${getAvatarColor(s.controller)}`}>
-                {initial}
-              </div>
+      {/* Desktop: Table layout */}
+      {!isLoading && sessions.length > 0 && (
+        <div className="hidden md:block bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Пациент</th>
+                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Последнее сообщение</th>
+                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Канал</th>
+                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Статус</th>
+                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Время</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((s) => {
+                const name = s.patient?.name || s.patient?.phone || 'Без имени'
+                const pill = getChannelPill(s.channel)
+                const time = getDisplayTime(s)
+                const isOperator = s.controller === 'operator'
 
-              {/* Middle: name + channel + preview */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-white truncate">{name}</span>
-                  {pill && (
-                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
-                      {pill.text}
+                return (
+                  <tr
+                    key={s.id}
+                    onClick={() => navigate(`/admin/chats/${s.id}`)}
+                    className={`cursor-pointer transition-all duration-150 hover:bg-white/[0.04] ${
+                      isOperator ? 'bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
+                    }`}
+                  >
+                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
+                      <div className="font-semibold text-white">{name}</div>
+                      {s.patient?.phone && <div className="text-xs text-gray-500">{s.patient.phone}</div>}
+                    </td>
+                    <td className="text-sm px-4 py-3 border-b border-white/[0.04] text-[#94a3b8] max-w-[260px] truncate">
+                      {s.last_message || '—'}
+                    </td>
+                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
+                      {pill && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${pill.cls}`}>
+                          {pill.text}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Always show controller */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
+                          {STATUS_CONFIG[s.controller]?.label}
+                        </span>
+                        {/* Show confirmation if exists */}
+                        {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
+                            {STATUS_CONFIG[s.confirmation_status].label}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
+                      {time && <span className="font-semibold text-white">{time}</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Mobile: Card layout */}
+      {!isLoading && sessions.length > 0 && (
+        <div className="md:hidden space-y-2">
+          {sessions.map((s) => {
+            const name = s.patient?.name || s.patient?.phone || 'Без имени'
+            const initial = name.charAt(0).toUpperCase()
+            const pill = getChannelPill(s.channel)
+            const time = getDisplayTime(s)
+            const isOperator = s.controller === 'operator'
+
+            return (
+              <div
+                key={s.id}
+                onClick={() => navigate(`/admin/chats/${s.id}`)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                  isOperator
+                    ? 'bg-red-500/[0.04] border-red-500/15 hover:bg-red-500/[0.07]'
+                    : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
+                }`}
+              >
+                {/* Avatar */}
+                <div className={`w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] max-sm:w-7 max-sm:h-7 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${getAvatarColor(s.controller)}`}>
+                  {initial}
+                </div>
+
+                {/* Middle: name + phone + channel + preview */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-white truncate">{name}</span>
+                    {pill && (
+                      <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
+                        {pill.text}
+                      </span>
+                    )}
+                  </div>
+                  {s.patient?.phone && (
+                    <div className="text-[10px] text-[#475569]">{s.patient.phone}</div>
+                  )}
+                  {s.last_message && (
+                    <p className="text-xs text-[#64748b] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {s.last_message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Right: time + status badges */}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {time && (
+                    <span className="text-[11px] text-[#64748b]">{time}</span>
+                  )}
+                  {/* Always show controller */}
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
+                    <span className="hidden sm:inline">{STATUS_CONFIG[s.controller]?.label}</span>
+                  </span>
+                  {/* Show confirmation if exists */}
+                  {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
+                      <span className="hidden sm:inline">{STATUS_CONFIG[s.confirmation_status].label}</span>
                     </span>
                   )}
                 </div>
-                {s.last_message && (
-                  <p className="text-xs text-[#64748b] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {s.last_message}
-                  </p>
-                )}
               </div>
-
-              {/* Right: time + status */}
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                {time && (
-                  <span className="text-[11px] text-[#64748b]">{time}</span>
-                )}
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${st.badge}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                  <span className="hidden sm:inline">{st.label}</span>
-                </span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Footer */}
       {!isLoading && sessions.length > 0 && (

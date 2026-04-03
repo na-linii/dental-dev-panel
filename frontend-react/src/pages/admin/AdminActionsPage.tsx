@@ -45,8 +45,8 @@ export function AdminActionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Очередь действий</h1>
-          <p className="text-[#64748b] mt-1">Задачи, требующие внимания администратора</p>
+          <h1 className="text-2xl font-bold text-white">Действия</h1>
+          <p className="text-[#64748b] mt-1">Только для администраторов</p>
         </div>
         <button
           onClick={() => refetch()}
