@@ -258,50 +258,46 @@ export function AdminChatsPage() {
               <div
                 key={s.id}
                 onClick={() => navigate(`/admin/chats/${s.id}`)}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
+                className={`px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
                   isOperator
                     ? 'bg-red-500/[0.04] border-red-500/15 hover:bg-red-500/[0.07]'
                     : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
                 }`}
               >
-                {/* Avatar */}
-                <div className={`w-[34px] h-[34px] sm:w-[34px] sm:h-[34px] max-sm:w-7 max-sm:h-7 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${getAvatarColor(s.controller)}`}>
-                  {initial}
-                </div>
-
-                {/* Middle: name + phone + channel + preview */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white truncate">{name}</span>
-                    {pill && (
-                      <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
-                        {pill.text}
-                      </span>
+                {/* Top row: avatar + name/preview + time */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${getAvatarColor(s.controller)}`}>
+                    {initial}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-white truncate">{name}</span>
+                      {pill && (
+                        <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
+                          {pill.text}
+                        </span>
+                      )}
+                      {time && (
+                        <span className="text-[10px] text-[#475569] ml-auto shrink-0">{time}</span>
+                      )}
+                    </div>
+                    {s.last_message && (
+                      <p className="text-xs text-[#64748b] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {s.last_message}
+                      </p>
                     )}
                   </div>
-                  {s.patient?.phone && (
-                    <div className="text-[10px] text-[#475569]">{s.patient.phone}</div>
-                  )}
-                  {s.last_message && (
-                    <p className="text-xs text-[#64748b] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {s.last_message}
-                    </p>
-                  )}
                 </div>
-
-                {/* Right: time + status */}
-                <div className="flex flex-col items-end gap-1 shrink-0 max-w-[110px]">
-                  {time && (
-                    <span className="text-[10px] text-[#64748b]">{time}</span>
-                  )}
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[8px] font-medium whitespace-nowrap ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
+                {/* Bottom row: status badges */}
+                <div className="flex items-center gap-1.5 mt-2 ml-9">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
-                    <span className="truncate">{STATUS_CONFIG[s.controller]?.label}</span>
+                    {STATUS_CONFIG[s.controller]?.label}
                   </span>
                   {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[8px] font-medium whitespace-nowrap ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-                      <span className="truncate">{STATUS_CONFIG[s.confirmation_status].label}</span>
+                      {STATUS_CONFIG[s.confirmation_status].label}
                     </span>
                   )}
                 </div>
