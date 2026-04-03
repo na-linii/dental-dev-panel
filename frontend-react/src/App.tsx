@@ -24,7 +24,13 @@ import { AdminConfirmationsPage } from './pages/admin/AdminConfirmationsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1 },
+    queries: {
+      staleTime: 5_000,
+      gcTime: 120_000,
+      retry: 3,
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30_000),
+      refetchOnWindowFocus: true,
+    },
   },
 })
 

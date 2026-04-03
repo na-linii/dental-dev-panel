@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect } from 'react'
+import React, { useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
 import { sendAdminMessage, updateSessionController } from '../../api/adminClient'
@@ -71,7 +71,7 @@ export function AdminChatDetailPage() {
         return { ...prev, messages: [...prev.messages, optimisticMsg] }
       })
     } catch (e) {
-      console.error('Send message error:', e)
+      if (import.meta.env.DEV) console.error('Send message error:', e)
       setMessageText(text)
     } finally {
       setIsSending(false)
@@ -90,7 +90,7 @@ export function AdminChatDetailPage() {
       await updateSessionController(session.id, newController)
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => prev ? { ...prev, controller: newController } : prev)
     } catch (e) {
-      console.error('Controller update error:', e)
+      if (import.meta.env.DEV) console.error('Controller update error:', e)
     }
   }
 
@@ -102,7 +102,7 @@ export function AdminChatDetailPage() {
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: any) =>
         prev ? { ...prev, patient: { ...prev.patient, phone: phoneInput.trim() } } : prev)
       setEditingPhone(false)
-    } catch (e) { console.error('Phone update error:', e) }
+    } catch (e) { if (import.meta.env.DEV) console.error('Phone update error:', e) }
   }
 
   if (isLoading) {
@@ -284,7 +284,7 @@ export function AdminChatDetailPage() {
   )
 }
 
-function MessageBubble({ message }: { message: AdminMessage }) {
+const MessageBubble = React.memo(function MessageBubble({ message }: { message: AdminMessage }) {
   // Backend uses 'role': 'patient' | 'agent' | 'operator' | 'system'
   const isPatient = message.role === 'patient'
   const isAgent = message.role === 'agent' || message.role === 'bot'
@@ -328,9 +328,9 @@ function MessageBubble({ message }: { message: AdminMessage }) {
       </div>
     </div>
   )
-}
+})
 
-function DateSeparator({ date }: { date: Date }) {
+const DateSeparator = React.memo(function DateSeparator({ date }: { date: Date }) {
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
@@ -350,4 +350,4 @@ function DateSeparator({ date }: { date: Date }) {
       <div className="flex-1 h-px bg-white/[0.06]" />
     </div>
   )
-}
+})

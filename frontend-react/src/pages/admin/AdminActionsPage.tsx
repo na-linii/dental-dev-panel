@@ -36,7 +36,7 @@ export function AdminActionsPage() {
       await updateAdminAction(actionId, status)
       setActions((prev) => prev.map((a) => a.id === actionId ? { ...a, status } : a))
     } catch (e) {
-      console.error('Action update error:', e)
+      if (import.meta.env.DEV) console.error('Action update error:', e)
     }
   }
 

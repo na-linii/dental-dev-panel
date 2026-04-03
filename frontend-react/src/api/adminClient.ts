@@ -120,7 +120,7 @@ export interface AdminBlocklistItem {
 
 // ── API Client ──
 
-const adminApi = axios.create({ baseURL: '/admin/api' })
+const adminApi = axios.create({ baseURL: '/admin/api', timeout: 30_000 })
 
 adminApi.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token')
@@ -135,6 +135,12 @@ adminApi.interceptors.response.use(
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       window.location.href = '/admin/login'
+    }
+    if (err.response?.status === 502 || err.response?.status === 503) {
+      err.message = 'Сервис временно недоступен. Попробуйте позже.'
+    }
+    if (err.response?.status === 504) {
+      err.message = 'Сервис не отвечает. Попробуйте позже.'
     }
     return Promise.reject(err)
   },
