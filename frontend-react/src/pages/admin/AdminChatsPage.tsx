@@ -289,21 +289,19 @@ export function AdminChatsPage() {
                   )}
                 </div>
 
-                {/* Right: time + status badges */}
+                {/* Right: time + status */}
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {time && (
-                    <span className="text-[11px] text-[#64748b]">{time}</span>
+                    <span className="text-[10px] text-[#64748b]">{time}</span>
                   )}
-                  {/* Always show controller */}
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
-                    <span className="hidden sm:inline">{STATUS_CONFIG[s.controller]?.label}</span>
+                    {STATUS_CONFIG[s.controller]?.label}
                   </span>
-                  {/* Show confirmation if exists */}
                   {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-                      <span className="hidden sm:inline">{STATUS_CONFIG[s.confirmation_status].label}</span>
+                      {STATUS_CONFIG[s.confirmation_status].label}
                     </span>
                   )}
                 </div>
