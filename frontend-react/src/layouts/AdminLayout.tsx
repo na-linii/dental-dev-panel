@@ -3,13 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, MessageCircle, CalendarCheck, ClipboardList, Settings, LogOut, Menu } from 'lucide-react'
 
 function NaLiniiLogo({ className = 'w-8 h-8' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 490 494" fill="none" className={className}>
-      <ellipse cx="245" cy="247" rx="230" ry="232" stroke="rgb(74,245,143)" strokeWidth="24" />
-      <line x1="245" y1="100" x2="245" y2="394" stroke="rgb(74,245,143)" strokeWidth="24" strokeLinecap="round" />
-      <line x1="108" y1="247" x2="382" y2="247" stroke="rgb(74,245,143)" strokeWidth="24" strokeLinecap="round" />
-    </svg>
-  )
+  return <img src="/logo.svg" alt="НаЛинии" className={className} />
 }
 import { adminMe } from '../api/adminClient'
 import type { AdminUser } from '../api/adminClient'
