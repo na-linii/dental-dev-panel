@@ -22,17 +22,6 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export function AdminActionsPage() {
-  // Role guard — only admin and superadmin
-  const userStr = localStorage.getItem('admin_user')
-  const userRole = userStr ? JSON.parse(userStr)?.role : null
-  if (userRole === 'operator') {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-[#64748b]">Нет доступа</p>
-      </div>
-    )
-  }
-
   const { data, isLoading, error: queryError, refetch } = useAdminActions({ status: 'pending' })
   const [actions, setActions] = useState<AdminAction[]>([])
   const error = queryError ? 'Не удалось загрузить действия' : null

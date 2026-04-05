@@ -135,9 +135,19 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
 
     async def deploy_stream():
         try:
+            import re as _re
             ssh_host = clinic["server_host"]
             ssh_user = clinic.get("ssh_user", "")
             port = clinic.get("server_port", 8080)
+
+            # Sanitize inputs against shell injection
+            cid_raw = clinic["clinic_id"]
+            if not _re.match(r'^[a-zA-Z0-9_-]+$', cid_raw):
+                yield f"data: {json.dumps({'step': 'validation', 'status': 'error', 'output': 'Invalid clinic_id format'})}\n\n"
+                return
+            if ssh_user and not _re.match(r'^[a-zA-Z0-9_.-]+$', ssh_user):
+                yield f"data: {json.dumps({'step': 'validation', 'status': 'error', 'output': 'Invalid ssh_user format'})}\n\n"
+                return
             clinic_config = clinic.get("config", {})
             hub_url = clinic.get("hub_url", "")
 
@@ -778,7 +788,11 @@ async def _get_clinic_for_admin(admin_user: dict):
     return clinic
 
 
-HUB_SERVICE_SECRET = os.getenv("HUB_SERVICE_SECRET", "hub-to-agent-secret-2026")
+HUB_SERVICE_SECRET = os.getenv("HUB_SERVICE_SECRET")
+if not HUB_SERVICE_SECRET:
+    import secrets as _secrets
+    HUB_SERVICE_SECRET = _secrets.token_urlsafe(32)
+    logging.warning("HUB_SERVICE_SECRET not set — generated random. Set env var for stable hub↔agent auth.")
 
 
 async def _proxy_to_clinic(clinic: dict, method: str, path: str, body: dict | None = None, params: dict | None = None):

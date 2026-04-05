@@ -91,7 +91,7 @@ export function AdminLayout() {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.filter((item) => !(item.to === '/admin/actions' && user?.role === 'operator')).map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

@@ -50,9 +50,9 @@ services:
         condition: service_started
     environment: &langfuse-env
       DATABASE_URL: postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-hub-secret-change-me}
-      SALT: ${LANGFUSE_SALT:-hub-salt-change-me}
-      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?Set LANGFUSE_NEXTAUTH_SECRET in .env}
+      SALT: ${LANGFUSE_SALT:?Set LANGFUSE_SALT in .env}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?Set LANGFUSE_ENCRYPTION_KEY in .env}
       NEXTAUTH_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost/langfuse}
       TELEMETRY_ENABLED: "false"
       CLICKHOUSE_URL: http://langfuse-clickhouse:8123
