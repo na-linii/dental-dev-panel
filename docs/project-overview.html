@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dental Platform — Project Overview</title>
+<style>
+:root{--bg:#0a0b0f;--card:#12141c;--border:#1e2130;--text:#d4d8e8;--muted:#6b7094;--accent:#4f8ff7;--green:#34d399;--yellow:#fbbf24;--red:#f87171;--purple:#a78bfa;--orange:#fb923c;--pink:#ec4899;--cyan:#22d3ee}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1400px;margin:0 auto;padding:32px 24px}
+h1{font-size:2.2rem;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+h2{font-size:1.3rem;color:var(--accent);margin:40px 0 16px;border-bottom:1px solid var(--border);padding-bottom:8px}
+h3{font-size:1rem;color:var(--yellow);margin:16px 0 8px}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:32px}
+.grid{display:grid;gap:16px}.grid-2{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat{text-align:center}.stat-n{font-size:2.4rem;font-weight:700}.stat-l{color:var(--muted);font-size:.8rem}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:600}
+.b-green{background:#052e16;color:var(--green)}.b-yellow{background:#422006;color:var(--yellow)}.b-red{background:#450a0a;color:var(--red)}.b-blue{background:#0c1e3a;color:var(--accent)}.b-purple{background:#2e1065;color:var(--purple)}.b-cyan{background:#083344;color:var(--cyan)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{text-align:left;padding:8px 12px;background:#0d0f15;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
+td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.step{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:.82rem}
+.step.a{border-color:var(--accent);background:#0c1e3a}
+.arr{color:var(--muted);font-size:1.2rem}
+.node{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;font-size:.78rem;font-weight:500;border:1px solid}
+.n-r{background:#0c2e33;border-color:var(--cyan);color:var(--cyan)}
+.n-a{background:#2a2400;border-color:var(--yellow);color:var(--yellow)}
+.n-t{background:#0c1e3a;border-color:var(--accent);color:var(--accent)}
+.n-g{background:#1a0e30;border-color:var(--purple);color:var(--purple)}
+.n-p{background:#2a1000;border-color:var(--orange);color:var(--orange)}
+.pro{color:var(--green)}.con{color:var(--red)}
+.meter{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin:4px 0}
+.meter-fill{height:100%;border-radius:3px}
+.tabs{display:flex;gap:4px;margin-bottom:-1px;position:relative;z-index:1}
+.tab{padding:8px 16px;border-radius:8px 8px 0 0;background:var(--card);border:1px solid var(--border);border-bottom:none;cursor:pointer;color:var(--muted);font-size:.82rem}
+.tab.active{background:#0d0f15;color:var(--text);border-color:var(--accent)}
+.tc{display:none}.tc.active{display:block}
+code{background:#1a1d27;padding:2px 6px;border-radius:4px;font-size:.82rem;font-family:'JetBrains Mono',monospace}
+.icon{width:16px;height:16px;display:inline-block;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Dental Platform</h1>
+<p class="sub">3 репозитория &bull; 1000+ клиник &bull; LLM-only routing &bull; Обзор на 2026-04-05</p>
+
+<!-- Stats -->
+<div class="grid grid-3" style="margin-bottom:28px">
+<div class="card stat"><div class="stat-n" style="color:var(--accent)">3</div><div class="stat-l">репозитория</div></div>
+<div class="card stat"><div class="stat-n" style="color:var(--green)">413</div><div class="stat-l">unit-тестов</div></div>
+<div class="card stat"><div class="stat-n" style="color:var(--yellow)">132</div><div class="stat-l">E2E сценариев</div></div>
+</div>
+
+<!-- ===== REPOS ===== -->
+<h2>1. Три репозитория</h2>
+
+<div class="grid grid-3">
+<div class="card">
+<h3>dental-core</h3>
+<p style="font-size:.82rem;color:var(--muted)">Инстанс клиники: LangGraph агент, CRM gateway, Telegram</p>
+<table>
+<tr><td style="color:var(--muted)">Stack</td><td>Python 3.12, FastAPI, LangGraph, asyncpg</td></tr>
+<tr><td style="color:var(--muted)">LOC</td><td>~8K (agent) + configs</td></tr>
+<tr><td style="color:var(--muted)">Tests</td><td>413 unit</td></tr>
+<tr><td style="color:var(--muted)">Deploy</td><td>Docker, 1 контейнер на клинику</td></tr>
+</table>
+</div>
+<div class="card">
+<h3>dental-hub</h3>
+<p style="font-size:.82rem;color:var(--muted)">Центральная платформа: управление клиниками, Langfuse, админка</p>
+<table>
+<tr><td style="color:var(--muted)">Stack</td><td>Python/FastAPI + React 19/Vite/Tailwind</td></tr>
+<tr><td style="color:var(--muted)">LOC</td><td>~5K backend + ~4K frontend</td></tr>
+<tr><td style="color:var(--muted)">Infra</td><td>8 контейнеров (nginx, Langfuse, Redis, ClickHouse, MinIO)</td></tr>
+<tr><td style="color:var(--muted)">Deploy</td><td>GitHub Actions &rarr; SSH</td></tr>
+</table>
+</div>
+<div class="card">
+<h3>dental-e2e-tests</h3>
+<p style="font-size:.82rem;color:var(--muted)">E2E тестирование: Telethon + Selenium + LLM-as-Judge</p>
+<table>
+<tr><td style="color:var(--muted)">Stack</td><td>Python 3.11, pytest, Telethon, Selenium</td></tr>
+<tr><td style="color:var(--muted)">Tests</td><td>106 (8 phases + 9 UI + LLM)</td></tr>
+<tr><td style="color:var(--muted)">Approach</td><td>LLM-пациент &rarr; реальный бот &rarr; LLM-судья</td></tr>
+</table>
+</div>
+</div>
+
+<!-- ===== ARCHITECTURE ===== -->
+<h2>2. Архитектура системы</h2>
+
+<div class="card">
+<h3>Message Pipeline (dental-core)</h3>
+<div class="flow">
+<div class="step">Telegram</div><div class="arr">&rarr;</div>
+<div class="step">Chat Gateway</div><div class="arr">&rarr;</div>
+<div class="step">Identity</div><div class="arr">&rarr;</div>
+<div class="step">Blocklist</div><div class="arr">&rarr;</div>
+<div class="step">Red Button</div><div class="arr">&rarr;</div>
+<div class="step">Controller Gate</div><div class="arr">&rarr;</div>
+<div class="step">Debounce</div><div class="arr">&rarr;</div>
+<div class="step a"><strong>Router (LLM)</strong></div><div class="arr">&rarr;</div>
+<div class="step a"><strong>Agent (LLM)</strong></div><div class="arr">&rarr;</div>
+<div class="step">Save &amp; Respond</div>
+</div>
+<p style="color:var(--muted);font-size:.8rem"><span class="badge b-green">Infrastructure</span> Pipeline до Router = чистая инфраструктура. <span class="badge b-yellow">LLM</span> Router + Agent = все бизнес-решения.</p>
+</div>
+
+<div class="card" style="margin-top:16px">
+<h3>LangGraph: Router &rarr; Agents &rarr; Tools &rarr; CRM</h3>
+<div style="text-align:center;padding:16px 0">
+<div style="margin-bottom:12px"><span class="node n-r">Router (dental-router)</span></div>
+<div style="color:var(--muted);margin-bottom:12px">&darr;&nbsp;&nbsp;&nbsp;&darr;&nbsp;&nbsp;&nbsp;&darr;</div>
+<div style="display:flex;justify-content:center;gap:20px;margin-bottom:12px">
+<span class="node n-a">FAQ Agent</span>
+<span class="node n-a">Booking Agent</span>
+<span class="node n-a">Confirm Agent</span>
+</div>
+<div style="color:var(--muted);margin-bottom:12px">&darr;</div>
+<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+<span class="node n-t">handoff</span>
+<span class="node n-t">get_availability</span>
+<span class="node n-t">book_appointment</span>
+<span class="node n-t">cancel</span>
+<span class="node n-t">confirm_visit</span>
+<span class="node n-t">collect_phone</span>
+</div>
+<div style="color:var(--muted);margin-bottom:12px">&darr;</div>
+<div style="display:flex;justify-content:center;gap:12px">
+<span class="node n-g">CRM Gateway</span>
+<span class="node n-g">Chat Gateway</span>
+</div>
+<div style="color:var(--muted);margin:12px 0">&darr;</div>
+<div style="display:flex;justify-content:center;gap:8px">
+<span class="node n-p">IDENT (MSSQL)</span>
+<span class="node n-p">MedFlex (API)</span>
+<span class="node n-p">Google Sheets</span>
+<span class="node n-p">action_queue</span>
+</div>
+</div>
+</div>
+
+<!-- ===== MANIFEST ===== -->
+<h2>3. Манифест (ключевые правила)</h2>
+
+<div class="grid grid-2">
+<div class="card">
+<h3 style="color:var(--green)">Принципы</h3>
+<ul style="font-size:.85rem;list-style:none;padding:0">
+<li class="pro">+ Код = инфраструктура, бизнес-логика = промпты + YAML</li>
+<li class="pro">+ Router = prompt + LLM + Command(goto=intent). 0 if-statements</li>
+<li class="pro">+ llm_input_messages для transient context (чистый checkpoint)</li>
+<li class="pro">+ 1 клиника = 1 YAML файл, код не меняется</li>
+<li class="pro">+ Все промпты в Langfuse, sync при старте</li>
+</ul>
+</div>
+<div class="card">
+<h3 style="color:var(--red)">Запрещено</h3>
+<ul style="font-size:.85rem;list-style:none;padding:0">
+<li class="con">- Хардкод бизнес-логики (if greeting, if handoff)</li>
+<li class="con">- Модификация state["messages"] в hooks</li>
+<li class="con">- Intent remapping в router_node</li>
+<li class="con">- Heuristic handlers (regex для приветствий)</li>
+<li class="con">- Дублирование данных между файлами</li>
+</ul>
+</div>
+</div>
+
+<!-- ===== STRENGTHS / WEAKNESSES ===== -->
+<h2>4. Сильные и слабые стороны</h2>
+
+<div class="grid grid-2">
+<div class="card">
+<h3 style="color:var(--green)">Сильные стороны</h3>
+<table>
+<tr><td class="pro">LLM-only routing</td><td style="color:var(--muted)">Все решения через промпты, не код</td></tr>
+<tr><td class="pro">CRM abstraction</td><td style="color:var(--muted)">IDENT/MedFlex/Sheets через единый protocol</td></tr>
+<tr><td class="pro">Per-operation routing</td><td style="color:var(--muted)">Чтение из IDENT, запись в MedFlex, fallback в action_queue</td></tr>
+<tr><td class="pro">Telegram Business</td><td style="color:var(--muted)">Bot API + business_connection_id, без Telethon</td></tr>
+<tr><td class="pro">Red button</td><td style="color:var(--muted)">Kill switch с 30s кэшем в handler.py</td></tr>
+<tr><td class="pro">Checkpoint clean</td><td style="color:var(--muted)">llm_input_messages, нет pollution</td></tr>
+<tr><td class="pro">413 unit-тестов</td><td style="color:var(--muted)">CI зелёный, auto-deploy</td></tr>
+<tr><td class="pro">Module registry</td><td style="color:var(--muted)">34 модуля, graph_factory строит граф динамически</td></tr>
+</table>
+</div>
+<div class="card">
+<h3 style="color:var(--red)">Слабые стороны / Риски</h3>
+<table>
+<tr><td class="con">Нет multi-slot booking</td><td style="color:var(--muted)">Ортодонтия с 2 legs через action_queue</td></tr>
+<tr><td class="con">Нет Telethon fallback</td><td style="color:var(--muted)">Если Bot API ограничен, нет альтернативы</td></tr>
+<tr><td class="con">In-memory admin tokens</td><td style="color:var(--muted)">Hub: сбрасываются при рестарте</td></tr>
+<tr><td class="con">Нет IDENT confirmation sync</td><td style="color:var(--muted)">Только action_queue, нет двусторонней синхронизации</td></tr>
+<tr><td class="con">Deploy command injection</td><td style="color:var(--muted)">Hub: sanitized но не через subprocess</td></tr>
+<tr><td class="con">SERVICE_NAMES hardcode</td><td style="color:var(--muted)">Display names в коде, не в YAML</td></tr>
+<tr><td class="con">Нет rate limiting</td><td style="color:var(--muted)">Admin login без brute-force protection</td></tr>
+<tr><td class="con">Документация фрагментарна</td><td style="color:var(--muted)">38 .md файлов в dental-core, нет индекса</td></tr>
+</table>
+</div>
+</div>
+
+<!-- ===== CLINIC: ЭЛАЙНЕР РФ ===== -->
+<h2>5. Клиника: Элайнер РФ (Star Smile)</h2>
+
+<div class="grid grid-2">
+<div class="card">
+<h3>Данные</h3>
+<table>
+<tr><td style="color:var(--muted)">clinic_id</td><td>starsmile</td></tr>
+<tr><td style="color:var(--muted)">Адрес</td><td>м. Технопарк, пр-т Андропова, д.8</td></tr>
+<tr><td style="color:var(--muted)">Часы</td><td>Ежедневно 09:00&ndash;21:00</td></tr>
+<tr><td style="color:var(--muted)">Врачи</td><td>6 (Нагаева, Александрова, Кирьянов, Шевелюк, Титова, Федулова)</td></tr>
+<tr><td style="color:var(--muted)">Услуги</td><td>13 (от бесплатной консультации до имплантации 42 446 руб)</td></tr>
+<tr><td style="color:var(--muted)">CRM</td><td>IDENT (read) + MedFlex (book) + action_queue (cancel/register)</td></tr>
+<tr><td style="color:var(--muted)">new_patient_policy</td><td><span class="badge b-yellow">operator</span></td></tr>
+</table>
+</div>
+<div class="card">
+<h3>Readiness</h3>
+<div style="font-size:.85rem">
+<div style="margin-bottom:8px">CRM Integration <div class="meter"><div class="meter-fill" style="width:95%;background:var(--green)"></div></div></div>
+<div style="margin-bottom:8px">Booking Flow <div class="meter"><div class="meter-fill" style="width:90%;background:var(--green)"></div></div></div>
+<div style="margin-bottom:8px">Confirmation <div class="meter"><div class="meter-fill" style="width:85%;background:var(--green)"></div></div></div>
+<div style="margin-bottom:8px">Admin Panel <div class="meter"><div class="meter-fill" style="width:90%;background:var(--green)"></div></div></div>
+<div style="margin-bottom:8px">Security <div class="meter"><div class="meter-fill" style="width:80%;background:var(--yellow)"></div></div></div>
+<div style="margin-bottom:8px">Documentation <div class="meter"><div class="meter-fill" style="width:50%;background:var(--orange)"></div></div></div>
+<div style="margin-bottom:8px">E2E Coverage <div class="meter"><div class="meter-fill" style="width:70%;background:var(--yellow)"></div></div></div>
+</div>
+</div>
+</div>
+
+<!-- ===== PROMPTS ===== -->
+<h2>6. Промпты (4 production)</h2>
+
+<div class="grid grid-2">
+<div class="card">
+<h3>dental-router <span class="badge b-cyan">3 интента</span></h3>
+<p style="font-size:.82rem;color:var(--muted)">faq (приветствия, info, жалобы, off-topic), booking (запись, отмена, перенос), confirm (ответ на напоминание при наличии [ИНФОРМАЦИЯ])</p>
+</div>
+<div class="card">
+<h3>dental-booking <span class="badge b-yellow">8 шагов</span></h3>
+<p style="font-size:.82rem;color:var(--muted)">Услуга &rarr; Дата &rarr; get_availability &rarr; Показать &rarr; Выбор &rarr; Телефон/resolve &rarr; book_appointment &rarr; Завершение. {{booking_rules}} из YAML.</p>
+</div>
+<div class="card">
+<h3>dental-faq <span class="badge b-green">Tier 1+2</span></h3>
+<p style="font-size:.82rem;color:var(--muted)">Tier 1: YAML (адрес, цены, врачи). Tier 2: pgvector (подробности). handoff_to_human для жалоб. "Уточните по телефону" для оплаты.</p>
+</div>
+<div class="card">
+<h3>dental-confirmation <span class="badge b-purple">3 tool</span></h3>
+<p style="font-size:.82rem;color:var(--muted)">confirm_visit / decline_visit / reschedule_visit. Reschedule = cancel старой + новый booking flow через router.</p>
+</div>
+</div>
+
+<!-- ===== TODAY'S WORK ===== -->
+<h2>7. Что сделано (2026-04-04 &mdash; 2026-04-05)</h2>
+
+<div class="card">
+<table>
+<tr><th>Изменение</th><th>Impact</th><th>Строк</th></tr>
+<tr><td>Router: 5 интентов &rarr; 3, удалены все if-remapping</td><td><span class="badge b-green">Architecture</span></td><td>-80</td></tr>
+<tr><td>llm_input_messages в faq, booking, confirmation hooks</td><td><span class="badge b-green">Architecture</span></td><td>+10</td></tr>
+<tr><td>Red button kill switch (handler + db/bot_toggle.py)</td><td><span class="badge b-red">Security</span></td><td>+40</td></tr>
+<tr><td>Streaming handler: все security checks добавлены</td><td><span class="badge b-red">Security</span></td><td>+27</td></tr>
+<tr><td>Non-text messages &rarr; skip agent</td><td><span class="badge b-yellow">Fix</span></td><td>+4</td></tr>
+<tr><td>Reschedule flow: cancel + новый booking</td><td><span class="badge b-yellow">Fix</span></td><td>+5 / -3</td></tr>
+<tr><td>Dead code: process_confirmation_reply удалён</td><td><span class="badge b-green">Cleanup</span></td><td>-231</td></tr>
+<tr><td>YAML consolidation: 1 файл = 1 клиника</td><td><span class="badge b-green">Architecture</span></td><td>-141</td></tr>
+<tr><td>Hub: HUB_SERVICE_SECRET, deploy sanitization, Langfuse secrets</td><td><span class="badge b-red">Security</span></td><td>+15</td></tr>
+<tr><td>Actions page для всех ролей (React hooks fix)</td><td><span class="badge b-yellow">Fix</span></td><td>-10</td></tr>
+<tr><td>MANIFEST.md + ISSUES.md</td><td><span class="badge b-blue">Docs</span></td><td>+160</td></tr>
+</table>
+</div>
+
+<!-- ===== TESTING ===== -->
+<h2>8. Тестирование</h2>
+
+<div class="grid grid-2">
+<div class="card">
+<h3>Unit (dental-core CI)</h3>
+<p style="font-size:.85rem">413 тестов, pytest, PostgreSQL service container. Покрывают: admin API, booking tools, CRM adapters, slot merge, identity, gateway handler, cooldown, availability filter, clinic loader, graph factory, modules.</p>
+</div>
+<div class="card">
+<h3>E2E (LLM-as-Judge framework)</h3>
+<p style="font-size:.85rem">132 сценария в 10 диалогах. LLM-пациент генерирует сообщения, LLM-судья (GPT-4o) оценивает ответы бота, code verifier проверяет состояние БД через Admin API.</p>
+</div>
+</div>
+
+<!-- ===== PRODUCTION READINESS ===== -->
+<h2>9. Production Readiness</h2>
+
+<div class="card">
+<table>
+<tr><th>Компонент</th><th>Статус</th><th>Блокер?</th></tr>
+<tr><td>IDENT Plugin (read)</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>MedFlex Plugin (write)</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Routing Adapter</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Router (LLM)</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Booking Agent</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>FAQ Agent</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Confirmation Agent</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Red Button</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Telegram Business</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>Admin Panel</td><td><span class="badge b-green">Ready</span></td><td>Нет</td></tr>
+<tr><td>medflex_id=0 check</td><td><span class="badge b-yellow">Missing</span></td><td>Нет (нет таких врачей)</td></tr>
+<tr><td>Multi-slot booking</td><td><span class="badge b-yellow">Not impl</span></td><td>Нет (через action_queue)</td></tr>
+<tr><td>IDENT confirmation sync</td><td><span class="badge b-yellow">Partial</span></td><td>Нет (action_queue)</td></tr>
+<tr><td>E2E тесты (132 сценария)</td><td><span class="badge b-yellow">In progress</span></td><td>Да</td></tr>
+<tr><td>Документация</td><td><span class="badge b-orange">Fragmented</span></td><td>Нет</td></tr>
+</table>
+</div>
+
+</div>
+</body>
+</html>

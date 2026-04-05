@@ -22,6 +22,7 @@ nginx reverse proxy — единый домен:
 - **Infra:** Docker Compose (8 контейнеров), nginx reverse proxy, ngrok (static domain)
 - **Observability:** Langfuse v3 (self-hosted: web, worker, postgres, clickhouse, redis, minio)
 - **CI/CD:** GitHub Actions → SSH deploy на nalinii-test (158.160.85.19)
+- **Security:** HUB_SERVICE_SECRET required via env var (no hardcoded fallback), Langfuse secrets required via env vars (no weak defaults in docker-compose.yml)
 
 ## Frontend Structure
 
@@ -60,10 +61,10 @@ frontend-react/src/
 │       ├── AdminDashboardPage.tsx
 │       ├── AdminChatsPage.tsx
 │       ├── AdminChatDetailPage.tsx
-│       ├── AdminActionsPage.tsx
+│       ├── AdminActionsPage.tsx    # visible for ALL roles (no role guard)
 │       ├── AdminConfirmationsPage.tsx
 │       └── AdminSettingsPage.tsx
-├── layouts/AdminLayout.tsx  # Layout для админки
+├── layouts/AdminLayout.tsx  # Layout для админки (nav visible for all roles, no role filter)
 ├── hooks/useAuth.ts         # GitHub PAT auth
 ├── config/viz.ts            # 3D colors/shapes/labels
 └── types/index.ts           # TypeScript interfaces (~289 строк)
@@ -81,7 +82,7 @@ frontend-react/src/
 - **Roadmap:** Jira integration (epics с progress bars, tasks с фильтром по статусу)
 - **Settings:** Редактор цветов/форм для 3D визуализации (hub.viz_config)
 - **Eval:** LLM-as-Judge (scripts/run_eval.py) — security, handoff, dialog evaluators
-- **Admin Panel:** login/password auth, dashboard, chats, actions, confirmations, settings
+- **Admin Panel:** login/password auth, dashboard, chats, actions (visible for ALL roles), confirmations, settings
 - **Deploy:** SSH-based deployment (clone → config → build → start → health check)
 - **Traces:** Langfuse trace viewer per clinic
 
@@ -112,10 +113,10 @@ PostgreSQL schema `hub` (в langfuse-postgres):
 ## Prompts
 
 4 промпта в `prompts/*.md` (YAML frontmatter + Markdown body):
-- **dental-router** — классификация интентов (booking/faq/handoff)
+- **dental-router** — классификация интентов (3 интента: booking/faq/handoff)
 - **dental-booking** — запись на приём (7 шагов, slot_number system)
 - **dental-faq** — FAQ (Tier 1 YAML + Tier 2 pgvector)
-- **dental-confirmation** — подтверждение визитов
+- **dental-confirmation** — подтверждение визитов (reschedule = cancel + new booking)
 
 Sync: `hub/sync_prompts.py` — загрузка в Langfuse при старте hub-api (lifespan event).
 
@@ -123,6 +124,30 @@ Sync: `hub/sync_prompts.py` — загрузка в Langfuse при старте
 
 - **dental-hub** (этот) — платформа управления
 - **dental-core** — инстанс клиники (agent + CRM + gateway)
+
+## Tools
+
+### Telethon Messaging
+Отправка сообщений в Telegram от имени пользователя. Credentials: `~/dental-e2e-tests/.env` (TELETHON_SESSION, TELETHON_API_ID, TELETHON_API_HASH).
+```bash
+cd ~/dental-e2e-tests && python3 -c "
+import asyncio, os
+from dotenv import load_dotenv; load_dotenv()
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+async def send(name, msg):
+    c = TelegramClient(StringSession(os.environ['TELETHON_SESSION']),int(os.environ['TELETHON_API_ID']),os.environ['TELETHON_API_HASH'])
+    await c.start()
+    for d in await c.get_dialogs(limit=200):
+        if name.lower() in (d.name or '').lower():
+            await c.send_message(d.entity, msg); print(f'Sent to {d.name}'); break
+    await c.disconnect()
+asyncio.run(send('ИМЯ', 'ТЕКСТ'))
+"
+```
+
+### E2E Testing (Telethon)
+Тестирование бота через Telethon selfbot. Guide: `~/dental-e2e-tests/` с `send_and_wait()` и `check_no_response()`.
 
 ## Development Rules
 
