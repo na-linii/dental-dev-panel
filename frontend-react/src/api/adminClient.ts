@@ -131,10 +131,12 @@ adminApi.interceptors.request.use((config) => {
 adminApi.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 && !err.config?.url?.includes('/login')) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
-      window.location.href = '/admin/login'
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/admin/login'
+      }
     }
     if (err.response?.status === 502 || err.response?.status === 503) {
       err.message = 'Сервис временно недоступен. Попробуйте позже.'
