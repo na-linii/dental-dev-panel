@@ -192,10 +192,10 @@ export function AdminChatsPage() {
         <div className="hidden md:block bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr>
-                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Пациент</th>
-                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Последнее сообщение</th>
-                <th className="text-left text-[8px] uppercase tracking-wider text-[#475569] border-b border-white/[0.06] px-4 py-3">Статус</th>
+              <tr className="border-b border-white/[0.06]">
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Пациент</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Последнее сообщение</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Статус</th>
               </tr>
             </thead>
             <tbody>
@@ -209,7 +209,7 @@ export function AdminChatsPage() {
                   <tr
                     key={s.id}
                     onClick={() => navigate(`/admin/chats/${s.id}`)}
-                    className={`cursor-pointer transition-all duration-150 hover:bg-white/[0.04] ${
+                    className={`cursor-pointer transition-colors duration-150 hover:bg-white/[0.03] ${
                       isOperator ? 'bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
                     }`}
                   >

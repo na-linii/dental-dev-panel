@@ -146,7 +146,7 @@ export function AdminConfirmationsPage() {
 
             return (
               <div key={s.id} onClick={() => navigate(`/admin/chats/${s.id}`)}
-                   className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border border-white/[0.06] rounded-xl cursor-pointer hover:bg-white/[0.04] transition-all duration-150">
+                   className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border border-white/[0.06] rounded-xl cursor-pointer hover:bg-white/[0.03] transition-colors duration-150">
                 <div className="text-center min-w-[40px]">
                   <div className="text-xl font-extrabold text-white leading-none">{day}</div>
                   <div className="text-[8px] text-[#64748b] uppercase tracking-wide">{month}</div>

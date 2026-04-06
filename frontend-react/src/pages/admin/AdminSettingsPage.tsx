@@ -189,11 +189,12 @@ function BlocklistSection() {
   const [inputType, setInputType] = useState<InputType>('phone')
   const [input, setInput] = useState('')
   const [reason, setReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     getAdminBlocklist()
       .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch(() => setItems([]))
+      .catch(() => { setItems([]); setError('Не удалось загрузить чёрный список') })
       .finally(() => setLoading(false))
   }, [])
 
@@ -212,7 +213,8 @@ function BlocklistSection() {
       setReason('')
       setShowAdd(false)
     } catch {
-      // keep form open on error
+      setError('Не удалось добавить в чёрный список')
+      setTimeout(() => setError(null), 4000)
     } finally {
       setSaving(false)
     }
@@ -223,7 +225,8 @@ function BlocklistSection() {
       await removeAdminBlocklistEntry(id)
       setItems((prev) => prev.filter((i) => i.id !== id))
     } catch {
-      // silently ignore
+      setError('Не удалось удалить из чёрного списка')
+      setTimeout(() => setError(null), 4000)
     }
   }
 
@@ -253,6 +256,13 @@ function BlocklistSection() {
           Добавить
         </button>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mx-4 mt-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300">
+          {error}
+        </div>
+      )}
 
       {/* Add form */}
       {showAdd && (

@@ -34,10 +34,16 @@ export function AdminChatDetailPage() {
   const [editingPhone, setEditingPhone] = useState(false)
   const [phoneInput, setPhoneInput] = useState('')
   const [activeTab, setActiveTab] = useState<'chat' | 'appointments'>('chat')
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const prevMsgCount = useRef(0)
+
+  const showError = (msg: string) => {
+    setError(msg)
+    setTimeout(() => setError(null), 4000)
+  }
 
   // Scroll to bottom on new messages
   useLayoutEffect(() => {
@@ -81,6 +87,7 @@ export function AdminChatDetailPage() {
     } catch (e) {
       if (import.meta.env.DEV) console.error('Send message error:', e)
       setMessageText(text)
+      showError('Не удалось отправить сообщение')
     } finally {
       setIsSending(false)
       inputRef.current?.focus()
@@ -99,6 +106,7 @@ export function AdminChatDetailPage() {
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => prev ? { ...prev, controller: newController } : prev)
     } catch (e) {
       if (import.meta.env.DEV) console.error('Controller update error:', e)
+      showError('Не удалось сменить контроллер')
     }
   }
 
@@ -110,7 +118,10 @@ export function AdminChatDetailPage() {
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) =>
         prev ? { ...prev, patient: { ...prev.patient, phone: phoneInput.trim() } } : prev)
       setEditingPhone(false)
-    } catch (e) { if (import.meta.env.DEV) console.error('Phone update error:', e) }
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('Phone update error:', e)
+      showError('Не удалось сохранить телефон')
+    }
   }
 
   if (isLoading) {
@@ -271,6 +282,13 @@ export function AdminChatDetailPage() {
       {/* Appointments */}
       {activeTab === 'appointments' && (
         <AppointmentsTab session={session} key={session.id} />
+      )}
+
+      {/* Error toast */}
+      {error && (
+        <div className="mx-3 mb-1 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 animate-[fadeIn_0.2s]">
+          {error}
+        </div>
       )}
 
       {/* Input */}
