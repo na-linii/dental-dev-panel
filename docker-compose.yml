@@ -20,6 +20,7 @@ services:
       dockerfile: hub/Dockerfile
     environment:
       HUB_DATABASE_URL: postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse
+      HUB_SERVICE_SECRET: ${HUB_SERVICE_SECRET}
       LANGFUSE_EXTERNAL_URL: ${LANGFUSE_EXTERNAL_URL:-http://localhost/langfuse}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
