@@ -26,7 +26,7 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   no_response:         { label: 'Нет ответа',                  icon: Timer,          badge: 'bg-gray-500/15 text-gray-400 border-gray-500/25',         dot: 'bg-gray-400' },
   // Chat controller statuses (when no confirmation)
   bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', dot: 'bg-emerald-400' },
-  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-500/15 text-red-300 border-red-500/25',            dot: 'bg-red-400' },
+  operator:            { label: 'С оператором',                icon: AlertCircle,    badge: 'bg-red-500/15 text-red-300 border-red-500/25',            dot: 'bg-red-400' },
   closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
 }
 
