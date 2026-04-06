@@ -98,6 +98,26 @@ export interface AdminAction {
   status: string
   created_at: string | null
   completed_at: string | null
+  session_id: string | null
+  patient_name: string | null
+  patient_phone: string | null
+  appointment_date: string | null
+  appointment_time: string | null
+  doctor_name: string | null
+}
+
+// Backend: GET /admin/api/bookings — returns array of these
+export interface AdminBooking {
+  id: string
+  patient_id: string | null
+  doctor_id: string | null
+  service_key: string | null
+  appointment_date: string | null
+  appointment_time: string | null
+  booking_status: string | null
+  doctor_name: string | null
+  patient_name: string | null
+  cached_at: string | null
 }
 
 // Backend: GET /admin/api/settings/bot
@@ -203,6 +223,13 @@ export const getAdminActions = async (params?: { status?: string }) => {
 
 export const updateAdminAction = async (actionId: string, status: 'done' | 'failed') =>
   (await adminApi.patch(`/actions/${actionId}`, { status })).data
+
+// ── Bookings ──
+
+export const getAdminBookings = async (params?: { patient_id?: string; date_from?: string; date_to?: string }) => {
+  const res = await adminApi.get<{ items: AdminBooking[]; total: number }>('/bookings', { params })
+  return res.data.items ?? res.data
+}
 
 // ── Settings ──
 

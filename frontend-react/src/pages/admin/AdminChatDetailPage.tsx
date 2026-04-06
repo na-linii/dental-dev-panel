@@ -1,8 +1,8 @@
 import React, { useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
-import { sendAdminMessage, updateSessionController, getAdminSession } from '../../api/adminClient'
-import type { AdminSessionDetail, AdminMessage } from '../../api/adminClient'
+import { sendAdminMessage, updateSessionController, getAdminSession, getAdminBookings } from '../../api/adminClient'
+import type { AdminSessionDetail, AdminMessage, AdminBooking } from '../../api/adminClient'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
@@ -107,7 +107,7 @@ export function AdminChatDetailPage() {
     try {
       const { updatePatientPhone } = await import('../../api/adminClient')
       await updatePatientPhone(session.id, phoneInput.trim())
-      queryClient.setQueryData(['admin', 'session', sessionId], (prev: any) =>
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) =>
         prev ? { ...prev, patient: { ...prev.patient, phone: phoneInput.trim() } } : prev)
       setEditingPhone(false)
     } catch (e) { if (import.meta.env.DEV) console.error('Phone update error:', e) }
@@ -239,7 +239,7 @@ export function AdminChatDetailPage() {
                 try {
                   const oldest = session.messages[0]
                   const older = await getAdminSession(session.id, { messages_limit: 50, before_id: oldest.id })
-                  queryClient.setQueryData(['admin', 'session', sessionId], (prev: any) => {
+                  queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => {
                     if (!prev) return prev
                     return { ...prev, messages: [...older.messages, ...prev.messages], has_more_messages: older.has_more_messages }
                   })
@@ -270,19 +270,7 @@ export function AdminChatDetailPage() {
 
       {/* Appointments */}
       {activeTab === 'appointments' && (
-        <div className="flex-1 p-4">
-          {session.confirmation_appointment_date ? (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
-              <div className="text-sm font-semibold text-white">
-                {session.confirmation_appointment_date} {session.confirmation_appointment_time && `в ${session.confirmation_appointment_time}`}
-              </div>
-              {session.confirmation_doctor_name && <div className="text-sm text-[#94a3b8] mt-1">{session.confirmation_doctor_name}</div>}
-              {session.confirmation_status && <div className="text-xs text-[#64748b] mt-1">Статус: {session.confirmation_status}</div>}
-            </div>
-          ) : (
-            <div className="text-center text-[#475569] py-8">Нет записей</div>
-          )}
-        </div>
+        <AppointmentsTab session={session} key={session.id} />
       )}
 
       {/* Input */}
@@ -360,6 +348,89 @@ const MessageBubble = React.memo(function MessageBubble({ message }: { message: 
     </div>
   )
 })
+
+const BOOKING_STATUS_STYLES: Record<string, string> = {
+  'подтверждён': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
+  'отменён': 'bg-red-500/15 text-red-300 border-red-500/25',
+  'завершён': 'bg-gray-500/15 text-gray-400 border-gray-500/25',
+}
+
+function AppointmentsTab({ session }: { session: AdminSessionDetail }) {
+  const [bookings, setBookings] = React.useState<AdminBooking[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  const patientId = session.patient?.ident_patient_id
+
+  React.useEffect(() => {
+    if (!patientId) { setLoading(false); return }
+    let cancelled = false
+    getAdminBookings({ patient_id: patientId })
+      .then((items) => { if (!cancelled) setBookings(Array.isArray(items) ? items : []) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [patientId])
+
+  if (!patientId) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-12 text-[#64748b] text-sm">
+        Пациент не привязан к CRM
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-12">
+        <div className="w-5 h-5 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (bookings.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-12 text-[#64748b] text-sm">
+        Записей не найдено
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 overflow-auto py-4">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Дата</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Время</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Врач</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider hidden sm:table-cell">Услуга</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.map((b) => {
+              const statusStyle = BOOKING_STATUS_STYLES[b.booking_status || ''] || 'bg-blue-500/15 text-blue-300 border-blue-500/25'
+              return (
+                <tr key={b.id} className="border-b border-white/[0.04]">
+                  <td className="px-3 py-2.5 text-sm text-white whitespace-nowrap">{b.appointment_date || '—'}</td>
+                  <td className="px-3 py-2.5 text-sm text-white whitespace-nowrap">{b.appointment_time || '—'}</td>
+                  <td className="px-3 py-2.5 text-sm text-[#94a3b8] truncate max-w-[150px]">{b.doctor_name || '—'}</td>
+                  <td className="px-3 py-2.5 text-sm text-[#64748b] truncate max-w-[120px] hidden sm:table-cell">{b.service_key || '—'}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium ${statusStyle}`}>
+                      {b.booking_status || '—'}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 const DateSeparator = React.memo(function DateSeparator({ date }: { date: Date }) {
   const today = new Date()
