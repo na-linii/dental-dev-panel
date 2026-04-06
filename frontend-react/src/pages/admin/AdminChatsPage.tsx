@@ -26,7 +26,8 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   no_response:         { label: 'Нет ответа',                  icon: Timer,          badge: 'bg-gray-500/15 text-gray-400 border-gray-500/25',         dot: 'bg-gray-400' },
   // Chat controller statuses (when no confirmation)
   bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', dot: 'bg-emerald-400' },
-  operator:            { label: 'С оператором',                icon: AlertCircle,    badge: 'bg-red-500/15 text-red-300 border-red-500/25',            dot: 'bg-red-400' },
+  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-500/15 text-red-300 border-red-500/25',            dot: 'bg-red-400' },
+  operator_active:     { label: 'С оператором',                icon: MessageCircle,  badge: 'bg-blue-500/15 text-blue-300 border-blue-500/25',          dot: 'bg-blue-400' },
   closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
 }
 
@@ -53,6 +54,11 @@ function getDisplayTime(s: AdminSessionSummary): string | null {
 function getAvatarColor(controller: string): string {
   if (controller === 'operator') return 'bg-red-500/20 text-red-400'
   return 'bg-emerald-500/20 text-emerald-400'
+}
+
+function getDisplayStatus(s: { controller: string; operator_id?: string | null }): string {
+  if (s.controller === 'operator' && s.operator_id) return 'operator_active'
+  return s.controller
 }
 
 export function AdminChatsPage() {
@@ -224,9 +230,9 @@ export function AdminChatsPage() {
                     </td>
                     <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
-                          {STATUS_CONFIG[s.controller]?.label}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
+                          {STATUS_CONFIG[getDisplayStatus(s)]?.label}
                         </span>
                         {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
@@ -290,9 +296,9 @@ export function AdminChatsPage() {
                 </div>
                 {/* Bottom row: status badges */}
                 <div className="flex items-center gap-1.5 mt-2 ml-9">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.controller]?.badge || ''}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.controller]?.dot || ''}`} />
-                    {STATUS_CONFIG[s.controller]?.label}
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
+                    {STATUS_CONFIG[getDisplayStatus(s)]?.label}
                   </span>
                   {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
