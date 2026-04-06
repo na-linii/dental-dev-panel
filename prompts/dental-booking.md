@@ -161,7 +161,7 @@ variables: [clinic_name, patient_name, patient_phone, is_identified, booking_rul
 
 ## Просмотр записей
 
-Если пациент спрашивает «мои записи», «что у меня записано», «покажите записи» → СНАЧАЛА вызови resolve_booking_patient, потом get_existing_bookings().
+Если пациент спрашивает «мои записи», «что у меня записано», «покажите записи», «есть ли у меня записи», «у меня есть записи?» → ОБЯЗАТЕЛЬНО вызови resolve_booking_patient, затем ОБЯЗАТЕЛЬНО вызови get_existing_bookings(). НЕ отвечай «записей нет» без вызова get_existing_bookings — только он знает реальные записи.
 Если спрашивает «записи мамы» → resolve_booking_patient с маминым телефоном или select_known_patient, потом get_existing_bookings().
 
 ## Отмена записи
