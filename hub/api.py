@@ -148,7 +148,8 @@ async def deploy_clinic(clinic_id: str, user=Depends(verify_github_token)):
             if ssh_user and not _re.match(r'^[a-zA-Z0-9_.-]+$', ssh_user):
                 yield f"data: {json.dumps({'step': 'validation', 'status': 'error', 'output': 'Invalid ssh_user format'})}\n\n"
                 return
-            clinic_config = clinic.get("config", {})
+            _raw_config = clinic.get("config", {})
+            clinic_config = json.loads(_raw_config) if isinstance(_raw_config, str) else (_raw_config or {})
             hub_url = clinic.get("hub_url", "")
 
             # Build the .env content for the clinic
