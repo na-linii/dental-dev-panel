@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, MessageCircle, CalendarCheck, ClipboardList, Settings, LogOut, Menu, Sun, Moon } from 'lucide-react'
+import { LayoutDashboard, MessageCircle, CalendarCheck, ClipboardList, Settings, LogOut, Menu, Sun, Moon, BookOpen } from 'lucide-react'
 
 function NaLiniiLogo({ className = 'w-8 h-8' }: { className?: string }) {
   return <img src="/logo.svg" alt="НаЛинии" className={className} />
@@ -15,6 +15,7 @@ const navItems = [
   { to: '/admin/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
   { to: '/admin/actions', label: 'Действия', icon: ClipboardList },
   { to: '/admin/settings', label: 'Настройки', icon: Settings },
+  { to: '/admin/guide', label: 'Инструкция', icon: BookOpen },
 ] as const
 
 export function AdminLayout() {

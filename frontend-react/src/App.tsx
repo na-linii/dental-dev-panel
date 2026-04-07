@@ -21,6 +21,7 @@ import { AdminChatDetailPage } from './pages/admin/AdminChatDetailPage'
 import { AdminActionsPage } from './pages/admin/AdminActionsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminConfirmationsPage } from './pages/admin/AdminConfirmationsPage'
+import { AdminGuidePage } from './pages/admin/AdminGuidePage'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 function SuperadminGuard({ children }: { children: React.ReactNode }) {
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="confirmations" element={<SuperadminGuard><AdminConfirmationsPage /></SuperadminGuard>} />
               <Route path="actions" element={<AdminActionsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
+              <Route path="guide" element={<AdminGuidePage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" />} />
