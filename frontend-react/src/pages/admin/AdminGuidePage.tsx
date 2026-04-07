@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   ArrowUp, Eye, Bot, ClipboardList,
   MessageCircle, MessageSquare,
-  Bell, CheckCircle, AlertCircle,
+  Bell, AlertCircle,
   XCircle, RefreshCw, Ban, Timer,
   Info, Phone, CircleCheck, ClipboardCheck,
 } from 'lucide-react'
