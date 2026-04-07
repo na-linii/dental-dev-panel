@@ -16,19 +16,19 @@ interface StatusConfig {
 // Unified status config — same as legacy admin panel
 const STATUS_CONFIG: Record<string, StatusConfig> = {
   // Confirmation statuses
-  sent:                { label: 'Напоминание о визите',       icon: Bell,           badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', dot: 'bg-emerald-400' },
-  awaiting_confirm:    { label: 'Подтвердите в МИС',          icon: ClipboardCheck, badge: 'bg-orange-500/15 text-orange-300 border-orange-500/25',    dot: 'bg-orange-400' },
-  awaiting_cancel:     { label: 'Отмените в МИС',             icon: Ban,            badge: 'bg-orange-500/15 text-orange-300 border-orange-500/25',    dot: 'bg-orange-400' },
-  awaiting_reschedule: { label: 'Перенесите в МИС',           icon: Timer,          badge: 'bg-orange-500/15 text-orange-300 border-orange-500/25',    dot: 'bg-orange-400' },
-  confirmed:           { label: 'Визит подтверждён',           icon: CircleCheck,    badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
-  cancelled:           { label: 'Отменён',                     icon: CircleX,        badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
-  rescheduled:         { label: 'Перенесён',                   icon: RefreshCw,      badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
-  no_response:         { label: 'Нет ответа',                  icon: Timer,          badge: 'bg-gray-500/15 text-gray-400 border-gray-500/25',         dot: 'bg-gray-400' },
+  sent:                { label: 'Напоминание о визите',       icon: Bell,           badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400' },
+  awaiting_confirm:    { label: 'Подтвердите в МИС',          icon: ClipboardCheck, badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
+  awaiting_cancel:     { label: 'Отмените в МИС',             icon: Ban,            badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
+  awaiting_reschedule: { label: 'Перенесите в МИС',           icon: Timer,          badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
+  confirmed:           { label: 'Визит подтверждён',           icon: CircleCheck,    badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
+  cancelled:           { label: 'Отменён',                     icon: CircleX,        badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
+  rescheduled:         { label: 'Перенесён',                   icon: RefreshCw,      badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
+  no_response:         { label: 'Нет ответа',                  icon: Timer,          badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
   // Chat controller statuses (when no confirmation)
-  bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25', dot: 'bg-emerald-400' },
-  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-500/15 text-red-300 border-red-500/25',            dot: 'bg-red-400' },
-  operator_active:     { label: 'С оператором',                icon: MessageCircle,  badge: 'bg-blue-500/15 text-blue-300 border-blue-500/25',          dot: 'bg-blue-400' },
-  closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-500/15 text-gray-300 border-gray-500/25',         dot: 'bg-gray-400' },
+  bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400' },
+  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400' },
+  operator_active:     { label: 'С оператором',                icon: MessageCircle,  badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',          dot: 'bg-blue-500 dark:bg-blue-400' },
+  closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
 }
 
 const CONTROLLER_TAGS = [
@@ -40,9 +40,9 @@ const CONTROLLER_TAGS = [
 
 function getChannelPill(channel: string | null | undefined) {
   if (!channel) return null
-  if (channel === 'tg_bot') return { text: 'TG', cls: 'bg-blue-500/10 text-blue-400' }
-  if (channel === 'tg_business') return { text: 'BIZ', cls: 'bg-purple-500/10 text-purple-400' }
-  return { text: channel, cls: 'bg-gray-500/10 text-gray-400' }
+  if (channel === 'tg_bot') return { text: 'TG', cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' }
+  if (channel === 'tg_business') return { text: 'BIZ', cls: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' }
+  return { text: channel, cls: 'bg-gray-100 dark:bg-gray-500/10 text-gray-500 dark:text-gray-400' }
 }
 
 function getDisplayTime(s: AdminSessionSummary): string | null {
@@ -52,8 +52,8 @@ function getDisplayTime(s: AdminSessionSummary): string | null {
 }
 
 function getAvatarColor(controller: string): string {
-  if (controller === 'operator') return 'bg-red-500/20 text-red-400'
-  return 'bg-emerald-500/20 text-emerald-400'
+  if (controller === 'operator') return 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+  return 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
 }
 
 function getDisplayStatus(s: { controller: string; operator_id?: string | null }): string {
@@ -104,12 +104,12 @@ export function AdminChatsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Чаты</h1>
-          <p className="text-[#64748b] mt-1">{sessions.length} чатов</p>
+          <h1 className="text-2xl font-bold text-text-primary">Чаты</h1>
+          <p className="text-text-tertiary mt-1">{sessions.length} чатов</p>
         </div>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-[#94a3b8] hover:text-white hover:border-[#51ff97]/20 transition-all duration-200"
+          className="flex items-center gap-2 px-4 py-2 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/20 transition-all duration-200"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           Обновить
@@ -118,7 +118,7 @@ export function AdminChatsPage() {
 
       {/* Error */}
       {error && (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm text-amber-300">
+        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-sm text-amber-700 dark:text-amber-300">
           {error}
         </div>
       )}
@@ -127,7 +127,7 @@ export function AdminChatsPage() {
       <div className="space-y-3">
         {/* Search */}
         <div className="relative sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#475569]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
             type="text"
             value={searchInput}
@@ -135,10 +135,10 @@ export function AdminChatsPage() {
             onKeyDown={handleSearchKeyDown}
             onBlur={() => { if (searchInput !== searchQuery) handleSearch() }}
             placeholder="Поиск по имени или телефону..."
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-8 py-2.5 text-sm text-white placeholder-[#475569] focus:outline-none focus:border-[#51ff97]/40 transition-all duration-200"
+            className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl pl-10 pr-8 py-2.5 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200"
           />
           {searchInput && (
-            <button onClick={handleSearchClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b] hover:text-white transition-colors">
+            <button onClick={handleSearchClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           )}
@@ -151,11 +151,11 @@ export function AdminChatsPage() {
             const isOperator = tag.value === 'operator'
             let cls: string
             if (isActive && isOperator) {
-              cls = 'bg-red-500/10 text-red-400 border-red-500/20'
+              cls = 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'
             } else if (isActive) {
-              cls = 'bg-[#51ff97]/10 text-[#51ff97] border-[#51ff97]/20'
+              cls = 'bg-accent-soft text-accent border-accent/20'
             } else {
-              cls = 'bg-white/[0.03] text-[#64748b] border-white/[0.06]'
+              cls = 'bg-surface-secondary dark:bg-white/[0.03] text-text-tertiary border-border dark:border-white/[0.06]'
             }
             const count = tagCounts[tag.value] ?? 0
             return (
@@ -174,28 +174,28 @@ export function AdminChatsPage() {
 
       {/* Loading / Empty states */}
       {isLoading && (
-        <div className="py-12 text-center text-[#64748b]">
+        <div className="py-12 text-center text-text-tertiary">
           <div className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-[#51ff97] border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             Загрузка...
           </div>
         </div>
       )}
       {!isLoading && sessions.length === 0 && (
-        <div className="py-12 text-center text-[#64748b]">
+        <div className="py-12 text-center text-text-tertiary">
           Диалоги не найдены
         </div>
       )}
 
       {/* Desktop: Table layout */}
       {!isLoading && sessions.length > 0 && (
-        <div className="hidden md:block bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden">
+        <div className="hidden md:block bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/[0.06]">
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Пациент</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Последнее сообщение</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-[#64748b] uppercase tracking-wider">Статус</th>
+              <tr className="border-b border-border-light dark:border-white/[0.04]">
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Пациент</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Последнее сообщение</th>
+                <th className="text-left px-4 py-3.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Статус</th>
               </tr>
             </thead>
             <tbody>
@@ -209,13 +209,13 @@ export function AdminChatsPage() {
                   <tr
                     key={s.id}
                     onClick={() => navigate(`/admin/chats/${s.id}`)}
-                    className={`cursor-pointer transition-colors duration-150 hover:bg-white/[0.03] ${
-                      isOperator ? 'bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
+                    className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.03] ${
+                      isOperator ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
                     }`}
                   >
-                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
+                    <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{name}</span>
+                        <span className="font-semibold text-text-primary">{name}</span>
                         {pill && (
                           <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${pill.cls}`}>
                             {pill.text}
@@ -224,11 +224,11 @@ export function AdminChatsPage() {
                       </div>
                       {s.patient?.phone && <div className="text-xs text-gray-500">{s.patient.phone}</div>}
                     </td>
-                    <td className="text-sm px-4 py-3 border-b border-white/[0.04] max-w-[360px]">
-                      <div className="text-[#94a3b8] truncate">{s.last_message || '—'}</div>
-                      {time && <div className="text-[10px] text-[#475569] mt-0.5">{time}</div>}
+                    <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04] max-w-[360px]">
+                      <div className="text-text-secondary truncate">{s.last_message || '—'}</div>
+                      {time && <div className="text-[10px] text-text-muted mt-0.5">{time}</div>}
                     </td>
-                    <td className="text-sm px-4 py-3 border-b border-white/[0.04]">
+                    <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
@@ -266,8 +266,8 @@ export function AdminChatsPage() {
                 onClick={() => navigate(`/admin/chats/${s.id}`)}
                 className={`px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
                   isOperator
-                    ? 'bg-red-500/[0.04] border-red-500/15 hover:bg-red-500/[0.07]'
-                    : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
+                    ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-red-200 dark:border-red-500/15 hover:bg-red-50 dark:hover:bg-red-500/[0.07]'
+                    : 'bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 {/* Top row: avatar + name/preview + time */}
@@ -277,18 +277,18 @@ export function AdminChatsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-white truncate">{name}</span>
+                      <span className="text-sm font-medium text-text-primary truncate">{name}</span>
                       {pill && (
                         <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
                           {pill.text}
                         </span>
                       )}
                       {time && (
-                        <span className="text-[10px] text-[#475569] ml-auto shrink-0">{time}</span>
+                        <span className="text-[10px] text-text-muted ml-auto shrink-0">{time}</span>
                       )}
                     </div>
                     {s.last_message && (
-                      <p className="text-xs text-[#64748b] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                      <p className="text-xs text-text-secondary mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
                         {s.last_message}
                       </p>
                     )}
@@ -315,7 +315,7 @@ export function AdminChatsPage() {
 
       {/* Footer */}
       {!isLoading && sessions.length > 0 && (
-        <div className="text-center text-xs text-[#475569] py-2">
+        <div className="text-center text-xs text-text-muted py-2">
           {sessions.length} чатов
         </div>
       )}

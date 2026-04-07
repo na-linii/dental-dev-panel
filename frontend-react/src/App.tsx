@@ -21,6 +21,7 @@ import { AdminChatDetailPage } from './pages/admin/AdminChatDetailPage'
 import { AdminActionsPage } from './pages/admin/AdminActionsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminConfirmationsPage } from './pages/admin/AdminConfirmationsPage'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,8 +71,8 @@ export default function App() {
             </Route>
 
             {/* Admin Panel routes */}
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/admin/login" element={<ThemeProvider><AdminLoginPage /></ThemeProvider>} />
+            <Route path="/admin" element={<ThemeProvider><AdminLayout /></ThemeProvider>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="chats" element={<AdminChatsPage />} />
