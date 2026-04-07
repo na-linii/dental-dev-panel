@@ -78,15 +78,15 @@ export function AdminLayout() {
         />
       )}
 
-      {/* Sidebar — always dark */}
+      {/* Sidebar — white in light, dark in dark */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar-bg border-r border-sidebar-border flex flex-col transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Clinic name */}
-        <div className="px-5 py-4 border-b border-white/[0.06]">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             <NaLiniiLogo className="w-8 h-8 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Личный кабинет</p>
-              <p className="text-sm font-semibold text-white mt-0.5 truncate">{user.clinic_id}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5 truncate">{user.clinic_id}</p>
             </div>
           </div>
         </div>
@@ -101,8 +101,8 @@ export function AdminLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   isActive
-                    ? 'bg-brand-green/10 text-brand-green'
-                    : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
                 }`
               }
             >
@@ -113,27 +113,27 @@ export function AdminLayout() {
         </nav>
 
         {/* User section */}
-        <div className="px-3 py-4 border-t border-white/[0.06]">
+        <div className="px-3 py-4 border-t border-gray-200 dark:border-white/[0.06]">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-brand-green/20 flex items-center justify-center text-brand-green text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">
               {user.full_name?.charAt(0) || user.username.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-white truncate">{user.full_name || user.username}</p>
+              <p className="text-sm text-gray-900 dark:text-white truncate">{user.full_name || user.username}</p>
               <p className="text-xs text-gray-500">{user.role}</p>
             </div>
           </div>
           <div className="space-y-0.5 mt-1">
             <button
               onClick={toggleTheme}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-all duration-200"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               <span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span>
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
             >
               <LogOut className="w-4 h-4" />
               <span>Выйти</span>
