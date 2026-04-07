@@ -7,6 +7,10 @@ import {
 import type { AdminBotStatus, AdminBlocklistItem } from '../../api/adminClient'
 
 export function AdminSettingsPage() {
+  const isSuperadmin = (() => {
+    try { return JSON.parse(localStorage.getItem('admin_user') || '{}').role === 'superadmin' } catch { return false }
+  })()
+
   return (
     <div className="space-y-6">
       <div>
@@ -14,7 +18,7 @@ export function AdminSettingsPage() {
         <p className="text-text-tertiary mt-1">Управление параметрами системы</p>
       </div>
 
-      <RedButtonSection />
+      {isSuperadmin && <RedButtonSection />}
       <BlocklistSection />
     </div>
   )

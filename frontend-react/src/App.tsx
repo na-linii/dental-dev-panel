@@ -23,6 +23,14 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminConfirmationsPage } from './pages/admin/AdminConfirmationsPage'
 import { ThemeProvider } from './contexts/ThemeContext'
 
+function SuperadminGuard({ children }: { children: React.ReactNode }) {
+  try {
+    const user = JSON.parse(localStorage.getItem('admin_user') || '{}')
+    if (user.role === 'superadmin') return <>{children}</>
+  } catch {}
+  return <Navigate to="/admin/dashboard" replace />
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -77,7 +85,7 @@ export default function App() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="chats" element={<AdminChatsPage />} />
               <Route path="chats/:sessionId" element={<AdminChatDetailPage />} />
-              <Route path="confirmations" element={<AdminConfirmationsPage />} />
+              <Route path="confirmations" element={<SuperadminGuard><AdminConfirmationsPage /></SuperadminGuard>} />
               <Route path="actions" element={<AdminActionsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>

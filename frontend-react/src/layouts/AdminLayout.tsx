@@ -12,10 +12,10 @@ import { useTheme } from '../contexts/ThemeContext'
 const navItems = [
   { to: '/admin/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { to: '/admin/chats', label: 'Чаты', icon: MessageCircle },
-  { to: '/admin/confirmations', label: 'Подтверждения', icon: CalendarCheck },
+  { to: '/admin/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
   { to: '/admin/actions', label: 'Действия', icon: ClipboardList },
   { to: '/admin/settings', label: 'Настройки', icon: Settings },
-]
+] as const
 
 export function AdminLayout() {
   const [user, setUser] = useState<AdminUser | null>(null)
@@ -93,7 +93,7 @@ export function AdminLayout() {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => (
+          {navItems.filter((item) => !('superadminOnly' in item && item.superadminOnly) || user.role === 'superadmin').map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
