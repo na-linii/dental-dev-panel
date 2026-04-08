@@ -4,17 +4,10 @@ import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
-import { STATUS_CONFIG } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
 
 type ActiveTab = 'all' | 'blocked'
-
-const CONTROLLER_TAGS = [
-  { value: '', label: 'Все' },
-  { value: 'bot', label: 'С агентом' },
-  { value: 'operator', label: 'С оператором' },
-  { value: 'closed', label: 'Завершён' },
-] as const
 
 function getChannelPill(channel: string | null | undefined) {
   if (!channel) return null
@@ -156,7 +149,7 @@ export function AdminChatsPage() {
 
         {/* Tag filters (only for 'all' tab) */}
         {activeTab === 'all' && <div className="flex items-center gap-2 flex-wrap">
-          {CONTROLLER_TAGS.map((tag) => {
+          {CONTROLLER_FILTER_TAGS.map((tag) => {
             const isActive = controllerFilter === tag.value
             const isOperator = tag.value === 'operator'
             let cls: string

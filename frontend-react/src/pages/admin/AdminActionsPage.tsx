@@ -5,16 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import type { AdminAction } from '../../api/adminClient'
-
-const TYPE_LABELS: Record<string, string> = {
-  cancel_appointment: 'Отменить запись',
-  cancel: 'Пациент отказался',
-  reschedule: 'Перенести визит',
-  confirm: 'Подтвердить визит',
-  update_booking_status: 'Обновить статус',
-  book_appointment: 'Новая запись',
-  register_patient: 'Регистрация пациента',
-}
+import { ACTION_TYPES } from '../../config/adminStatuses'
 
 export function AdminActionsPage() {
   const { data, isLoading, error: queryError, refetch } = useAdminActions({ status: 'pending' })
@@ -101,7 +92,7 @@ export function AdminActionsPage() {
             className={`p-3 rounded-xl border bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none ${a.session_id ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]' : ''} transition-all duration-150`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-accent">{TYPE_LABELS[a.action_type] || a.action_type}</span>
+              <span className="text-xs font-semibold text-accent">{ACTION_TYPES[a.action_type]?.label || a.action_type}</span>
               {a.created_at && (
                 <span className="text-[10px] text-text-muted">{format(new Date(a.created_at), 'dd.MM HH:mm')}</span>
               )}
@@ -168,7 +159,7 @@ export function AdminActionsPage() {
                   className={`border-b border-border-light dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 ${action.session_id ? 'cursor-pointer' : ''}`}
                 >
                   <td className="px-4 py-3 text-sm text-accent font-medium whitespace-nowrap">
-                    {TYPE_LABELS[action.action_type] || action.action_type}
+                    {ACTION_TYPES[action.action_type]?.label || action.action_type}
                   </td>
                   <td className="px-4 py-3">
                     <PatientCell action={action} />

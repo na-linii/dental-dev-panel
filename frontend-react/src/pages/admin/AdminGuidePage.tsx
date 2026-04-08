@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   ArrowUp, Eye, Bot,
-  MessageCircle, MessageSquare,
-  Bell, AlertCircle,
-  XCircle, RefreshCw, Ban, Timer,
-  Info, Phone, CircleCheck, ClipboardCheck,
+  Info, Phone,
 } from 'lucide-react'
+import { STATUS_CONFIG, GUIDE_INCOMING_STATUSES, GUIDE_OUTGOING_STATUSES } from '../../config/adminStatuses'
 
 /* ── Scroll-reveal hook ──────────────────────────────── */
 function useReveal(threshold = 0.12) {
@@ -265,26 +263,20 @@ export function AdminGuidePage() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Входящая коммуникация</p>
           </Reveal>
           <div className="grid sm:grid-cols-2 gap-3">
-            {[
-              { icon: MessageCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', label: 'Разговор с агентом', desc: 'Пациент сам написал агенту, идёт диалог' },
-              { icon: Ban, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20', label: 'Отмените в МИС', desc: 'Пациент попросил отменить визит. Отмените в IDENT и нажмите «Готово» на странице «Действия»' },
-              { icon: XCircle, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Отменён', desc: 'Запись отменена' },
-              { icon: Timer, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20', label: 'Перенесите в МИС', desc: 'Пациент попросил перенести. Перенесите в IDENT и нажмите «Готово» на странице «Действия»' },
-              { icon: RefreshCw, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Перенесён', desc: 'Визит перенесён на другое время' },
-              { icon: AlertCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200 dark:border-red-500/20', label: 'Ожидает администратора', desc: 'Агент не справился или клиент попросил перевести на администратора' },
-              { icon: MessageCircle, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', label: 'Разговор с администратором', desc: 'Администратор общается с клиентом' },
-              { icon: MessageSquare, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Чат завершён', desc: 'Разговор завершён' },
-            ].map((s, i) => (
-              <Reveal key={s.label} delay={i * 60}>
-                <div className={`flex items-start gap-3 p-4 rounded-xl border ${s.border} ${s.bg}`}>
-                  <s.icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${s.color}`} />
-                  <div>
-                    <p className={`text-sm font-semibold ${s.color}`}>{s.label}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">{s.desc}</p>
+            {GUIDE_INCOMING_STATUSES.map((key, i) => {
+              const s = STATUS_CONFIG[key]
+              return (
+                <Reveal key={key} delay={i * 60}>
+                  <div className={`flex items-start gap-3 p-4 rounded-xl border ${s.badge}`}>
+                    <s.icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold">{s.label}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">{s.description}</p>
+                    </div>
                   </div>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              )
+            })}
           </div>
 
           {/* Исходящая коммуникация */}
@@ -292,22 +284,20 @@ export function AdminGuidePage() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-7 mb-3">Исходящая коммуникация</p>
           </Reveal>
           <div className="grid sm:grid-cols-2 gap-3">
-            {[
-              { icon: Bell, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', label: 'Напоминание о визите', desc: 'Агент отправил напоминание, ждёт ответа от клиента' },
-              { icon: ClipboardCheck, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20', label: 'Подтвердите в МИС', desc: 'Клиент ответил, что придёт. Подтвердите в IDENT и нажмите «Готово» на странице «Действия»' },
-              { icon: CircleCheck, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Визит подтверждён', desc: 'Визит подтверждён' },
-              { icon: AlertCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200 dark:border-red-500/20', label: 'Визит не подтверждён', desc: 'Пациент не ответил на напоминания' },
-            ].map((s, i) => (
-              <Reveal key={s.label} delay={580 + i * 60}>
-                <div className={`flex items-start gap-3 p-4 rounded-xl border ${s.border} ${s.bg}`}>
-                  <s.icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${s.color}`} />
-                  <div>
-                    <p className={`text-sm font-semibold ${s.color}`}>{s.label}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">{s.desc}</p>
+            {GUIDE_OUTGOING_STATUSES.map((key, i) => {
+              const s = STATUS_CONFIG[key]
+              return (
+                <Reveal key={key} delay={580 + i * 60}>
+                  <div className={`flex items-start gap-3 p-4 rounded-xl border ${s.badge}`}>
+                    <s.icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold">{s.label}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">{s.description}</p>
+                    </div>
                   </div>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              )
+            })}
           </div>
         </Section>
       </div>

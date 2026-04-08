@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, AlertTriangle, CheckCircle2, XCircle, ArrowRightLeft, TrendingUp, Users, RefreshCw } from 'lucide-react'
 import { useAdminDashboard } from '../../hooks/useAdminQueries'
+import { DASHBOARD_LABELS } from '../../config/adminStatuses'
 
 export function AdminDashboardPage() {
   const { data: stats, isLoading, error, refetch } = useAdminDashboard()
@@ -58,7 +59,7 @@ export function AdminDashboardPage() {
             <MessageCircle className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-text-primary tabular-nums">{totalSessions}</p>
-          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">Всего диалогов</p>
+          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">{DASHBOARD_LABELS.totalSessions}</p>
         </div>
 
         {/* Подтверждено */}
@@ -67,7 +68,7 @@ export function AdminDashboardPage() {
             <CheckCircle2 className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-text-primary tabular-nums">{confirmed}</p>
-          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">Подтверждено</p>
+          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">{DASHBOARD_LABELS.confirmed}</p>
           {awaitingConfirm > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 tabular-nums mt-1">+{awaitingConfirm} ожидает</p>
           )}
@@ -79,7 +80,7 @@ export function AdminDashboardPage() {
             <ArrowRightLeft className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-text-primary tabular-nums">{rescheduled}</p>
-          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">Перенесено</p>
+          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">{DASHBOARD_LABELS.rescheduled}</p>
           {awaitingReschedule > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 tabular-nums mt-1">+{awaitingReschedule} ожидает</p>
           )}
@@ -91,7 +92,7 @@ export function AdminDashboardPage() {
             <XCircle className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-text-primary tabular-nums">{cancelled}</p>
-          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">Отменено</p>
+          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">{DASHBOARD_LABELS.cancelled}</p>
           {awaitingCancel > 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 tabular-nums mt-1">+{awaitingCancel} ожидает</p>
           )}
@@ -109,7 +110,7 @@ export function AdminDashboardPage() {
             <AlertTriangle className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-text-primary tabular-nums">{operatorChats}</p>
-          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">Ожидает оператора</p>
+          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">{DASHBOARD_LABELS.operator}</p>
         </button>
 
         {/* Всего переписок */}
@@ -118,7 +119,7 @@ export function AdminDashboardPage() {
             <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-text-primary tabular-nums">{totalSessions}</p>
-          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">Всего переписок</p>
+          <p className="text-xs md:text-sm text-text-tertiary mt-0.5">{DASHBOARD_LABELS.totalPatients}</p>
         </div>
 
         {/* Прошлый месяц — spans 2 cols on lg */}
