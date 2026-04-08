@@ -1,55 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, CalendarCheck, Clock, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Ban, Timer, AlertCircle } from 'lucide-react'
+import { RefreshCw, CalendarCheck } from 'lucide-react'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-
-const CONFIRMATION_FILTERS = [
-  { value: '', label: 'Все' },
-  { value: 'sent', label: 'Отправлено' },
-  { value: 'awaiting_confirm', label: 'Ожидает подтв.' },
-  { value: 'awaiting_cancel', label: 'Ожидает отмены' },
-  { value: 'awaiting_reschedule', label: 'Ожидает переноса' },
-  { value: 'confirmed', label: 'Подтверждено' },
-  { value: 'cancelled', label: 'Отменено' },
-  { value: 'rescheduled', label: 'Перенесено' },
-  { value: 'no_response', label: 'Нет ответа' },
-] as const
-
-const STATUS_LABELS: Record<string, string> = {
-  sent: 'Отправлено',
-  awaiting_confirm: 'Ожидает подтв.',
-  awaiting_cancel: 'Ожидает отмены',
-  awaiting_reschedule: 'Ожидает переноса',
-  confirmed: 'Подтверждено',
-  cancelled: 'Отменено',
-  rescheduled: 'Перенесено',
-  no_response: 'Нет ответа',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  sent: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/25',
-  awaiting_confirm: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',
-  awaiting_cancel: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',
-  awaiting_reschedule: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',
-  confirmed: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
-  cancelled: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',
-  rescheduled: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',
-  no_response: 'bg-gray-100 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-500/25',
-}
-
-const STATUS_ICONS: Record<string, typeof Clock> = {
-  sent: Clock,
-  awaiting_confirm: ClipboardCheck,
-  awaiting_cancel: Ban,
-  awaiting_reschedule: Timer,
-  confirmed: CheckCircle2,
-  cancelled: XCircle,
-  rescheduled: ArrowRightLeft,
-  no_response: AlertCircle,
-}
+import { STATUS_CONFIG, CONFIRMATION_FILTERS } from '../../config/adminStatuses'
+import { pluralize } from '../../utils/pluralize'
 
 export function AdminConfirmationsPage() {
   const [activeFilter, setActiveFilter] = useState('')
@@ -61,13 +18,13 @@ export function AdminConfirmationsPage() {
     has_confirmation: true,
     ...(activeFilter ? { confirmation_status: activeFilter } : {}),
   })
-  const sessions: AdminSessionSummary[] = Array.isArray(filteredData) ? filteredData : []
+  const sessions: AdminSessionSummary[] = filteredData?.items ?? (Array.isArray(filteredData) ? filteredData : [])
   const error = queryError ? 'Не удалось загрузить записи' : null
 
   // All confirmation sessions for counts
   const { data: allData } = useAdminSessions({ limit: 200, has_confirmation: true })
   const counts = useMemo(() => {
-    const all = Array.isArray(allData) ? allData : []
+    const all = allData?.items ?? (Array.isArray(allData) ? allData : [])
     const c: Record<string, number> = {}
     for (const s of all) {
       if (s.confirmation_status) c[s.confirmation_status] = (c[s.confirmation_status] || 0) + 1
@@ -140,9 +97,10 @@ export function AdminConfirmationsPage() {
             const date = s.confirmation_appointment_date ? new Date(s.confirmation_appointment_date + 'T00:00:00') : null
             const day = date ? format(date, 'd') : '\u2014'
             const month = date ? format(date, 'MMM', { locale: ru }).replace('.', '') : ''
-            const statusColor = STATUS_COLORS[s.confirmation_status || ''] || 'bg-gray-100 dark:bg-gray-500/15 text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
-            const statusLabel = STATUS_LABELS[s.confirmation_status || ''] || s.confirmation_status || '\u2014'
-            const StatusIcon = STATUS_ICONS[s.confirmation_status || ''] || Clock
+            const cfg = STATUS_CONFIG[s.confirmation_status || '']
+            const statusColor = cfg?.badge || 'bg-gray-100 dark:bg-gray-500/15 text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
+            const statusLabel = cfg?.label || s.confirmation_status || '\u2014'
+            const StatusIcon = cfg?.icon || CalendarCheck
 
             return (
               <div key={s.id} onClick={() => navigate(`/admin/chats/${s.id}`)}
@@ -171,7 +129,7 @@ export function AdminConfirmationsPage() {
 
       {!isLoading && sessions.length > 0 && (
         <div className="text-center text-xs text-text-muted py-3">
-          Показано {sessions.length} записей
+          Показано {sessions.length} {pluralize(sessions.length, 'запись', 'записи', 'записей')}
         </div>
       )}
     </div>

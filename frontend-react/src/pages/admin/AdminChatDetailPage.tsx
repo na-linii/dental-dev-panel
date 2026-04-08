@@ -7,18 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-
-const CONTROLLER_LABELS: Record<string, string> = {
-  bot: 'С ботом',
-  operator: 'С оператором',
-  closed: 'Завершён',
-}
-
-const CONTROLLER_COLORS: Record<string, string> = {
-  bot: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
-  operator: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',
-  closed: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',
-}
+import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS } from '../../config/adminStatuses'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
 
@@ -37,7 +26,7 @@ export function AdminChatDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const prevMsgCount = useRef(0)
 
   const showError = (msg: string) => {
@@ -178,14 +167,11 @@ export function AdminChatDetailPage() {
                 </div>
               )}
             </div>
-            {session.confirmation_status && (
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${
-                session.confirmation_status.startsWith('awaiting') ? 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25' :
-                session.confirmation_status === 'sent' ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/25' :
-                session.confirmation_status === 'confirmed' ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25' :
-                session.confirmation_status === 'no_response' ? 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-500/25' :
-                'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
-              }`}>{session.confirmation_status}</span>
+            {session.confirmation_status && STATUS_CONFIG[session.confirmation_status] && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${STATUS_CONFIG[session.confirmation_status].badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[session.confirmation_status].dot}`} />
+                {STATUS_CONFIG[session.confirmation_status].label}
+              </span>
             )}
             {session.channel && (
               <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
@@ -293,17 +279,17 @@ export function AdminChatDetailPage() {
 
       {/* Input */}
       <div className="pt-4 pb-2 border-t border-border dark:border-white/[0.06]">
-        <div className="flex items-center gap-3">
+        <div className="flex items-end gap-3">
           <div className="flex-1">
-            <input
+            <textarea
               ref={inputRef}
-              type="text"
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Написать от имени администратора..."
               disabled={isSending}
-              className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200 disabled:opacity-50"
+              rows={1}
+              className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200 disabled:opacity-50 resize-none overflow-y-auto max-h-[120px]"
             />
           </div>
           <button
