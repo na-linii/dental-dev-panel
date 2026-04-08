@@ -59,9 +59,9 @@ export const CONTROLLER_COLORS: Record<string, string> = {
 
 export const CONTROLLER_FILTER_TAGS = [
   { value: '', label: 'Все' },
-  { value: 'bot', label: 'С агентом' },
-  { value: 'operator', label: 'С оператором' },
-  { value: 'closed', label: 'Завершён' },
+  { value: 'bot', label: 'Разговор с агентом' },
+  { value: 'operator', label: 'Ожидает администратора' },
+  { value: 'closed', label: 'Чат завершён' },
 ] as const
 
 // ── Confirmation filter options ──
