@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search } from 'lucide-react'
+import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { STATUS_CONFIG } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
+
+type ActiveTab = 'all' | 'blocked'
 
 const CONTROLLER_TAGS = [
   { value: '', label: 'Все' },
@@ -42,17 +44,29 @@ export function AdminChatsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [controllerFilter, setControllerFilter] = useState(() => searchParams.get('controller') || '')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('all')
   const navigate = useNavigate()
 
+  // Main sessions (all)
   const { data, isLoading, error: queryError, refetch } = useAdminSessions({
     limit: 500,
     ...(searchQuery ? { search: searchQuery } : {}),
   })
   const allSessions: AdminSessionSummary[] = data?.items ?? (Array.isArray(data) ? data : [])
+
+  // Blocked sessions (separate query)
+  const { data: blockedData, isLoading: blockedLoading, refetch: blockedRefetch } = useAdminSessions({
+    limit: 500,
+    blocked: true,
+  })
+  const blockedSessions: AdminSessionSummary[] = blockedData?.items ?? (Array.isArray(blockedData) ? blockedData : [])
+
   const error = queryError ? 'Не удалось загрузить чаты' : null
+  const currentLoading = activeTab === 'blocked' ? blockedLoading : isLoading
 
   // Client-side filtering by controller + counts from full list
   const { sessions, tagCounts } = useMemo(() => {
+    if (activeTab === 'blocked') return { sessions: blockedSessions, tagCounts: { '': 0, bot: 0, operator: 0, closed: 0 } }
     const counts: Record<string, number> = { '': allSessions.length, bot: 0, operator: 0, closed: 0 }
     for (const s of allSessions) {
       if (s.controller in counts) counts[s.controller]++
@@ -61,7 +75,7 @@ export function AdminChatsPage() {
       ? allSessions.filter((s) => s.controller === controllerFilter)
       : allSessions
     return { sessions: filtered, tagCounts: counts }
-  }, [allSessions, controllerFilter])
+  }, [allSessions, blockedSessions, controllerFilter, activeTab])
 
   const handleSearch = () => setSearchQuery(searchInput)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
@@ -85,10 +99,10 @@ export function AdminChatsPage() {
           <p className="text-text-tertiary mt-1">Пациенты с инициированными диалогами</p>
         </div>
         <button
-          onClick={() => refetch()}
+          onClick={() => { refetch(); blockedRefetch() }}
           className="flex items-center gap-2 px-4 py-2 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/20 transition-all duration-200"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${currentLoading ? 'animate-spin' : ''}`} />
           Обновить
         </button>
       </div>
@@ -100,10 +114,29 @@ export function AdminChatsPage() {
         </div>
       )}
 
+      {/* Tabs: All / Blocked */}
+      <div className="flex rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden w-fit">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-150 ${activeTab === 'all' ? 'bg-accent text-brand-darker' : 'bg-white dark:bg-white/[0.03] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.06]'}`}
+        >
+          <MessageCircle className="w-4 h-4" />
+          Все диалоги
+        </button>
+        <button
+          onClick={() => setActiveTab('blocked')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-150 border-l border-gray-200 dark:border-white/[0.08] ${activeTab === 'blocked' ? 'bg-red-500 text-white' : 'bg-white dark:bg-white/[0.03] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.06]'}`}
+        >
+          <ShieldBan className="w-4 h-4" />
+          Заблокированные
+          {blockedSessions.length > 0 && <span className="opacity-70">{blockedSessions.length}</span>}
+        </button>
+      </div>
+
       {/* Search + Tag Filters */}
       <div className="space-y-3">
-        {/* Search */}
-        <div className="relative sm:max-w-sm">
+        {/* Search (only for 'all' tab) */}
+        {activeTab === 'all' && <div className="relative sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
             type="text"
@@ -119,10 +152,10 @@ export function AdminChatsPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           )}
-        </div>
+        </div>}
 
-        {/* Tag filters */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Tag filters (only for 'all' tab) */}
+        {activeTab === 'all' && <div className="flex items-center gap-2 flex-wrap">
           {CONTROLLER_TAGS.map((tag) => {
             const isActive = controllerFilter === tag.value
             const isOperator = tag.value === 'operator'
@@ -146,11 +179,11 @@ export function AdminChatsPage() {
               </button>
             )
           })}
-        </div>
+        </div>}
       </div>
 
       {/* Loading / Empty states */}
-      {isLoading && (
+      {currentLoading && (
         <div className="py-12 text-center text-text-tertiary">
           <div className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -158,14 +191,14 @@ export function AdminChatsPage() {
           </div>
         </div>
       )}
-      {!isLoading && sessions.length === 0 && (
+      {!currentLoading && sessions.length === 0 && (
         <div className="py-12 text-center text-text-tertiary">
-          Диалоги не найдены
+          {activeTab === 'blocked' ? 'Нет заблокированных диалогов' : 'Диалоги не найдены'}
         </div>
       )}
 
       {/* Desktop: Table layout */}
-      {!isLoading && sessions.length > 0 && (
+      {!currentLoading && sessions.length > 0 && (
         <div className="hidden md:block bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
           <table className="w-full">
             <thead>
@@ -187,7 +220,9 @@ export function AdminChatsPage() {
                     key={s.id}
                     onClick={() => navigate(`/admin/chats/${s.id}`)}
                     className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.03] ${
-                      isOperator ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
+                      activeTab === 'blocked'
+                        ? 'bg-red-50/30 dark:bg-red-500/[0.03] hover:bg-red-50/60 dark:hover:bg-red-500/[0.06] border-l-2 border-l-red-600'
+                        : isOperator ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
                     }`}
                   >
                     <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
@@ -228,7 +263,7 @@ export function AdminChatsPage() {
       )}
 
       {/* Mobile: Card layout */}
-      {!isLoading && sessions.length > 0 && (
+      {!currentLoading && sessions.length > 0 && (
         <div className="md:hidden space-y-2">
           {sessions.map((s) => {
             const name = s.patient?.name || s.patient?.phone || 'Без имени'
@@ -242,9 +277,11 @@ export function AdminChatsPage() {
                 key={s.id}
                 onClick={() => navigate(`/admin/chats/${s.id}`)}
                 className={`px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
-                  isOperator
-                    ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-red-200 dark:border-red-500/15 hover:bg-red-50 dark:hover:bg-red-500/[0.07]'
-                    : 'bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                  activeTab === 'blocked'
+                    ? 'bg-red-50/30 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/15 hover:bg-red-50/60 dark:hover:bg-red-500/[0.06]'
+                    : isOperator
+                      ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-red-200 dark:border-red-500/15 hover:bg-red-50 dark:hover:bg-red-500/[0.07]'
+                      : 'bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 {/* Top row: avatar + name/preview + time */}
@@ -291,7 +328,7 @@ export function AdminChatsPage() {
       )}
 
       {/* Footer */}
-      {!isLoading && sessions.length > 0 && (
+      {!currentLoading && sessions.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2">
           {sessions.length} {pluralize(sessions.length, 'диалог', 'диалога', 'диалогов')}
         </div>

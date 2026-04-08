@@ -21,6 +21,7 @@ export function useAdminSessions(params?: {
   confirmation_status?: string
   has_confirmation?: boolean
   search?: string
+  blocked?: boolean
   limit?: number
 }) {
   return useQuery({

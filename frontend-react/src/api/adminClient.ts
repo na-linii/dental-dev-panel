@@ -192,6 +192,7 @@ export const getAdminSessions = async (params?: {
   confirmation_status?: string
   has_confirmation?: boolean
   search?: string
+  blocked?: boolean
   limit?: number
   offset?: number
 }): Promise<{ items: AdminSessionSummary[]; total: number }> => {
