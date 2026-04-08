@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
+import type { AdminSessionSummary } from '../../api/adminClient'
 import { useSessionsData } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS } from '../../config/adminStatuses'
