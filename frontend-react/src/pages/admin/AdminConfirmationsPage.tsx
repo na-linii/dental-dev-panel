@@ -12,27 +12,25 @@ export function AdminConfirmationsPage() {
   const [activeFilter, setActiveFilter] = useState('')
   const navigate = useNavigate()
 
-  // Filtered query — always filter to sessions with confirmation data
-  const { data: filteredData, isLoading, error: queryError, refetch } = useAdminSessions({
-    limit: 200,
+  // Load all confirmation sessions once, filter client-side
+  const { data: rawData, isLoading, error: queryError, refetch } = useAdminSessions({
+    limit: 500,
     has_confirmation: true,
-    ...(activeFilter ? { confirmation_status: activeFilter } : {}),
   })
-  const sessions: AdminSessionSummary[] = filteredData?.items ?? (Array.isArray(filteredData) ? filteredData : [])
+  const allSessions: AdminSessionSummary[] = rawData?.items ?? (Array.isArray(rawData) ? rawData : [])
   const error = queryError ? 'Не удалось загрузить записи' : null
 
-  // All confirmation sessions for counts
-  const { data: allData } = useAdminSessions({ limit: 200, has_confirmation: true })
-  const counts = useMemo(() => {
-    const all = allData?.items ?? (Array.isArray(allData) ? allData : [])
+  const { sessions, counts, totalCount } = useMemo(() => {
     const c: Record<string, number> = {}
-    for (const s of all) {
+    for (const s of allSessions) {
       if (s.confirmation_status) c[s.confirmation_status] = (c[s.confirmation_status] || 0) + 1
     }
-    return c
-  }, [allData])
-
-  const totalCount = Object.values(counts).reduce((a, b) => a + b, 0)
+    const total = Object.values(c).reduce((a, b) => a + b, 0)
+    const filtered = activeFilter
+      ? allSessions.filter((s) => s.confirmation_status === activeFilter)
+      : allSessions
+    return { sessions: filtered, counts: c, totalCount: total }
+  }, [allSessions, activeFilter])
 
   return (
     <div className="space-y-6">
