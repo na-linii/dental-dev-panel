@@ -102,7 +102,7 @@ export function AdminGuidePage() {
               <FlowCard>
                 <FlowStep action="Пациент начал диалог. Агент отвечает" status="Разговор с агентом" statusColor="green" />
                 <FlowStep action="Пациент просит перевести на администратора" status="Ожидает администратора" statusColor="red" />
-                <FlowStep action="Администратор вступил в диалог" status="С оператором" statusColor="blue" />
+                <FlowStep action="Администратор вступил в диалог" status="Разговор с администратором" statusColor="blue" />
                 <FlowStep action="Администратор вручную поменял статус на «Чат завершён» или прошло N часов с момента последнего сообщения" status="Чат завершён" statusColor="gray" isLast />
               </FlowCard>
             </Reveal>
@@ -233,7 +233,7 @@ export function AdminGuidePage() {
             <Reveal delay={420}>
               <FlowCard>
                 <FlowStep action="Агент пишет напоминание о визите" status="Напоминание о визите" statusColor="green" />
-                <FlowStep action="Пациент не отвечает. Агент отправляет второе напоминание. Пациент не отвечает N часов" status="Нет ответа" statusColor="gray" isLast />
+                <FlowStep action="Пациент не отвечает. Агент отправляет второе напоминание. Пациент не отвечает N часов" status="Визит не подтверждён" statusColor="red" isLast />
               </FlowCard>
             </Reveal>
 
@@ -272,7 +272,7 @@ export function AdminGuidePage() {
               { icon: Timer, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20', label: 'Перенесите в МИС', desc: 'Пациент попросил перенести. Перенесите в IDENT и нажмите «Готово» на странице «Действия»' },
               { icon: RefreshCw, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Перенесён', desc: 'Визит перенесён на другое время' },
               { icon: AlertCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200 dark:border-red-500/20', label: 'Ожидает администратора', desc: 'Агент не справился или клиент попросил перевести на администратора' },
-              { icon: MessageCircle, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', label: 'С оператором', desc: 'Администратор общается с клиентом' },
+              { icon: MessageCircle, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', label: 'Разговор с администратором', desc: 'Администратор общается с клиентом' },
               { icon: MessageSquare, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Чат завершён', desc: 'Разговор завершён' },
             ].map((s, i) => (
               <Reveal key={s.label} delay={i * 60}>
@@ -296,7 +296,7 @@ export function AdminGuidePage() {
               { icon: Bell, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', label: 'Напоминание о визите', desc: 'Агент отправил напоминание, ждёт ответа от клиента' },
               { icon: ClipboardCheck, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/20', label: 'Подтвердите в МИС', desc: 'Клиент ответил, что придёт. Подтвердите в IDENT и нажмите «Готово» на странице «Действия»' },
               { icon: CircleCheck, color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-500/10', border: 'border-gray-200 dark:border-gray-500/20', label: 'Визит подтверждён', desc: 'Визит подтверждён' },
-              { icon: AlertCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200 dark:border-red-500/20', label: 'Нет ответа', desc: 'Пациент не ответил на напоминания' },
+              { icon: AlertCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10', border: 'border-red-200 dark:border-red-500/20', label: 'Визит не подтверждён', desc: 'Пациент не ответил на напоминания' },
             ].map((s, i) => (
               <Reveal key={s.label} delay={580 + i * 60}>
                 <div className={`flex items-start gap-3 p-4 rounded-xl border ${s.border} ${s.bg}`}>

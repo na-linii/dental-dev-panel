@@ -1,35 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search, AlertCircle, Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer, MessageCircle, MessageSquare } from 'lucide-react'
+import { RefreshCw, Search } from 'lucide-react'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { useAdminSessions } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
-import type { LucideIcon } from 'lucide-react'
-
-interface StatusConfig {
-  label: string
-  icon: LucideIcon
-  badge: string
-  dot: string
-}
-
-// Unified status config — same as legacy admin panel
-const STATUS_CONFIG: Record<string, StatusConfig> = {
-  // Confirmation statuses
-  sent:                { label: 'Напоминание о визите',       icon: Bell,           badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  awaiting_confirm:    { label: 'Подтвердите в МИС',          icon: ClipboardCheck, badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
-  awaiting_cancel:     { label: 'Отмените в МИС',             icon: Ban,            badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
-  awaiting_reschedule: { label: 'Перенесите в МИС',           icon: Timer,          badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
-  confirmed:           { label: 'Визит подтверждён',           icon: CircleCheck,    badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  cancelled:           { label: 'Отменён',                     icon: CircleX,        badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  rescheduled:         { label: 'Перенесён',                   icon: RefreshCw,      badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  no_response:         { label: 'Нет ответа',                  icon: Timer,          badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  // Chat controller statuses (when no confirmation)
-  bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400' },
-  operator_active:     { label: 'С оператором',                icon: MessageCircle,  badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',          dot: 'bg-blue-500 dark:bg-blue-400' },
-  closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-}
+import { STATUS_CONFIG } from '../../config/adminStatuses'
+import { pluralize } from '../../utils/pluralize'
 
 const CONTROLLER_TAGS = [
   { value: '', label: 'Все' },
@@ -69,22 +45,23 @@ export function AdminChatsPage() {
   const navigate = useNavigate()
 
   const { data, isLoading, error: queryError, refetch } = useAdminSessions({
-    limit: 100,
-    ...(controllerFilter ? { controller: controllerFilter } : {}),
+    limit: 500,
     ...(searchQuery ? { search: searchQuery } : {}),
   })
-  const sessions: AdminSessionSummary[] = Array.isArray(data) ? data : []
+  const allSessions: AdminSessionSummary[] = data?.items ?? (Array.isArray(data) ? data : [])
   const error = queryError ? 'Не удалось загрузить чаты' : null
 
-  // Count sessions per controller for tag badges
-  const tagCounts = useMemo(() => {
-    const counts: Record<string, number> = { '': sessions.length, bot: 0, operator: 0, closed: 0 }
-    for (const s of sessions) {
+  // Client-side filtering by controller + counts from full list
+  const { sessions, tagCounts } = useMemo(() => {
+    const counts: Record<string, number> = { '': allSessions.length, bot: 0, operator: 0, closed: 0 }
+    for (const s of allSessions) {
       if (s.controller in counts) counts[s.controller]++
     }
-    // When filtering, "Все" count is total shown; others count from current result set
-    return counts
-  }, [sessions])
+    const filtered = controllerFilter
+      ? allSessions.filter((s) => s.controller === controllerFilter)
+      : allSessions
+    return { sessions: filtered, tagCounts: counts }
+  }, [allSessions, controllerFilter])
 
   const handleSearch = () => setSearchQuery(searchInput)
   const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
@@ -104,8 +81,8 @@ export function AdminChatsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Чаты</h1>
-          <p className="text-text-tertiary mt-1">{sessions.length} чатов</p>
+          <h1 className="text-2xl font-bold text-text-primary">Переписка</h1>
+          <p className="text-text-tertiary mt-1">Пациенты с инициированными диалогами</p>
         </div>
         <button
           onClick={() => refetch()}
@@ -316,7 +293,7 @@ export function AdminChatsPage() {
       {/* Footer */}
       {!isLoading && sessions.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2">
-          {sessions.length} чатов
+          {sessions.length} {pluralize(sessions.length, 'диалог', 'диалога', 'диалогов')}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Power, ShieldAlert, AlertTriangle, RefreshCw, Clock, ShieldBan, Plus, Trash2, Phone, Send, Loader2 } from 'lucide-react'
+import { pluralize } from '../../utils/pluralize'
 import {
   getAdminBotStatus, toggleAdminBot,
   getAdminBlocklist, addAdminBlocklistEntry, removeAdminBlocklistEntry,
@@ -375,7 +376,7 @@ function BlocklistSection() {
 
       {items.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2.5 border-t border-border-light dark:border-white/[0.04]">
-          {items.length} контактов
+          {items.length} {pluralize(items.length, 'контакт', 'контакта', 'контактов')}
         </div>
       )}
     </div>
