@@ -1,53 +1,71 @@
 import {
   Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer,
   RefreshCw, MessageCircle, AlertCircle, MessageSquare,
+  LayoutDashboard, CalendarCheck, ClipboardList, Settings, BookOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
+// ── Status config (source of truth for all pages including Guide) ──
+
 export interface StatusConfig {
   label: string
+  description: string
   icon: LucideIcon
   badge: string
   dot: string
+  category: 'incoming' | 'outgoing'
 }
 
-/**
- * Single source of truth for all status labels, icons, and colors.
- * Labels match the old admin panel and the Guide page.
- */
 export const STATUS_CONFIG: Record<string, StatusConfig> = {
   // ── Confirmation statuses (outgoing) ──
-  sent:                { label: 'Напоминание о визите',       icon: Bell,           badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  awaiting_confirm:    { label: 'Подтвердите в МИС',          icon: ClipboardCheck, badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
-  awaiting_cancel:     { label: 'Отмените в МИС',             icon: Ban,            badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
-  awaiting_reschedule: { label: 'Перенесите в МИС',           icon: Timer,          badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400' },
-  confirmed:           { label: 'Визит подтверждён',           icon: CircleCheck,    badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  cancelled:           { label: 'Отменён',                     icon: CircleX,        badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  rescheduled:         { label: 'Перенесён',                   icon: RefreshCw,      badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
-  no_response:         { label: 'Визит не подтверждён',        icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400' },
+  sent:                { label: 'Напоминание о визите',       description: 'Агент отправил напоминание, ждёт ответа от клиента',                                                           icon: Bell,           badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400', category: 'outgoing' },
+  awaiting_confirm:    { label: 'Подтвердите в МИС',          description: 'Клиент ответил, что придёт. Подтвердите в IDENT и нажмите «Готово» на странице «Действия»',                      icon: ClipboardCheck, badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400', category: 'outgoing' },
+  confirmed:           { label: 'Визит подтверждён',           description: 'Визит подтверждён',                                                                                            icon: CircleCheck,    badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400',     category: 'outgoing' },
+  no_response:         { label: 'Визит не подтверждён',        description: 'Пациент не ответил на напоминания',                                                                             icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400',       category: 'outgoing' },
 
-  // ── Chat controller statuses ──
-  bot:                 { label: 'Разговор с агентом',          icon: MessageCircle,  badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400' },
-  operator:            { label: 'Ожидает администратора',      icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400' },
-  operator_active:     { label: 'Разговор с администратором',  icon: MessageCircle,  badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',          dot: 'bg-blue-500 dark:bg-blue-400' },
-  closed:              { label: 'Чат завершён',                icon: MessageSquare,  badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400' },
+  // ── Shared statuses (incoming + outgoing) ──
+  awaiting_cancel:     { label: 'Отмените в МИС',             description: 'Пациент попросил отменить визит. Отмените в IDENT и нажмите «Готово» на странице «Действия»',                     icon: Ban,            badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400', category: 'incoming' },
+  cancelled:           { label: 'Отменён',                     description: 'Запись отменена',                                                                                               icon: CircleX,        badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400',     category: 'incoming' },
+  awaiting_reschedule: { label: 'Перенесите в МИС',           description: 'Пациент попросил перенести. Перенесите в IDENT и нажмите «Готово» на странице «Действия»',                        icon: Timer,          badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400', category: 'incoming' },
+  rescheduled:         { label: 'Перенесён',                   description: 'Визит перенесён на другое время',                                                                               icon: RefreshCw,      badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400',     category: 'incoming' },
+
+  // ── Chat controller statuses (incoming) ──
+  bot:                 { label: 'Разговор с агентом',          description: 'Пациент сам написал агенту, идёт диалог',                                                                       icon: MessageCircle,  badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400', category: 'incoming' },
+  operator:            { label: 'Ожидает администратора',      description: 'Агент не справился или клиент попросил перевести на администратора',                                             icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400',       category: 'incoming' },
+  operator_active:     { label: 'Разговор с администратором',  description: 'Администратор общается с клиентом',                                                                             icon: MessageCircle,  badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',          dot: 'bg-blue-500 dark:bg-blue-400',     category: 'incoming' },
+  closed:              { label: 'Чат завершён',                description: 'Разговор завершён',                                                                                             icon: MessageSquare,  badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400',     category: 'incoming' },
 }
 
-/** Labels for controller dropdown in chat detail header */
+// ── Guide: statuses grouped by category ──
+
+export const GUIDE_INCOMING_STATUSES = ['bot', 'awaiting_cancel', 'cancelled', 'awaiting_reschedule', 'rescheduled', 'operator', 'operator_active', 'closed'] as const
+export const GUIDE_OUTGOING_STATUSES = ['sent', 'awaiting_confirm', 'confirmed', 'no_response'] as const
+
+// ── Controller labels (for dropdown in chat detail header) ──
+
 export const CONTROLLER_LABELS: Record<string, string> = {
   bot: 'Разговор с агентом',
   operator: 'Ожидает администратора',
   closed: 'Чат завершён',
 }
 
-/** Colors for controller badge in chat detail header */
 export const CONTROLLER_COLORS: Record<string, string> = {
   bot: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
   operator: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',
   closed: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',
 }
 
-/** Confirmation filter options (full labels, matching old admin panel) */
+// ── Controller filter tags (short labels for filter buttons) ──
+
+export const CONTROLLER_FILTER_TAGS = [
+  { value: '', label: 'Все' },
+  { value: 'bot', label: 'С агентом' },
+  { value: 'operator', label: 'С оператором' },
+  { value: 'closed', label: 'Завершён' },
+] as const
+
+// ── Confirmation filter options ──
+
 export const CONFIRMATION_FILTERS = [
   { value: '', label: 'Все' },
   { value: 'sent', label: 'Напоминание о визите' },
@@ -58,4 +76,47 @@ export const CONFIRMATION_FILTERS = [
   { value: 'cancelled', label: 'Отменён' },
   { value: 'rescheduled', label: 'Перенесён' },
   { value: 'no_response', label: 'Визит не подтверждён' },
+] as const
+
+// ── Action types (linked to statuses) ──
+
+export const ACTION_TYPES: Record<string, { label: string; relatedStatus?: string }> = {
+  cancel_appointment: { label: 'Отменить запись',       relatedStatus: 'awaiting_cancel' },
+  cancel:             { label: 'Пациент отказался',     relatedStatus: 'awaiting_cancel' },
+  reschedule:         { label: 'Перенести визит',       relatedStatus: 'awaiting_reschedule' },
+  confirm:            { label: 'Подтвердить визит',     relatedStatus: 'awaiting_confirm' },
+  update_booking_status: { label: 'Обновить статус' },
+  book_appointment:   { label: 'Новая запись' },
+  register_patient:   { label: 'Регистрация пациента' },
+}
+
+// ── Dashboard stat labels ──
+
+export const DASHBOARD_LABELS = {
+  totalSessions: 'Всего диалогов',
+  confirmed: 'Подтверждено',
+  rescheduled: 'Перенесено',
+  cancelled: 'Отменено',
+  operator: 'Ожидает администратора',
+  totalPatients: 'Всего переписок',
+  prevMonth: 'Прошлый месяц',
+} as const
+
+// ── CRM booking status styles (separate system from confirmation statuses) ──
+
+export const BOOKING_STATUS_STYLES: Record<string, string> = {
+  'подтверждён': 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
+  'отменён': 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',
+  'завершён': 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-500/25',
+}
+
+// ── Navigation items ──
+
+export const NAV_ITEMS = [
+  { to: '/admin/dashboard', label: 'Дашборд', icon: LayoutDashboard },
+  { to: '/admin/chats', label: 'Переписка', icon: MessageCircle },
+  { to: '/admin/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
+  { to: '/admin/actions', label: 'Действия', icon: ClipboardList },
+  { to: '/admin/settings', label: 'Настройки', icon: Settings },
+  { to: '/admin/guide', label: 'Инструкция', icon: BookOpen },
 ] as const

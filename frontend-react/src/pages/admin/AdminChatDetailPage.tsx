@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, BOOKING_STATUS_STYLES } from '../../config/adminStatuses'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
 
@@ -353,11 +353,6 @@ const MessageBubble = React.memo(function MessageBubble({ message }: { message: 
   )
 })
 
-const BOOKING_STATUS_STYLES: Record<string, string> = {
-  'подтверждён': 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
-  'отменён': 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',
-  'завершён': 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-500/25',
-}
 
 function AppointmentsTab({ session }: { session: AdminSessionDetail }) {
   const [bookings, setBookings] = React.useState<AdminBooking[]>([])
