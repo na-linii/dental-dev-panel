@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, CalendarCheck } from 'lucide-react'
-import type { AdminSessionSummary } from '../../api/adminClient'
-import { useAdminSessions } from '../../hooks/useAdminQueries'
+import { useSessionsData } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { STATUS_CONFIG, CONFIRMATION_FILTERS } from '../../config/adminStatuses'
@@ -12,25 +11,15 @@ export function AdminConfirmationsPage() {
   const [activeFilter, setActiveFilter] = useState('')
   const navigate = useNavigate()
 
-  // Load all confirmation sessions once, filter client-side
-  const { data: rawData, isLoading, error: queryError, refetch } = useAdminSessions({
-    limit: 500,
-    has_confirmation: true,
-  })
-  const allSessions: AdminSessionSummary[] = rawData?.items ?? (Array.isArray(rawData) ? rawData : [])
+  const { computed, isLoading, error: queryError, refetch } = useSessionsData()
   const error = queryError ? 'Не удалось загрузить записи' : null
 
   const { sessions, counts, totalCount } = useMemo(() => {
-    const c: Record<string, number> = {}
-    for (const s of allSessions) {
-      if (s.confirmation_status) c[s.confirmation_status] = (c[s.confirmation_status] || 0) + 1
-    }
-    const total = Object.values(c).reduce((a, b) => a + b, 0)
     const filtered = activeFilter
-      ? allSessions.filter((s) => s.confirmation_status === activeFilter)
-      : allSessions
-    return { sessions: filtered, counts: c, totalCount: total }
-  }, [allSessions, activeFilter])
+      ? computed.withConfirmation.filter((s) => s.confirmation_status === activeFilter)
+      : computed.withConfirmation
+    return { sessions: filtered, counts: computed.byConfirmation, totalCount: computed.confirmationTotal }
+  }, [computed, activeFilter])
 
   return (
     <div className="space-y-6">

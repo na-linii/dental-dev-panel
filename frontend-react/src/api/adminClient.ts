@@ -49,6 +49,8 @@ export interface AdminSessionSummary {
   confirmation_appointment_date: string | null
   confirmation_appointment_time: string | null
   confirmation_doctor_name: string | null
+  operator_id?: string | null
+  is_blocked?: boolean
 }
 
 // Backend: GET /admin/api/sessions/:id

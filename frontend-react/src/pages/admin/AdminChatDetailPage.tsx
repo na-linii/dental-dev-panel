@@ -8,6 +8,7 @@ import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, BOOKING_STATUS_STYLES } from '../../config/adminStatuses'
+import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
 
@@ -24,6 +25,7 @@ export function AdminChatDetailPage() {
   const [phoneInput, setPhoneInput] = useState('')
   const [activeTab, setActiveTab] = useState<'chat' | 'appointments'>('chat')
   const [error, setError] = useState<string | null>(null)
+  const invalidateSessions = useInvalidateSessions()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -93,6 +95,7 @@ export function AdminChatDetailPage() {
     try {
       await updateSessionController(session.id, newController)
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => prev ? { ...prev, controller: newController } : prev)
+      invalidateSessions()
     } catch (e) {
       if (import.meta.env.DEV) console.error('Controller update error:', e)
       showError('Не удалось сменить контроллер')

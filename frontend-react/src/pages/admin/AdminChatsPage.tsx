@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
-import type { AdminSessionSummary } from '../../api/adminClient'
-import { useAdminSessions } from '../../hooks/useAdminQueries'
+import { useSessionsData } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
@@ -40,38 +39,31 @@ export function AdminChatsPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('all')
   const navigate = useNavigate()
 
-  // Main sessions (all)
-  const { data, isLoading, error: queryError, refetch } = useAdminSessions({
-    limit: 500,
-    ...(searchQuery ? { search: searchQuery } : {}),
-  })
-  const allSessions: AdminSessionSummary[] = data?.items ?? (Array.isArray(data) ? data : [])
-
-  // Blocked sessions (separate query)
-  const { data: blockedData, isLoading: blockedLoading, refetch: blockedRefetch } = useAdminSessions({
-    limit: 500,
-    blocked: true,
-  })
-  const blockedSessions: AdminSessionSummary[] = blockedData?.items ?? (Array.isArray(blockedData) ? blockedData : [])
-
+  const { allSessions, computed, isLoading, error: queryError, refetch } = useSessionsData()
   const error = queryError ? 'Не удалось загрузить чаты' : null
-  const currentLoading = activeTab === 'blocked' ? blockedLoading : isLoading
 
-  // Client-side filtering by controller + counts from full list
+  // Client-side filtering: controller + blocked + search
   const { sessions, tagCounts } = useMemo(() => {
-    if (activeTab === 'blocked') return { sessions: blockedSessions, tagCounts: { '': 0, bot: 0, operator: 0, closed: 0 } }
-    const counts: Record<string, number> = { '': allSessions.length, bot: 0, operator: 0, closed: 0 }
-    for (const s of allSessions) {
-      if (s.controller in counts) counts[s.controller]++
+    const counts: Record<string, number> = { '': allSessions.length, bot: computed.byController.bot, operator: computed.byController.operator, closed: computed.byController.closed }
+
+    if (activeTab === 'blocked') {
+      const filtered = searchQuery
+        ? computed.blocked.filter((s) => (s.patient?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.patient?.phone || '').includes(searchQuery))
+        : computed.blocked
+      return { sessions: filtered, tagCounts: counts }
     }
-    const filtered = controllerFilter
+
+    let filtered = controllerFilter
       ? allSessions.filter((s) => s.controller === controllerFilter)
       : allSessions
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter((s) => (s.patient?.name || '').toLowerCase().includes(q) || (s.patient?.phone || '').includes(q))
+    }
     return { sessions: filtered, tagCounts: counts }
-  }, [allSessions, blockedSessions, controllerFilter, activeTab])
+  }, [allSessions, computed, controllerFilter, activeTab, searchQuery])
 
-  const handleSearch = () => setSearchQuery(searchInput)
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') setSearchQuery(searchInput) }
   const handleSearchClear = () => { setSearchInput(''); setSearchQuery('') }
 
   const handleControllerChange = (v: string) => {
@@ -92,10 +84,10 @@ export function AdminChatsPage() {
           <p className="text-text-tertiary mt-1">Пациенты с инициированными диалогами</p>
         </div>
         <button
-          onClick={() => { refetch(); blockedRefetch() }}
+          onClick={() => refetch()}
           className="flex items-center gap-2 px-4 py-2 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/20 transition-all duration-200"
         >
-          <RefreshCw className={`w-4 h-4 ${currentLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           Обновить
         </button>
       </div>
@@ -122,7 +114,7 @@ export function AdminChatsPage() {
         >
           <ShieldBan className="w-4 h-4" />
           Заблокированные
-          {blockedSessions.length > 0 && <span className="opacity-70">{blockedSessions.length}</span>}
+          {computed.blocked.length > 0 && <span className="opacity-70">{computed.blocked.length}</span>}
         </button>
       </div>
 
@@ -136,7 +128,7 @@ export function AdminChatsPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            onBlur={() => { if (searchInput !== searchQuery) handleSearch() }}
+            onBlur={() => { if (searchInput !== searchQuery) setSearchQuery(searchInput) }}
             placeholder="Поиск по имени или телефону..."
             className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl pl-10 pr-8 py-2.5 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200"
           />
@@ -176,7 +168,7 @@ export function AdminChatsPage() {
       </div>
 
       {/* Loading / Empty states */}
-      {currentLoading && (
+      {isLoading && (
         <div className="py-12 text-center text-text-tertiary">
           <div className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -184,14 +176,14 @@ export function AdminChatsPage() {
           </div>
         </div>
       )}
-      {!currentLoading && sessions.length === 0 && (
+      {!isLoading && sessions.length === 0 && (
         <div className="py-12 text-center text-text-tertiary">
           {activeTab === 'blocked' ? 'Нет заблокированных диалогов' : 'Диалоги не найдены'}
         </div>
       )}
 
       {/* Desktop: Table layout */}
-      {!currentLoading && sessions.length > 0 && (
+      {!isLoading && sessions.length > 0 && (
         <div className="hidden md:block bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
           <table className="w-full">
             <thead>
@@ -256,7 +248,7 @@ export function AdminChatsPage() {
       )}
 
       {/* Mobile: Card layout */}
-      {!currentLoading && sessions.length > 0 && (
+      {!isLoading && sessions.length > 0 && (
         <div className="md:hidden space-y-2">
           {sessions.map((s) => {
             const name = s.patient?.name || s.patient?.phone || 'Без имени'
@@ -321,7 +313,7 @@ export function AdminChatsPage() {
       )}
 
       {/* Footer */}
-      {!currentLoading && sessions.length > 0 && (
+      {!isLoading && sessions.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2">
           {sessions.length} {pluralize(sessions.length, 'диалог', 'диалога', 'диалогов')}
         </div>
