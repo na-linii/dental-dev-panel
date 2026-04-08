@@ -196,10 +196,7 @@ export const getAdminSessions = async (params?: {
   offset?: number
 }): Promise<{ items: AdminSessionSummary[]; total: number }> => {
   const res = await adminApi.get<PaginatedResponse<AdminSessionSummary>>('/sessions', { params })
-  const data = res.data as Record<string, unknown>
-  const items = (data.items ?? res.data) as AdminSessionSummary[]
-  const total = typeof data.total === 'number' ? data.total : items.length
-  return { items, total }
+  return { items: res.data.items, total: res.data.total }
 }
 
 export const getAdminSession = async (id: string, params?: { messages_limit?: number; before_id?: string }) =>
