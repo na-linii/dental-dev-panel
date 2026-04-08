@@ -1,4 +1,4 @@
-import { RefreshCw, CheckCircle } from 'lucide-react'
+import { RefreshCw, CheckCircle, ClipboardList } from 'lucide-react'
 import { updateAdminAction } from '../../api/adminClient'
 import { useAdminActions } from '../../hooks/useAdminQueries'
 import { useNavigate } from 'react-router-dom'
@@ -86,6 +86,13 @@ export function AdminActionsPage() {
       )}
 
       {/* Mobile cards */}
+      {!isLoading && actions.length === 0 && (
+        <div className="sm:hidden px-4 py-16 text-center">
+          <ClipboardList className="w-10 h-10 text-text-muted mx-auto mb-3" />
+          <p className="text-text-tertiary font-medium">Нет задач</p>
+          <p className="text-text-muted text-xs mt-1">Когда агент создаст действие, требующее выполнения в МИС, задача появится здесь</p>
+        </div>
+      )}
       <div className="sm:hidden space-y-2">
         {actions.map((a) => (
           <div
@@ -148,8 +155,10 @@ export function AdminActionsPage() {
                 </tr>
               ) : actions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-text-tertiary">
-                    Нет задач
+                  <td colSpan={5} className="px-4 py-16 text-center">
+                    <ClipboardList className="w-10 h-10 text-text-muted mx-auto mb-3" />
+                    <p className="text-text-tertiary font-medium">Нет задач</p>
+                    <p className="text-text-muted text-xs mt-1 max-w-xs mx-auto">Когда агент создаст действие, требующее выполнения в МИС (отмена, перенос, подтверждение), задача появится здесь</p>
                   </td>
                 </tr>
               ) : actions.map((action) => (

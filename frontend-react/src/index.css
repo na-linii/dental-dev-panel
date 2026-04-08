@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* ── Interactive elements: pointer cursor ────────── */
+button, [role="button"], a[href], input[type="submit"] { cursor: pointer; }
+
 /* ── Class-based dark mode ─────────────────────────── */
 @custom-variant dark (&:where(.dark, .dark *));
 
