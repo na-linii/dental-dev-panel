@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Prompt Research V3 — Dental Hub</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080a0f;color:#d1d9e6;font-family:'Segoe UI',system-ui,sans-serif;padding:0 0 80px}
+
+/* TOP BAR */
+.top{position:sticky;top:0;z-index:100;background:#0c0f17;border-bottom:1px solid #1f2937;padding:9px 32px;display:flex;align-items:center;gap:10px}
+.top h1{font-size:.9rem;font-weight:700;color:#e2e8f0}
+.top a{font-size:.7rem;color:#374151;text-decoration:none;transition:.15s}
+.top a:hover{color:#60a5fa}
+.top-sep{color:#1f2937}
+
+/* BADGES */
+.badge{font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.04em;display:inline-block}
+.b-draft{background:#1e3a5f;color:#93c5fd}
+.b-todo{background:#3b1212;color:#fca5a5}
+.b-done{background:#064e3b;color:#6ee7b7}
+.b-tool{background:#1a1a2e;color:#6b7280;border:1px solid #374151}
+
+/* LAYOUT */
+.wrap{max-width:100%;margin:0;padding:16px 32px;display:flex;flex-direction:column;overflow-x:auto}
+
+/* Sections that should NOT scroll (legend, yaml, sec label) stay within viewport */
+.no-scroll{max-width:1200px}
+
+/* Scrollable cards area — fixed wide canvas */
+#cards{min-width:2600px}
+
+/* ── LEGEND ── */
+.legend{background:#09111d;border:1px solid #1f2937;border-radius:10px;padding:14px 18px;margin-bottom:22px}
+.leg-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.leg-head-title{font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#374151}
+.leg-types{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
+.leg-type{display:flex;align-items:center;gap:5px;font-size:.63rem;color:#6b7280}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.sw-yml{background:#d97706}.sw-crm{background:#3b82f6}.sw-inj{background:#0891b2}.sw-rag{background:#0d9488}
+.sw-miss{background:transparent;border:1.5px dashed #ef4444;border-radius:2px}
+
+.leg-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.leg-col-title{font-size:.56rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#374151;padding-bottom:6px;margin-bottom:4px;border-bottom:1px solid #161c24}
+.leg-rows{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.leg-row{display:flex;align-items:baseline;gap:8px;font-size:.66rem;line-height:1.5}
+.lv-key{font-family:'Fira Code','Consolas',monospace;white-space:nowrap;padding:0 4px;border-radius:3px;font-size:.65rem}
+.lv-key.yml{background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.3);color:#fbbf24}
+.lv-key.crm{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#93c5fd}
+.lv-key.inj{background:rgba(8,145,178,.1);border:1px solid rgba(8,145,178,.25);color:#22d3ee}
+.lv-key.rag{background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.25);color:#2dd4bf}
+.lv-val{color:#6b7280;flex:1}.lv-val b{color:#9ca3af}.lv-src{color:#374151;font-size:.59rem}
+.leg-inj{margin-top:10px;padding-top:10px;border-top:1px solid #161c24;display:grid;grid-template-columns:1fr 1fr;gap:3px 24px}
+
+/* SECTION LABEL */
+.sec{font-size:.58rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4b5563;margin:22px 0 10px;padding-bottom:5px;border-bottom:1px solid #161c24}
+
+/* CARDS */
+.card{border-radius:10px;margin-bottom:16px;border:2px solid transparent;overflow:hidden}
+.card-router  {background:#05102b;border-color:#2563eb}
+.card-faq     {background:#051a0c;border-color:#16a34a}
+.card-social  {background:#130a1f;border-color:#a855f7}
+.card-booking {background:#0d1520;border-color:#0ea5e9}
+.card-confirm {background:#1a1006;border-color:#d97706}
+.card-tool    {background:#0c0c14;border:2px dotted #374151}
+/* V3 реализован — outline убран */
+
+.card-head{padding:11px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.05)}
+.card-name{font-size:.88rem;font-weight:700}
+.c-router{color:#60a5fa}.c-faq{color:#4ade80}.c-social{color:#d8b4fe}.c-booking{color:#38bdf8}.c-confirm{color:#fbbf24}.c-tool{color:#6b7280}
+.card-meta{display:flex;align-items:center;gap:6px;margin-left:auto}
+
+/* BODY */
+.card-body{padding:14px 18px;font-size:.77rem;line-height:1.78;color:#c8cfe0}
+.card-body h2{font-size:.8rem;font-weight:700;color:#e2e8f0;margin:12px 0 5px}
+.card-body h2:first-child{margin-top:0}
+.card-body p{margin-bottom:6px}
+.card-body ul,.card-body ol{padding-left:1.3em;margin-bottom:6px}
+.card-body li{margin-bottom:3px}
+.card-body strong{color:#e9eef5}
+.card-body hr{border:none;border-top:1px solid #1f2937;margin:14px 0}
+
+/* INTENT HIGHLIGHT (router) */
+.card-body p.intent-social  {border-left:3px solid rgba(168,85,247,.5); padding:3px 3px 3px 10px;background:rgba(168,85,247,.06); border-radius:0 4px 4px 0;margin-bottom:8px}
+.card-body p.intent-faq     {border-left:3px solid rgba(22,163,74,.5);  padding:3px 3px 3px 10px;background:rgba(22,163,74,.06);  border-radius:0 4px 4px 0;margin-bottom:8px}
+.card-body p.intent-booking {border-left:3px solid rgba(14,165,233,.5); padding:3px 3px 3px 10px;background:rgba(14,165,233,.06); border-radius:0 4px 4px 0;margin-bottom:8px}
+.card-body p.intent-confirm {border-left:3px solid rgba(217,119,6,.5);  padding:3px 3px 3px 10px;background:rgba(217,119,6,.06);  border-radius:0 4px 4px 0;margin-bottom:8px}
+.card-body p.intent-oos     {border-left:3px solid #1f2937;padding:3px 3px 3px 10px;color:#374151;margin-bottom:8px;border-radius:0 4px 4px 0}
+.card-body p.intent-oos strong{color:#374151}
+
+/* VARIABLE COLORS */
+.card-body code{background:rgba(0,0,0,.4);padding:1px 6px;border-radius:3px;font-size:.73rem;font-family:'Fira Code',monospace;color:#fcd34d}
+.card-body code.v-yml    {background:rgba(217,119,6,.15);  border:1px solid rgba(217,119,6,.3);  color:#fbbf24;padding:0 5px}
+.card-body code.v-crm    {background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.3); color:#93c5fd;padding:0 5px}
+.card-body code.v-inj    {background:rgba(8,145,178,.1);   border:1px solid rgba(8,145,178,.25); color:#22d3ee;padding:0 5px}
+.card-body code.v-rag    {background:rgba(13,148,136,.1);  border:1px solid rgba(13,148,136,.25);color:#2dd4bf;padding:0 5px}
+.card-body code.v-missing{background:rgba(239,68,68,.07);  border:1px dashed rgba(239,68,68,.5); color:#f87171;padding:0 5px}
+
+/* META TABLE */
+.card-body table{width:100%;border-collapse:collapse;margin:4px 0 0;font-size:.72rem}
+.card-body th{display:none}
+.card-body td{padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:#9ca3af;vertical-align:top;line-height:1.55}
+.card-body td:first-child{color:#4b5563;white-space:nowrap;width:1%;padding-right:16px;font-weight:600;font-size:.67rem;text-transform:uppercase;letter-spacing:.04em}
+.card-body td code{background:rgba(0,0,0,.35);border:none;color:#fcd34d}
+.card-body td code.v-yml    {background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.3);color:#fbbf24}
+.card-body td code.v-crm    {background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#93c5fd}
+.card-body td code.v-missing{background:rgba(239,68,68,.07);border:1px dashed rgba(239,68,68,.5);color:#f87171}
+
+/* ✓ / ✗ in table */
+.t-ok{color:#4ade80;font-weight:700;margin-right:3px}
+.t-no{color:#f87171;font-weight:700;margin-right:3px}
+
+/* GAPS SECTION */
+.card-body li.gap-item{color:#f87171;list-style:none;padding-left:0;margin-bottom:5px;font-size:.74rem}
+.card-body li.gap-item::before{content:"! ";font-weight:700;color:#ef4444}
+.card-body li.gap-item code{background:rgba(239,68,68,.07);border:1px dashed rgba(239,68,68,.4);color:#f87171}
+
+.loading{color:#374151;font-size:.75rem;padding:20px 0}
+
+/* ── FOUR-COLUMN LAYOUT ── */
+.prompt-row{display:grid;grid-template-columns:1fr 1fr 1fr 0.85fr;gap:14px;margin-bottom:18px;align-items:start}
+
+/* Column header row */
+.col-headers{display:grid;grid-template-columns:1fr 1fr 1fr 0.85fr;gap:14px;margin-bottom:10px;position:sticky;top:38px;z-index:50;padding:6px 0 4px;background:#080a0f}
+.col-hdr{font-size:.54rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border-radius:6px;text-align:center}
+.col-hdr-v1{background:rgba(107,114,128,.07);color:#4b5563;border:1px solid rgba(107,114,128,.15)}
+.col-hdr-v2{background:rgba(99,102,241,.06);color:#6366f1;border:1px solid rgba(99,102,241,.15)}
+.col-hdr-v3{background:rgba(14,165,233,.07);color:#38bdf8;border:1px solid rgba(14,165,233,.2)}
+.col-hdr-tasks{background:rgba(74,222,128,.05);color:#4ade80;border:1px solid rgba(74,222,128,.12)}
+
+/* ── V1 / V2 CARDS ── */
+.card-v1{background:#0a0c10;border:1px solid rgba(107,114,128,.2);border-radius:10px;overflow:hidden}
+.card-v2{background:#0b0c18;border:1px solid rgba(99,102,241,.2);border-radius:10px;overflow:hidden}
+.card-absent{background:#080a0e;border:1px dashed rgba(55,65,81,.3);border-radius:10px;display:flex;align-items:center;justify-content:center;min-height:60px;padding:14px}
+.card-absent-label{font-size:.64rem;color:#374151;font-style:italic}
+.card-v1 .card-head,.card-v2 .card-head{border-bottom:1px solid rgba(255,255,255,.04)}
+.card-v1 .card-name{color:#6b7280;font-size:.8rem}
+.card-v2 .card-name{color:#818cf8;font-size:.8rem}
+.card-v1 .card-body,.card-v2 .card-body{color:#6b7280;font-size:.72rem}
+.card-v1 .card-body strong,.card-v2 .card-body strong{color:#9ca3af}
+.card-v1 .card-body h1,.card-v1 .card-body h2,.card-v1 .card-body h3,
+.card-v2 .card-body h1,.card-v2 .card-body h2,.card-v2 .card-body h3{color:#9ca3af;font-size:.78rem;margin:10px 0 4px}
+.card-v1 .card-body code,.card-v2 .card-body code{background:rgba(0,0,0,.35);color:#9ca3af}
+.card-v1 .card-body hr,.card-v2 .card-body hr{border-color:#161c24}
+.card-v1 .card-meta .v-tag,.card-v2 .card-meta .v-tag{font-size:.56rem;font-weight:700;padding:2px 7px;border-radius:3px}
+.v-tag-v1{background:rgba(107,114,128,.1);color:#6b7280;border:1px solid rgba(107,114,128,.2)}
+.v-tag-v2{background:rgba(99,102,241,.1);color:#818cf8;border:1px solid rgba(99,102,241,.2)}
+
+/* ── TASK CARD (right column) ── */
+.task-card{border-radius:10px;overflow:hidden;border:2px solid transparent}
+.task-card-router {background:#020b1e;border-color:#2563eb}
+.task-card-faq    {background:#021208;border-color:#16a34a}
+.task-card-social {background:#0d0618;border-color:#a855f7}
+.task-card-booking{background:#030d18;border-color:#0ea5e9}
+.task-card-confirm{background:#140b03;border-color:#d97706}
+.task-card-tool   {background:#0a0a12;border:2px dotted #374151}
+
+.task-head{padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.05)}
+.task-head-title{font-size:.56rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#374151;flex:1}
+
+.task-body{padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+
+.t-item{display:flex;align-items:baseline;gap:7px;padding:5px 8px;border-radius:5px;font-size:.71rem;line-height:1.55}
+.t-item-icon{flex-shrink:0;font-size:.62rem;font-weight:800;width:10px;text-align:center}
+.t-text{flex:1;color:#9ca3af}
+.t-text code{background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;font-size:.67rem;color:#fcd34d;font-family:'Fira Code',monospace}
+.t-file{margin-left:6px;font-family:'Fira Code','Consolas',monospace;font-size:.59rem;color:#374151;white-space:nowrap;flex-shrink:0}
+
+.t-ok      {background:rgba(74,222,128,.06)}           .t-ok      .t-text{color:#4ade80}
+.t-fix     {background:rgba(251,191,36,.07)}            .t-fix     .t-text{color:#fbbf24}
+.t-miss    {background:rgba(239,68,68,.07);border:1px dashed rgba(239,68,68,.3)} .t-miss .t-text{color:#fca5a5}
+.t-create  {background:rgba(96,165,250,.07)}            .t-create  .t-text{color:#93c5fd}
+.t-critical{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.35)} .t-critical .t-text{color:#f87171;font-weight:600}
+.t-note    {background:rgba(100,116,139,.05)}           .t-note    .t-text{color:#6b7280}
+.t-code    {background:rgba(34,211,238,.05)}            .t-code    .t-text{color:#67e8f9}
+.t-yaml    {background:rgba(217,119,6,.07)}             .t-yaml    .t-text{color:#fbbf24}
+.t-gap     {background:rgba(239,68,68,.07);border-left:2px solid #ef4444;padding-left:10px} .t-gap .t-text{color:#f87171}
+
+.t-section{font-size:.55rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#374151;padding:6px 0 2px;margin-top:4px}
+
+/* ── YAML SECTION ── */
+.yaml-section{background:#06090f;border:1px solid #1f2937;border-radius:10px;margin-bottom:22px;overflow:hidden}
+.yaml-sec-head{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #1f2937;cursor:pointer;user-select:none}
+.yaml-sec-head:hover{background:rgba(255,255,255,.02)}
+.yaml-sec-title{font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#374151;flex:1}
+.yaml-sec-stats{display:flex;gap:8px;margin-right:8px}
+.yaml-stat{font-size:.6rem;padding:1px 7px;border-radius:3px;font-weight:600}
+.yaml-stat-ok{background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.2)}
+.yaml-stat-miss{background:rgba(239,68,68,.08);color:#f87171;border:1px dashed rgba(239,68,68,.4)}
+.yaml-chev{font-size:.7rem;color:#374151;transition:transform .2s}
+.yaml-section.collapsed .yaml-chev{transform:rotate(-90deg)}
+.yaml-section.collapsed .yaml-body{display:none}
+
+.yaml-body{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+
+.yaml-group{border-radius:7px;overflow:hidden;border:1px solid}
+.yaml-group.g-ok{border-color:rgba(55,65,81,.5);background:#08111c}
+.yaml-group.g-miss{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.03)}
+.yaml-group.g-partial{border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.02)}
+
+.yaml-group-head{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:.67rem;font-weight:600;border-bottom:1px solid rgba(255,255,255,.04)}
+.yaml-group.g-ok    .yaml-group-head{color:#6b7280}
+.yaml-group.g-miss  .yaml-group-head{color:#f87171}
+.yaml-group.g-partial .yaml-group-head{color:#fbbf24}
+.yaml-group-badge{font-size:.55rem;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:auto}
+.yaml-group.g-ok     .yaml-group-badge{background:rgba(74,222,128,.1);color:#4ade80}
+.yaml-group.g-miss   .yaml-group-badge{background:rgba(239,68,68,.08);color:#f87171;border:1px dashed rgba(239,68,68,.4)}
+.yaml-group.g-partial .yaml-group-badge{background:rgba(251,191,36,.08);color:#fbbf24;border:1px dashed rgba(251,191,36,.4)}
+.yaml-group.closed .yaml-group-body{display:none}
+
+.yaml-group-body{padding:8px 12px}
+pre.y{margin:0;font-family:'Fira Code','Consolas',monospace;font-size:.67rem;line-height:1.8;white-space:pre-wrap;word-break:break-all;color:#6b7280;overflow-x:auto}
+pre.y .yk{color:#93c5fd} /* yaml key */
+pre.y .yv{color:#86efac} /* yaml value string */
+pre.y .yn{color:#fb923c} /* yaml number */
+pre.y .yc{color:#374151;font-style:italic} /* yaml comment */
+pre.y .miss-line{color:#f87171;background:rgba(239,68,68,.06);display:block;border-left:2px solid #ef4444;padding-left:4px;margin-left:-4px}
+pre.y .miss-key{color:#f87171} /* missing field name */
+pre.y .exist-key{color:#4ade80} /* existing key (in service keys list) */
+pre.y .miss-badge{display:inline-block;font-size:.52rem;background:rgba(239,68,68,.15);color:#f87171;border:1px dashed rgba(239,68,68,.5);border-radius:2px;padding:0 4px;font-style:normal;vertical-align:middle;margin-left:4px}
+pre.y .ok-badge{display:inline-block;font-size:.52rem;background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.2);border-radius:2px;padding:0 4px;font-style:normal;vertical-align:middle;margin-left:4px}
+.yaml-note{font-size:.63rem;color:#6b7280;padding:4px 0 2px;line-height:1.6}
+.yaml-note b{color:#9ca3af}
+.yaml-note .r{color:#f87171}
+.yaml-divider{border:none;border-top:1px solid #161c24;margin:6px 0}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Prompt Research</h1>
+  <span class="top-sep">·</span>
+  <a href="https://hub.na-linii.com" target="_blank">hub.na-linii.com ↗</a>
+  <span class="top-sep">·</span>
+  <span style="font-size:.7rem;color:#374151">V3 · редактируй .md, обновляй страницу</span>
+</div>
+
+<div class="wrap">
+  <div style="height:4px"></div>
+
+  <!-- LEGEND -->
+  <div class="legend no-scroll">
+    <div class="leg-head">
+      <span class="leg-head-title">Переменные — Элайнер РФ (starsmile)</span>
+      <div class="leg-types">
+        <span class="leg-type"><span class="swatch sw-yml"></span>YAML / Langfuse</span>
+        <span class="leg-type"><span class="swatch sw-crm"></span>CRM / session</span>
+        <span class="leg-type"><span class="swatch sw-inj"></span>Runtime инъекция</span>
+        <span class="leg-type"><span class="swatch sw-rag"></span>RAG</span>
+        <span class="leg-type"><span class="swatch sw-miss"></span>Не реализовано</span>
+      </div>
+    </div>
+    <div class="leg-grid">
+      <div>
+        <div class="leg-col-title">YAML / Langfuse конфиг</div>
+        <div class="leg-rows">
+          <div class="leg-row"><span class="lv-key yml">{{clinic_name}}</span><span class="lv-val"><b>"Элайнер РФ"</b> <span class="lv-src">· yml: name</span></span></div>
+          <div class="leg-row"><span class="lv-key yml">{{clinic_id}}</span><span class="lv-val"><b>"starsmile_demo"</b> <span class="lv-src">· yml: clinic_id</span></span></div>
+          <div class="leg-row"><span class="lv-key yml">{{booking_rules}}</span><span class="lv-val"><b>34 строки правил</b> <span class="lv-src">· yml: booking_rules</span></span></div>
+          <div class="leg-row"><span class="lv-key yml">{{agent_identity}}</span><span class="lv-val"><b>"Ты — Анна, ассистент клиники Элайнер РФ. Отвечай дружелюбно…"</b> <span class="lv-src">· yml: agent.{name, gender, tone} · agent_identity property ✓</span></span></div>
+          <div class="leg-row"><span class="lv-key yml">{{no_data_behavior}}</span><span class="lv-val"><b>"Если нет ответа — скажи честно: «Уточню у администратора»"</b> <span class="lv-src">· yml: no_data_behavior · ClinicConfig ✓</span></span></div>
+          <div class="leg-row"><span class="lv-key yml">{{service_catalog}}</span><span class="lv-val"><b>23 service_key · 35 синонимов · 4 Decision Rules</b> <span class="lv-src">· yml: service_catalog · PROMPT_VARS ✓</span></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="leg-col-title">CRM / session state</div>
+        <div class="leg-rows">
+          <div class="leg-row"><span class="lv-key crm">{{patient_name}}</span><span class="lv-val"><b>"Иван Петров"</b> <span class="lv-src">· CRM: get_patient_bookings()</span></span></div>
+          <div class="leg-row"><span class="lv-key crm">{{patient_phone}}</span><span class="lv-val"><b>"+7 926 ..."</b> <span class="lv-src">· session / CRM</span></span></div>
+          <div class="leg-row"><span class="lv-key crm">{{is_identified}}</span><span class="lv-val"><b>true / false</b> <span class="lv-src">· session state</span></span></div>
+          <div class="leg-row"><span class="lv-key crm">{{appointment_date}}</span><span class="lv-val"><b>"10 апреля 2026"</b> <span class="lv-src">· CRM</span></span></div>
+          <div class="leg-row"><span class="lv-key crm">{{appointment_time}}</span><span class="lv-val"><b>"11:00"</b> <span class="lv-src">· CRM</span></span></div>
+          <div class="leg-row"><span class="lv-key crm">{{doctor_name}}</span><span class="lv-val"><b>"Нагаева В.Н."</b> <span class="lv-src">· CRM</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="leg-inj">
+      <div class="leg-row"><span class="lv-key rag">[РЕЗУЛЬТАТЫ ПОИСКА]</span><span class="lv-val"><b>top-k чанков pgvector</b> <span class="lv-src">· faq:_pre_search()</span></span></div>
+    </div>
+  </div>
+
+  <!-- YAML SECTION -->
+  <div class="yaml-section no-scroll" id="yaml-sec">
+    <div class="yaml-sec-head" onclick="document.getElementById('yaml-sec').classList.toggle('collapsed')">
+      <span class="yaml-sec-title">YAML конфиг — starsmile.yml · Элайнер РФ</span>
+      <div class="yaml-sec-stats">
+        <span class="yaml-stat yaml-stat-ok">✓ 12 секций · agent / service_catalog · код читает · V3 задеплоен</span>
+      </div>
+      <span class="yaml-chev">▼</span>
+    </div>
+    <div class="yaml-body">
+
+      <!-- 1. Идентичность клиники -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">clinic_id · name · channels · gateway <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">clinic_id</span>: <span class="yv">starsmile</span>
+<span class="yk">name</span>: <span class="yv">"Элайнер РФ (Star Smile)"</span>
+
+<span class="yk">channels</span>:
+  <span class="yk">tg_business</span>: <span class="yv">enabled: true · tone: friendly</span>
+  <span class="yk">tg_bot</span>:      <span class="yv">enabled: true · tone: friendly</span>
+  <span class="yk">whatsapp</span>:    <span class="yv">enabled: true · tone: formal</span>
+  <span class="yk">greeting</span>:   <span class="yv">"Привет! Я Анна, ассистент клиники Элайнер РФ 😊"</span>
+  <span class="yk">features</span>:   <span class="yv">[faq, booking, appointments, handoff]</span>
+
+<span class="yk">gateway.telegram</span>: <span class="yv">bot_token: "${TELEGRAM_BOT_TOKEN}" · streaming: false</span></pre>
+        </div>
+      </div>
+
+      <!-- 2. agent_identity — РЕАЛИЗОВАНО -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">agent: — identity · tone · no_data_behavior <span class="yaml-group-badge">✓ реализовано</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">agent</span>:
+  <span class="yk">name</span>: <span class="yv">"Анна"</span>
+  <span class="yk">gender</span>: <span class="yv">female</span>             <span class="yc"># Окончания женского рода: «записала», «уточнила», «подскажу»</span>
+  <span class="yk">tone</span>: <span class="yv">friendly</span>
+  <span class="yk">intro</span>: <span class="yv">"Меня зовут Анна, ассистент клиники Элайнер РФ."</span>
+
+<span class="yk">no_data_behavior</span>: |
+  <span class="yv">"Если в базе знаний нет точного ответа — скажи честно: «Уточню у администратора»</span>
+  <span class="yv"> или предложи позвонить: +7 (495) 108-11-49. Не придумывай цены и условия."</span></pre>
+          <p class="yaml-note" style="color:#4ade80">✓ <b>Реализовано:</b> <code>clinic_loader.py</code> читает <code>agent:</code> блок, <code>agent_identity</code> property собирает строку идентичности. <code>ClinicConfig</code> содержит поля <code>agent_identity</code>, <code>no_data_behavior</code>. Задеплоено 10.04.2026.</p>
+        </div>
+      </div>
+
+      <!-- 3. booking_rules -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">booking_rules · allow_primary · advance_days · handoff <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">pricing_mode</span>: <span class="yv">exact</span>  ·  <span class="yk">show_doctors</span>: <span class="yv">true</span>
+<span class="yk">allow_primary</span>: <span class="yn">false</span>     <span class="yc"># Только известные пациенты CRM</span>
+<span class="yk">advance_days</span>: <span class="yn">14</span>         <span class="yc"># Горизонт записи — 14 дней</span>
+<span class="yk">new_patient_policy</span>: <span class="yv">operator</span>
+
+<span class="yk">booking_rules</span>: |           <span class="yc"># → {{booking_rules}} в промпте</span>
+  <span class="yc">  34 строки: врачи по специальностям, second-chair логика,</span>
+  <span class="yc">  возрастные ограничения, логика выбора врача</span>
+
+<span class="yk">handoff</span>:
+  <span class="yk">cooldown_minutes</span>: <span class="yn">30</span>
+  <span class="yk">primary_patients</span>: <span class="yv">always</span>
+  <span class="yk">max_retries</span>: <span class="yn">3</span></pre>
+        </div>
+      </div>
+
+      <!-- 4. service_catalog — РЕАЛИЗОВАНО -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">service_catalog: + service_duration — 23 ключа · 35 синонимов · Decision Rules <span class="yaml-group-badge">✓ реализовано</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">service_catalog</span>: |              <span class="yc"># → {{service_catalog}} в booking промпте</span>
+  <span class="yc">  # Терапия</span>
+  <span class="exist-key">therapy.consultation</span>           <span class="ok-badge">30 мин</span>
+  <span class="exist-key">therapy.treatment</span>              <span class="ok-badge">60 мин</span>
+  <span class="exist-key">therapy.hygiene</span>                <span class="ok-badge">60 мин</span>
+  <span class="yc">  # Хирургия · Ортопедия · Имплантация</span>
+  <span class="exist-key">surgery.consultation</span>           <span class="ok-badge">30 мин</span>
+  <span class="exist-key">surgery.treatment</span>              <span class="ok-badge">60 мин</span>
+  <span class="exist-key">orthopedics.consultation</span>       <span class="ok-badge">30 мин</span>
+  <span class="exist-key">orthopedics.treatment</span>          <span class="ok-badge">60 мин</span>
+  <span class="exist-key">implantation.consultation</span>      <span class="ok-badge">30 мин</span>
+  <span class="exist-key">implantation.treatment</span>         <span class="ok-badge">60 мин</span>
+  <span class="yc">  # Детская стоматология</span>
+  <span class="exist-key">pediatric.general</span>              <span class="ok-badge">30 мин</span>
+  <span class="yc">  # Ортодонтия — 11 ключей</span>
+  <span class="exist-key">orthodontics.consultation</span>      <span class="ok-badge">30+30 multi</span>   <span class="yc">бесплатно</span>
+  <span class="exist-key">orthodontics.aligner_routine</span>   <span class="ok-badge">30 мин</span>         <span class="yc">second_chair: preferred</span>
+  <span class="exist-key">orthodontics.scan_for_diagnostics</span> <span class="ok-badge">30 мин</span>      <span class="yc">second_chair: required</span>
+  <span class="exist-key">orthodontics.aligner_initial_fixation</span> <span class="ok-badge">60 мин</span>
+  <span class="exist-key">orthodontics.aligner_fixation</span>  <span class="ok-badge">60 мин</span>         <span class="yc">second_chair: required</span>
+  <span class="exist-key">orthodontics.aligner_treatment_end</span> <span class="ok-badge">60 мин</span>
+  <span class="exist-key">orthodontics.bracket_initial_fixation</span> <span class="ok-badge">90 мин</span>
+  <span class="exist-key">orthodontics.bracket_activation</span> <span class="ok-badge">60 мин</span>
+  <span class="exist-key">orthodontics.bracket_removal</span>   <span class="ok-badge">90 мин</span>
+  <span class="exist-key">orthodontics.revision</span>          <span class="ok-badge">60 мин</span>         <span class="yc">second_chair: required</span>
+  <span class="exist-key">orthodontics.revision_or_retainers</span> <span class="ok-badge">30+30 multi</span>
+  <span class="yc">  # Прочее</span>
+  <span class="exist-key">whitening.zoom</span>                 <span class="ok-badge">90 мин</span>
+  <span class="exist-key">gnathology.consultation</span>        <span class="ok-badge">30 мин</span>
+
+  <span class="yc">  ## Синонимы — 35 записей (рус. фраза → service_key)</span>
+  <span class="yv">"чистка зубов", "профгигиена"</span>          → <span class="exist-key">therapy.hygiene</span>
+  <span class="yv">"смена кап", "новые капы"</span>              → <span class="exist-key">orthodontics.aligner_routine</span>
+  <span class="yv">"поставить брекеты"</span>                    → <span class="exist-key">orthodontics.bracket_initial_fixation</span>
+  <span class="yv">"снять брекеты"</span>                        → <span class="exist-key">orthodontics.bracket_removal</span>
+  <span class="yv">"ретейнеры", "финал лечения"</span>           → <span class="exist-key">orthodontics.revision_or_retainers</span>
+  <span class="yv">... ещё 30+ записей в starsmile.yml</span>
+
+  <span class="yc">  ## Decision Rules (ортодонтия) — 4 правила</span>
+  <span class="yv">1. Смена кап vs первые капы → спроси "уже на курсе?"</span>
+  <span class="yv">2. Ревизия vs финал → по контексту жалобы vs. завершения</span>
+  <span class="yv">3. Брекеты — установить/активация/снять</span>
+  <span class="yv">4. Default → orthodontics.consultation</span></pre>
+          <p class="yaml-note" style="color:#4ade80">✓ <b>Реализовано:</b> <code>service_catalog</code> добавлен в <code>PROMPT_VARS</code> (<code>config.py</code>), <code>ClinicConfig</code> (<code>models.py</code>) и <code>_build_agent_config()</code> (<code>graph.py</code>). Задеплоено 10.04.2026.</p>
+        </div>
+      </div>
+
+      <!-- 5. speciality_to_doctors / medflex -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">speciality_to_doctors · medflex_doctors · age_policies <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">speciality_to_doctors</span>:
+  <span class="yk">orthodontics</span>:          <span class="yv">ident_id: 5</span>   <span class="yv">primary: [7617 Нагаева, 14171 Александрова]</span>
+  <span class="yk">pediatric_orthodontics</span>: <span class="yv">ident_id: 5</span>   <span class="yv">primary: [7617, 14171]</span>
+  <span class="yk">therapy</span>:               <span class="yv">ident_id: 3</span>   <span class="yv">primary: [15303 Титова, 13938 Шевелюк]</span>
+  <span class="yk">surgery</span>:               <span class="yv">ident_id: 13</span>  <span class="yv">primary: [10935 Кирьянов]</span>
+  <span class="yk">orthopedics</span>:           <span class="yv">ident_id: 1</span>   <span class="yv">primary: [10935 Кирьянов]</span>
+  <span class="yk">implantation</span>:          <span class="yv">ident_id: 14</span>  <span class="yv">primary: [10935 Кирьянов]</span>
+  <span class="yk">pediatric_dentistry</span>:   <span class="yv">ident_id: 11</span>  <span class="yv">primary: [14981 Федулова]</span>
+
+<span class="yk">age_policies</span>:
+  <span class="yk">minor_threshold</span>: <span class="yn">18</span>        <span class="yc"># &lt;18 = несовершеннолетний, second-chair ЗАПРЕЩЁН</span>
+  <span class="yk">orthodontics.min_age</span>: <span class="yn">6</span>
+  <span class="yk">pediatric_dentistry.max_age</span>: <span class="yn">17</span>
+
+<span class="yk">medflex_doctors</span>:
+  <span class="yk">default_lpu_id</span>: <span class="yn">78721</span>  ·  <span class="yk">default_price</span>: <span class="yn">1000</span>  ·  <span class="yk">quant_duration_minutes</span>: <span class="yn">30</span>
+
+  <span class="yc">  # Лечащие ортодонты</span>
+  <span class="yk">"7617"</span>   Нагаева В.Н.           <span class="yv">medflex_id: 998743</span>   <span class="yn">price: 1000</span>  <span class="yv">orthodontics: 46</span>
+  <span class="yk">"14171"</span>  Александрова Е.Н.      <span class="yv">medflex_id: 868999</span>   <span class="yn">price: 1000</span>  <span class="yv">orthodontics: 46</span>
+  <span class="yk">"15568"</span>  (ортодонт)             <span class="yv">medflex_id: 594880</span>   <span class="yn">price: 1000</span>  <span class="yv">orthodontics: 46</span>
+
+  <span class="yc">  # Second-chair (плановые приёмы)</span>
+  <span class="yk">"14781"</span>  Романов Л.А.           <span class="yv">medflex_id: 1335605</span>  <span class="yn">price: 500</span>   <span class="yv">orthodontics: 46</span>
+  <span class="yk">"15873"</span>  Кулина Ю.И.            <span class="yv">medflex_id: 1362608</span>  <span class="yn">price: 0</span>     <span class="yv">orthodontics: 46</span>
+  <span class="yk">"15478"</span>  Ерёмина К.Ю.           <span class="yv">medflex_id: 1362612</span>  <span class="yn">price: 0</span>     <span class="yv">orthodontics: 46</span>
+
+  <span class="yc">  # Терапевты</span>
+  <span class="yk">"15303"</span>  Титова О.Н.            <span class="yv">medflex_id: 943142</span>   <span class="yn">price: 1000</span>  <span class="yv">therapy: 48</span>
+  <span class="yk">"13938"</span>  Шевелюк Ю.В. (к.м.н.) <span class="yv">medflex_id: 348562</span>   <span class="yn">price: 1000</span>  <span class="yv">therapy: 48</span>
+
+  <span class="yc">  # Хирург / Ортопед / Гнатолог</span>
+  <span class="yk">"10935"</span>  Кирьянов А.С.          <span class="yv">medflex_id: 998740</span>   <span class="yn">price: 1000</span>  <span class="yv">surgery: 49 · orthopedics: 47 · implantation: 49</span>
+
+  <span class="yc">  # Детский стоматолог / Гигиенист</span>
+  <span class="yk">"14981"</span>  Федулова С.С.          <span class="yv">medflex_id: 1096696</span>  <span class="yn">price: 500</span>   <span class="yv">therapy: 48</span>  <span class="yc"># ← через therapy ident_id!</span></pre>
+        </div>
+      </div>
+
+      <!-- 6. CRM routing -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">crm.routing — ident / medflex / action_queue <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">crm.routing</span>:
+  <span class="yk">get_doctors</span>:          <span class="yv">ident</span>         <span class="yc"># READ → ident DB</span>
+  <span class="yk">get_available_slots</span>:  <span class="yv">ident</span>         <span class="yc"># READ → ident DB</span>
+  <span class="yk">get_patient_by_phone</span>: <span class="yv">ident</span>
+  <span class="yk">book_appointment</span>:     <span class="yv">medflex</span>       <span class="yc"># WRITE → MedFlex API</span>
+  <span class="yk">cancel_appointment</span>:   <span class="yv">action_queue</span>  <span class="yc"># WRITE → задача администратору</span>
+  <span class="yk">register_patient</span>:     <span class="yv">action_queue</span>  <span class="yc"># WRITE → задача администратору</span>
+  <span class="yk">update_booking_status</span>:<span class="yv">action_queue</span>  <span class="yc"># WRITE → задача администратору</span></pre>
+        </div>
+      </div>
+
+      <!-- 7. confirmation -->
+      <div class="yaml-group g-partial">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">confirmation · require_phone_for <span class="yaml-group-badge">⚠ выключено</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">confirmation</span>:
+  <span class="yk">enabled</span>: <span class="yn">false</span>         <span class="yc"># ⚠ ВЫКЛЮЧЕНО — до завершения тестов на starsmile_test</span>
+
+<span class="yk">require_phone_for</span>: <span class="yv">[booking, reschedule, cancel]</span></pre>
+          <p class="yaml-note" style="color:#fbbf24">⚠ confirmation.enabled=false — агент подтверждений отключён, тестируется на starsmile_test</p>
+        </div>
+      </div>
+
+      <!-- 8. knowledge — контакты и фичи -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">knowledge · about · address · features <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">knowledge</span>:
+  <span class="yk">about</span>: <span class="yv">"Элайнер РФ (Star Smile) — ортодонтическая клиника в Москве.</span>
+         <span class="yv"> Специализация: элайнеры Star Smile, брекет-системы, имплантация,</span>
+         <span class="yv"> терапия, хирургия, детская стоматология."</span>
+
+  <span class="yk">address</span>:       <span class="yv">"м. Технопарк, пр-т Андропова д.8, ТЦ Мегаполис, 1 эт. → лифты → 6 эт., каб. 609-610"</span>
+  <span class="yk">phone</span>:         <span class="yv">"+7 (495) 108-11-49"</span>
+  <span class="yk">working_hours</span>: <span class="yv">"Ежедневно 09:00–21:00"</span>
+
+  <span class="yk">features</span>:
+    - <span class="yv">"Бесплатная консультация ортодонта"</span>
+    - <span class="yv">"Рассрочка 0% на элайнеры и брекеты"</span>
+    - <span class="yv">"Онлайн-консультация доступна"</span>
+    - <span class="yv">"Подземный паркинг в ТЦ Мегаполис"</span>
+    - <span class="yv">"Медицинский куратор для каждого пациента"</span>
+    - <span class="yv">"Телефон кураторов: +7 926 239-75-98"</span></pre>
+        </div>
+      </div>
+
+      <!-- 9. knowledge — услуги с ценами -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">knowledge.services — 13 услуг с ценами <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">knowledge.services</span>:                         <span class="yc"># Tier 1 — всегда в контексте FAQ агента</span>
+
+  <span class="yc">  # ── Ортодонтия ──────────────────────────────────────────</span>
+  <span class="yk">Консультация ортодонта + 3D-скан</span>           <span class="yn">0 ₽</span>    <span class="yc">60 мин · бесплатно</span>
+  <span class="yk">Элайнеры Star Smile IQ (всё включено)</span>      <span class="yn">от 10 970 ₽/мес</span>  <span class="yc">рассрочка 0%</span>
+  <span class="yk">Брекеты (всё включено)</span>                     <span class="yn">от 12 030 ₽/мес</span>  <span class="yc">~24 мес. лечение</span>
+
+  <span class="yc">  # ── Гигиена ─────────────────────────────────────────────</span>
+  <span class="yk">Профгигиена</span>                                <span class="yn">5 200–8 230 ₽</span>   <span class="yc">60 мин · 5 200 по акции</span>
+
+  <span class="yc">  # ── Имплантация ──────────────────────────────────────────</span>
+  <span class="yk">Имплантация OSSTEM</span>                         <span class="yn">от 42 446 ₽</span>     <span class="yc">абатмент и коронка — отдельно</span>
+
+  <span class="yc">  # ── Терапия ─────────────────────────────────────────────</span>
+  <span class="yk">Лечение кариеса</span>                            <span class="yn">от 5 500 ₽</span>      <span class="yc">60 мин</span>
+  <span class="yk">Консультация терапевта</span>                     <span class="yn">0 ₽</span>             <span class="yc">бесплатно</span>
+
+  <span class="yc">  # ── Хирургия ─────────────────────────────────────────────</span>
+  <span class="yk">Удаление зуба</span>                              <span class="yn">от 3 000 ₽</span>
+  <span class="yk">Удаление зуба мудрости</span>                     <span class="yn">от 8 000 ₽</span>
+  <span class="yk">Консультация хирурга</span>                       <span class="yn">0 ₽</span>             <span class="yc">бесплатно</span>
+
+  <span class="yc">  # ── Прочее ───────────────────────────────────────────────</span>
+  <span class="yk">Детская стоматология</span>                       <span class="yn">от 2 500 ₽</span>      <span class="yc">дети от 0 лет</span>
+  <span class="yk">Отбеливание Zoom</span>                           <span class="yn">от 41 280 ₽</span>     <span class="yc">90 мин · кабинетное</span>
+  <span class="yk">Консультация гнатолога</span>                     <span class="yn">от 1 200 ₽</span>      <span class="yc">единственная платная консультация</span></pre>
+        </div>
+      </div>
+
+      <!-- 10. knowledge — doctors + FAQ -->
+      <div class="yaml-group g-ok">
+        <div class="yaml-group-head" onclick="this.parentElement.classList.toggle('closed')">knowledge.doctors + knowledge.faq (Tier 1) <span class="yaml-group-badge">✓ есть</span></div>
+        <div class="yaml-group-body">
+<pre class="y"><span class="yk">knowledge.doctors</span>:
+  <span class="yk">Нагаева В.Н.</span>       <span class="yv">ортодонт, эксперт Star Smile</span>
+  <span class="yk">Александрова Е.Н.</span>  <span class="yv">ортодонт, эксперт Star Smile</span>
+  <span class="yk">Кирьянов А.С.</span>      <span class="yv">хирург-имплантолог, ортопед, гнатолог</span>
+  <span class="yk">Шевелюк Ю.В.</span>       <span class="yv">терапевт, к.м.н.</span>
+  <span class="yk">Титова О.Н.</span>        <span class="yv">терапевт</span>
+  <span class="yk">Федулова С.С.</span>      <span class="yv">детский стоматолог, гигиенист</span>
+
+<span class="yk">knowledge.faq</span>:                                  <span class="yc"># 10 пар Q&amp;A — Tier 1, в контексте без RAG</span>
+  <span class="yv">"Консультация ортодонта бесплатная?"</span>  → <span class="yv">"Да, со сканом, в любой день."</span>
+  <span class="yv">"Как добраться от метро?"</span>            → <span class="yv">"м. Технопарк, ТЦ Мегаполис, 1 эт. → лифты → 6 эт."</span>
+  <span class="yv">"Есть рассрочка?"</span>                    → <span class="yv">"Да, 0% на элайнеры и брекеты."</span>
+  <span class="yv">"Есть парковка?"</span>                     → <span class="yv">"Да, подземный паркинг ТЦ Мегаполис."</span>
+  <span class="yv">"Как записаться?"</span>                    → <span class="yv">"+7 (495) 108-11-49 / заявка на сайте"</span>
+  <span class="yv">"Принимаете детей?"</span>                  → <span class="yv">"Да, от 0 лет. Федулова С.С."</span>
+  <span class="yv">"Есть онлайн-консультация?"</span>          → <span class="yv">"Да, оставьте заявку — куратор свяжется."</span>
+  <span class="yv">"Почта клиники?"</span>                     → <span class="yv">"clinic@aligner-rf.ru"</span>
+  <span class="yv">"Налоговый вычет / справки?"</span>         → <span class="yv">"Уточните по тел. +7 (495) 108-11-49."</span>
+  <span class="yv">"Все консультации бесплатные?"</span>       → <span class="yv">"Да, кроме гнатолога (1 200 ₽)."</span></pre>
+        </div>
+      </div>
+
+    </div><!-- /yaml-body -->
+  </div><!-- /yaml-section -->
+
+  <!-- READINESS BANNER -->
+  <div class="no-scroll" style="background:#06090f;border:1px solid #1f2937;border-radius:10px;margin-bottom:22px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #1f2937">
+      <span style="font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#374151;flex:1">Статус V3 · задеплоено 10.04.2026</span>
+      <span style="font-size:.62rem;font-weight:700;padding:2px 10px;border-radius:4px;background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.25)">✓ ЗАДЕПЛОЕНО · ТЕСТИРОВАНИЕ</span>
+    </div>
+    <div style="padding:14px 18px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <!-- LEFT: промпты и конфиг -->
+      <div>
+        <div style="font-size:.54rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#374151;margin-bottom:8px">Промпты и конфиг</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:.71rem">
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af">Все 5 V3 промптов задеплоены в Langfuse (router · faq · social · booking · confirm)</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">agent_identity</code>, <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">no_data_behavior</code>, <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">service_catalog</code> в PROMPT_VARS</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">ClinicConfig</code> содержит 3 новых поля · <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">clinic_loader.py</code> читает YAML</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">agent_identity</code> property собирает строку из agent.{name, gender, tone}</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">handoff_to_human</code> возвращает <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">""</code> — агент формулирует реплику сам</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">confirm/decline/reschedule_visit</code> возвращают <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">""</code></span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">starsmile_demo.yml</code> — agent, no_data_behavior, service_catalog, modules.social:agent</span></div>
+        </div>
+      </div>
+      <!-- RIGHT: граф и агенты -->
+      <div>
+        <div style="font-size:.54rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#374151;margin-bottom:8px">Граф и агенты (dental-core)</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:.71rem">
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">graph.py</code> — <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">social</code> в IntentResult, router_node type hint, configurable vars</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">agents/social.py</code> создан · MAX_SOCIAL_MESSAGES = 8 · trim hook</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">modules/social_agent.py</code> — opt-in через <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">modules.social:agent.enabled</code></span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af"><code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">graph_factory.py</code> добавляет social ноду при <code style="font-size:.67rem;background:rgba(0,0,0,.35);padding:0 4px;border-radius:3px;color:#fcd34d">social_enabled=True</code></span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af">Hard shortcut: ≤5 слов + confirmation_expected → сразу confirm без LLM</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af">reschedule_visit() корректно сбрасывает confirmation_expected через статус БД</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af">Router: capability-based redesign — убраны паттерны да/нет, добавлен просмотр записей</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#4ade80;font-weight:700;width:12px">✓</span><span style="color:#9ca3af">Social: приветствие с представлением + «Чем могу помочь?» — вариативно, по духу</span></div>
+          <div style="display:flex;gap:7px;align-items:baseline"><span style="color:#6b7280;font-weight:700;width:12px">·</span><span style="color:#6b7280">Confirm reversal: «передумал» после подтверждения → routing через booking ✓</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec no-scroll">Langfuse prompts — агенты V3</div>
+  <div id="cards"><div class="loading">Загрузка...</div></div>
+</div>
+
+<script>
+const VARS_YML = new Set(['clinic_name','clinic_id','booking_rules','service_catalog','agent_identity','no_data_behavior']);
+const VARS_CRM = new Set(['patient_name','patient_phone','is_identified','appointment_date','appointment_time','doctor_name']);
+const INJECT_INJ = [];
+const INJECT_RAG = ['РЕЗУЛЬТАТЫ ПОИСКА'];
+
+const INTENT_CLS = { social:'intent-social', faq:'intent-faq', booking:'intent-booking', confirm:'intent-confirm' };
+
+// ── Per-agent task data (from V3 audit) ─────────────────────────────────────
+// types: ok | fix | miss | create | critical | note | yaml | code
+const TASKS = {
+  router: [
+    { type:'ok',   text:'Агент реализован — <code>router_node()</code>', file:'agent/graph.py' },
+    { type:'ok',   text:'<code>"social"</code> в <code>IntentResult</code> · hard shortcut confirmation_expected+≤5 слов' },
+    { type:'ok',   text:'Редизайн задеплоен: capability-based routing, убраны паттерны да/нет/ок — 10.04.2026' },
+    { type:'ok',   text:'Просмотр записей в booking-определении (фикс: «у меня есть записи?» → booking)' },
+    { type:'ok',   text:'Правило продолжения: по ТЕМЕ вопроса, не по словам ответа; FAQ→booking переход' },
+  ],
+  faq: [
+    { type:'ok',   text:'Промпт V3 задеплоен — ReAct + RAG + <code>{{agent_identity}}</code> + <code>{{no_data_behavior}}</code>' },
+    { type:'ok',   text:'Агент реализован, <code>pre_model_hook</code> паттерн правильный', file:'agent/agents/faq.py' },
+    { type:'ok',   text:'<code>agent_identity</code>, <code>no_data_behavior</code> добавлены в <code>PROMPT_VARS</code>', file:'agent/config.py' },
+    { type:'ok',   text:'Поля добавлены в <code>ClinicConfig</code> с <code>default=""</code>', file:'agent/models.py' },
+    { type:'ok',   text:'<code>clinic_loader.py</code> читает <code>agent:</code> блок, <code>agent_identity</code> property работает', file:'agent/clinic_loader.py' },
+    { type:'ok',   text:'MAX_FAQ_MESSAGES = 16, мягкий CTA, handoff только на явный запрос' },
+  ],
+  social: [
+    { type:'ok',   text:'<code>agents/social.py</code> · MAX_SOCIAL_MESSAGES = 8 · trim hook', file:'agent/agents/social.py' },
+    { type:'ok',   text:'<code>modules/social_agent.py</code> · core module (configurable=False)', file:'agent/modules/social_agent.py' },
+    { type:'ok',   text:'Приветствие: представляется + «Чем могу помочь?» — вариативно, по духу — 10.04.2026' },
+    { type:'ok',   text:'Убрано «Не задавай вопросов» — разрешено задавать «Чем могу помочь?»' },
+  ],
+  booking: [
+    { type:'ok',   text:'Промпт V3 задеплоен — <code>{{agent_identity}}</code> + <code>{{booking_rules}}</code> + <code>{{service_catalog}}</code>' },
+    { type:'ok',   text:'Агент реализован · 9 инструментов · 7-шаговый алгоритм', file:'agent/agents/booking.py' },
+    { type:'ok',   text:'<code>service_catalog</code> добавлен в <code>PROMPT_VARS</code> и <code>configurable</code>', file:'agent/config.py' },
+    { type:'ok',   text:'<code>service_catalog</code> поле в <code>ClinicConfig</code> · читается из YAML', file:'agent/models.py' },
+    { type:'ok',   text:'<code>service_catalog:</code> 23 ключа, 35 синонимов, 4 Decision Rules в starsmile.yml' },
+  ],
+  confirm: [
+    { type:'ok',   text:'Промпт V3 задеплоен — confirm/decline/reschedule/unclear ветки' },
+    { type:'ok',   text:'Агент реализован · last 4 messages trim (избегает confusion с booking-историей)', file:'agent/agents/confirmation_node.py' },
+    { type:'ok',   text:'<code>reschedule_visit()</code> корректно сбрасывает <code>confirmation_expected</code> через статус БД', file:'agent/tools/confirmation.py' },
+    { type:'ok',   text:'<code>confirm/decline/reschedule_visit</code> возвращают <code>""</code> — агент формулирует реплику сам', file:'agent/tools/confirmation.py' },
+    { type:'fix',  text:'Reversal flow: пациент подтвердил → потом «передумал, не приду» → должен уйти в booking (отмена)' },
+    { type:'note', text:'После confirm_visit() статус → awaiting_confirm → confirmation_expected=False → следующее сообщение в booking ✓' },
+  ],
+  hoff: [
+    { type:'ok',   text:'Реализован, используется во всех агентах (booking/faq/social/confirm)', file:'agent/tools/chat.py' },
+    { type:'ok',   text:'Возвращает <code>""</code> — агент формулирует реплику перед вызовом инструмента', file:'agent/tools/chat.py' },
+    { type:'ok',   text:'Docstring правильный — LLM понимает когда вызывать/не вызывать' },
+  ],
+  btools: [
+    { type:'ok',   text:'<code>resolve_booking_patient</code> — полноценный, с регистрацией и синтетическими ID', file:'agent/tools/booking_patient.py' },
+    { type:'ok',   text:'<code>get_availability</code> — маскирование ID, фильтрация по специализации/возрасту', file:'agent/tools/crm.py' },
+    { type:'ok',   text:'<code>book_appointment</code> — идемпотентность, маппинг слот ID', file:'agent/tools/crm.py' },
+    { type:'ok',   text:'<code>get_existing_bookings</code>, <code>cancel_appointment</code> — работают', file:'agent/tools/crm.py' },
+    { type:'ok',   text:'<code>list_known_patients</code>, <code>select_known_patient</code> — мультипациентная запись', file:'agent/tools/booking_patient.py' },
+    { type:'ok',   text:'<code>collect_patient_phone</code> — нормализация, переключение контекста', file:'agent/tools/phone.py' },
+    { type:'ok',   text:'<code>service_catalog</code> добавлен в <code>PROMPT_VARS</code> — booking знает service_keys клиники', file:'agent/config.py' },
+    { type:'note', text:'Все возвращают строки — LLM читает и формулирует ответ сам. Это правильная архитектура.' },
+  ],
+  ctools: [
+    { type:'ok',   text:'<code>confirm_visit()</code>, <code>decline_visit()</code> — действия правильные, возвращают <code>""</code>', file:'agent/tools/confirmation.py' },
+    { type:'ok',   text:'<code>reschedule_visit()</code> отменяет текущую запись, возвращает <code>""</code>', file:'agent/tools/confirmation.py' },
+    { type:'ok',   text:'<code>confirmation_expected</code> сбрасывается через статус <code>awaiting_cancel</code> в БД' },
+    { type:'note', text:'Агент сначала генерирует реплику, потом вызывает инструмент — это архитектурное правило V3' },
+  ],
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(text) {
+  // backtick → <code>, escape is already done by source
+  return text.replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function colorize(html, missingSet) {
+  html = html.replace(/<code>(\{\{([^}]+)\}\})<\/code>/g, (_, full, name) => {
+    const cls = missingSet.has(name) ? 'v-missing' : VARS_YML.has(name) ? 'v-yml' : VARS_CRM.has(name) ? 'v-crm' : '';
+    return `<code${cls ? ` class="${cls}"` : ''}>${full}</code>`;
+  });
+  html = html.replace(/<code>(\[([^\]]+)\])<\/code>/g, (_, full, name) => {
+    const cls = INJECT_RAG.some(s => name.includes(s)) ? 'v-rag' : INJECT_INJ.some(s => name.includes(s)) ? 'v-inj' : '';
+    return `<code${cls ? ` class="${cls}"` : ''}>${full}</code>`;
+  });
+  html = html.replace(/<p><strong>(social|faq|booking|confirm)<\/strong>/g, (_, intent) =>
+    `<p class="${INTENT_CLS[intent]}"><strong>${intent}</strong>`
+  );
+  html = html.replace(/✓/g, '<span class="t-ok">✓</span>');
+  html = html.replace(/✗/g, '<span class="t-no">✗</span>');
+  return html;
+}
+
+// Extract "- ! text" gap items from raw markdown, return cleaned body + gaps array
+function extractGapItems(body) {
+  const lines = body.split('\n');
+  const gaps = [];
+  const clean = [];
+  for (const line of lines) {
+    const m = line.match(/^[-*]\s+!\s+(.*)/);
+    if (m) { gaps.push(m[1].trim()); }
+    else    { clean.push(line); }
+  }
+  // Trim trailing blank lines left after gap section removal
+  let cleanBody = clean.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+  return { gaps, cleanBody };
+}
+
+const TASK_ICONS = { ok:'✓', fix:'⚡', miss:'✗', create:'+', critical:'!!', note:'·', yaml:'Y', gap:'!', code:'⌥' };
+
+function buildTaskCard(p, gaps) {
+  const staticItems = TASKS[p.id] || [];
+  const gapItems    = gaps.map(g => ({ type:'gap', text:g }));
+  const allItems    = [...staticItems, ...gapItems];
+  if (!allItems.length) return null;
+
+  const cardCls = p.cls === 'tool' ? 'task-card-tool' : `task-card-${p.cls}`;
+  const rows = allItems.map(item => {
+    const icon = TASK_ICONS[item.type] || '·';
+    const fileHtml = item.file ? `<span class="t-file">${item.file}</span>` : '';
+    return `<div class="t-item t-${item.type}">
+      <span class="t-item-icon">${icon}</span>
+      <span class="t-text">${fmt(item.text)}</span>${fileHtml}
+    </div>`;
+  }).join('');
+
+  return `<div class="task-card ${cardCls}">
+    <div class="task-head"><span class="task-head-title">Задачи V3</span></div>
+    <div class="task-body">${rows}</div>
+  </div>`;
+}
+
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+const PROMPTS = [
+  {
+    id:'router',  name:'dental-router',       cls:'router',  icon:'🔀',
+    v3:'./prompts/dental-router-v3.md',
+    v2:{ file:'./prompts/v2/dental-router.md',            name:'dental-router · V2 prod' },
+    v1:{ file:'./prompts/v1/router.md',                   name:'router.md · V1' },
+  },
+  {
+    id:'faq',     name:'dental-faq',          cls:'faq',     icon:'💬',
+    v3:'./prompts/dental-faq-v3.md',
+    v2:{ file:'./prompts/v2/dental-faq.md',               name:'dental-faq · V2 prod' },
+    v1:{ file:'./prompts/v1/rag_faq_agent.md',            name:'rag/agent.py:SYSTEM_MESSAGE · V1' },
+  },
+  {
+    id:'social',  name:'dental-social',       cls:'social',  icon:'🤝',
+    v3:'./prompts/dental-social-v3.md',
+    v2: null,
+    v1: null,
+  },
+  {
+    id:'booking', name:'dental-booking',      cls:'booking', icon:'📅',
+    v3:'./prompts/dental-booking-v3.md',
+    v2:{ file:'./prompts/v2/dental-booking.md',           name:'dental-booking · V2 prod' },
+    v1:{ file:'./prompts/v1/booking.md',                  name:'booking.md · V1' },
+  },
+  {
+    id:'confirm', name:'dental-confirmation', cls:'confirm', icon:'✅',
+    v3:'./prompts/dental-confirmation-v3.md',
+    v2:{ file:'./prompts/v2/dental-confirmation.md',      name:'dental-confirmation · V2 prod' },
+    v1:{ file:'./prompts/v1/reschedule_and_cancel.md',    name:'reschedule_and_cancel.md · V1' },
+  },
+  {
+    id:'hoff',    name:'handoff_to_human',    cls:'tool',    icon:'🔧',
+    v3:'./prompts/handoff-tool.md',
+    v2:{ file:'./prompts/v2/handoff-tool.md',             name:'handoff_to_human · V2 (tools/chat.py)' },
+    v1:{ file:'./prompts/v1/handoff_note.md',             name:'нет файла · вшит в агентов · V1' },
+  },
+  {
+    id:'btools',  name:'booking tools',       cls:'tool',    icon:'🔧',
+    v3:'./prompts/booking-tools.md',
+    v2:{ file:'./prompts/v2/booking-tools.md',            name:'booking tools · V2 (9 инструментов)' },
+    v1:{ file:'./prompts/v1/booking-tools-note.md',       name:'TargetAI tools · V1 (голос)' },
+  },
+  {
+    id:'ctools',  name:'confirmation tools',  cls:'tool',    icon:'🔧',
+    v3:'./prompts/confirmation-tools.md',
+    v2:{ file:'./prompts/v2/confirmation-tools.md',       name:'confirmation tools · V2 (4 инструмента)' },
+    v1:{ file:'./prompts/v1/handoff_note.md',             name:'нет · V1 не имел confirmation агента' },
+  },
+];
+
+function parseFrontmatter(text) {
+  const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) return { meta:{}, body:text };
+  const meta = {};
+  m[1].split('\n').forEach(l => { const kv = l.match(/^(\w+):\s*(.+)$/); if (kv) meta[kv[1]] = kv[2].trim(); });
+  return { meta, body:m[2] };
+}
+
+function parseMissing(meta) {
+  const raw = (meta.missing || '').replace(/[\[\]]/g,'').trim();
+  return new Set(raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : []);
+}
+
+function badgeHtml(status) {
+  const map = { draft:['b-draft','ЧЕРНОВИК'], todo:['b-todo','НЕ НАЧАТ'], done:['b-done','ГОТОВО'], tool:['b-tool','TOOL'] };
+  const [cls, label] = map[status] || ['b-todo', status];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+async function loadFile(url) {
+  try { const r = await fetch(url); if (!r.ok) throw 0; return await r.text(); }
+  catch { return null; }
+}
+
+// ── Helpers: legacy card builders ────────────────────────────────────────────
+
+function absentCard(label) {
+  return `<div class="card-absent"><span class="card-absent-label">${label}</span></div>`;
+}
+
+function buildLegacyCard(ver, name, bodyHtml) {
+  const cls    = `card-v${ver}`;
+  const tagCls = `v-tag-v${ver}`;
+  const label  = `V${ver}`;
+  return `<div class="${cls}">
+    <div class="card-head">
+      <span class="card-name">${name}</span>
+      <div class="card-meta"><span class="v-tag ${tagCls}">${label}</span></div>
+    </div>
+    <div class="card-body">${bodyHtml}</div>
+  </div>`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+async function init() {
+  const container = document.getElementById('cards');
+  container.innerHTML = '';
+
+  // Column headers
+  const hdrs = document.createElement('div');
+  hdrs.className = 'col-headers';
+  hdrs.innerHTML = `
+    <div class="col-hdr col-hdr-v1">V1 · ai_agent</div>
+    <div class="col-hdr col-hdr-v2">V2 · dental-core</div>
+    <div class="col-hdr col-hdr-v3">V3 · задеплоено 10.04.2026</div>
+    <div class="col-hdr col-hdr-tasks">Задачи V3</div>
+  `;
+  container.appendChild(hdrs);
+
+  for (const p of PROMPTS) {
+    // ── V3 ──────────────────────────────────────────────────────────────────
+    const rawV3 = await loadFile(p.v3);
+    const { meta, body: rawBody } = rawV3
+      ? parseFrontmatter(rawV3)
+      : { meta:{ status:'todo' }, body:'> Файл не найден' };
+
+    const missingSet = parseMissing(meta);
+    const status = meta.type === 'tool' ? 'tool' : (meta.status || 'todo');
+    const { gaps, cleanBody } = extractGapItems(rawBody);
+
+    const v3Card = document.createElement('div');
+    v3Card.className = `card card-${p.cls}`;
+    v3Card.innerHTML = `
+      <div class="card-head">
+        <span class="card-name c-${p.cls}">${p.icon} ${p.name}</span>
+        <div class="card-meta">${badgeHtml(status)}</div>
+      </div>
+      <div class="card-body">${colorize(marked.parse(cleanBody), missingSet)}</div>
+    `;
+
+    // ── V2 ──────────────────────────────────────────────────────────────────
+    let v2El;
+    if (p.v2) {
+      const rawV2 = await loadFile(p.v2.file);
+      const bodyV2 = rawV2 ? parseFrontmatter(rawV2).body : '> Файл не найден';
+      const wrap = document.createElement('div');
+      wrap.innerHTML = buildLegacyCard(2, p.v2.name, marked.parse(bodyV2));
+      v2El = wrap.firstElementChild;
+    } else {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = absentCard('нет в V2');
+      v2El = wrap.firstElementChild;
+    }
+
+    // ── V1 ──────────────────────────────────────────────────────────────────
+    let v1El;
+    if (p.v1) {
+      const rawV1 = await loadFile(p.v1.file);
+      const bodyV1 = rawV1 ? rawV1 : '> Файл не найден';
+      const wrap = document.createElement('div');
+      wrap.innerHTML = buildLegacyCard(1, p.v1.name, marked.parse(bodyV1));
+      v1El = wrap.firstElementChild;
+    } else {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = absentCard('нет в V1');
+      v1El = wrap.firstElementChild;
+    }
+
+    // ── Tasks ────────────────────────────────────────────────────────────────
+    const taskHtml = buildTaskCard(p, gaps);
+    let taskEl;
+    if (taskHtml) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = taskHtml;
+      taskEl = wrap.firstElementChild;
+    } else {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = absentCard('нет задач');
+      taskEl = wrap.firstElementChild;
+    }
+
+    // ── Row ──────────────────────────────────────────────────────────────────
+    const row = document.createElement('div');
+    row.className = 'prompt-row';
+    row.appendChild(v1El);
+    row.appendChild(v2El);
+    row.appendChild(v3Card);
+    row.appendChild(taskEl);
+    container.appendChild(row);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
