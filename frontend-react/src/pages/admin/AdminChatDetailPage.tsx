@@ -7,7 +7,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, BOOKING_STATUS_STYLES, getDisplayStatus } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG, getDisplayStatus } from '../../config/adminStatuses'
+import type { BookingConfirmationRun } from '../../api/adminClient'
 import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
@@ -364,6 +365,116 @@ const MessageBubble = React.memo(function MessageBubble({ message }: { message: 
 })
 
 
+function getBookingDisplayStatus(b: AdminBooking): { label: string; badge: string } {
+  const today = new Date().toISOString().slice(0, 10)
+  const crmStatus = (b.booking_status || '').toLowerCase()
+  const apptDate = b.appointment_date || ''
+  if (crmStatus === 'отменён') return { label: 'Отменён', badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/25' }
+  if (apptDate && apptDate <= today) return { label: 'Завершён', badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-500/25' }
+  return { label: 'Запланировано', badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/25' }
+}
+
+function formatDateRu(dateStr: string): string {
+  try {
+    return format(new Date(dateStr + 'T00:00:00'), 'd MMM yyyy', { locale: ru })
+  } catch {
+    return dateStr
+  }
+}
+
+function formatRunTime(isoStr: string): string {
+  try {
+    return format(new Date(isoStr), 'd MMM · HH:mm', { locale: ru })
+  } catch {
+    return isoStr
+  }
+}
+
+function ConfirmationRunsList({ runs }: { runs: BookingConfirmationRun[] }) {
+  if (runs.length === 0) return (
+    <div className="px-4 pb-3 pt-1 text-xs text-text-tertiary">Напоминаний не отправлялось</div>
+  )
+  return (
+    <div className="border-t border-white/[0.05] pb-2">
+      <div className="px-4 pt-2 pb-1 text-[10px] font-semibold text-text-tertiary uppercase tracking-widest">
+        Напоминания о визите
+      </div>
+      {runs.map((run) => {
+        const cfg = RUN_STATUS_CONFIG[run.status] || RUN_STATUS_CONFIG['sent']
+        return (
+          <div key={run.id} className="flex items-center gap-3 px-4 py-2 border-b border-white/[0.03] last:border-0">
+            <span className="text-base flex-shrink-0">📨</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-text-primary">
+                {formatRunTime(run.sent_at)} — {run.attempt_number}-е напоминание
+              </div>
+              {run.response_at && (
+                <div className="text-[11px] text-text-tertiary mt-0.5">
+                  Ответ: {formatRunTime(run.response_at)}
+                </div>
+              )}
+            </div>
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${cfg.badge}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              {cfg.label}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function BookingCard({ booking }: { booking: AdminBooking }) {
+  const [open, setOpen] = React.useState(false)
+  const { label, badge } = getBookingDisplayStatus(booking)
+  const runs = booking.confirmation_runs ?? []
+  const hasRuns = runs.length > 0
+
+  return (
+    <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl mb-3 overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="w-9 h-9 rounded-lg bg-emerald-500/12 flex items-center justify-center text-lg flex-shrink-0">🦷</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-text-primary truncate">
+            {booking.doctor_name || '—'}
+          </div>
+          <div className="text-xs text-text-tertiary mt-0.5">
+            {booking.appointment_date ? formatDateRu(booking.appointment_date) : '—'}
+            {booking.appointment_time ? ` · ${booking.appointment_time}` : ''}
+            {booking.service_key ? ` · ${booking.service_key}` : ''}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+            {label}
+          </span>
+          {hasRuns && (
+            <span className="text-[10px] text-text-tertiary">{runs.length} напом.</span>
+          )}
+        </div>
+        <span className={`text-text-tertiary text-xs ml-1 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}>▶</span>
+      </button>
+
+      {open && <ConfirmationRunsList runs={runs} />}
+      {!open && hasRuns && (
+        <div className="px-4 pb-2 text-[11px] text-text-tertiary">
+          {runs[runs.length - 1]?.status === 'confirmed' ? '✓ пациент подтвердил' :
+           runs[runs.length - 1]?.status === 'cancelled' ? '✗ пациент отменил' :
+           runs[runs.length - 1]?.status === 'sent' ? '⏳ ждём ответа' :
+           runs[runs.length - 1]?.status === 'no_response' ? '— нет ответа' :
+           '— нажмите для деталей'}
+          {' — нажмите для деталей'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AppointmentsTab({ session }: { session: AdminSessionDetail }) {
   const [bookings, setBookings] = React.useState<AdminBooking[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -404,39 +515,30 @@ function AppointmentsTab({ session }: { session: AdminSessionDetail }) {
     )
   }
 
+  const today = new Date().toISOString().slice(0, 10)
+  const upcoming = bookings.filter((b) => !b.appointment_date || b.appointment_date > today)
+  const past = bookings.filter((b) => b.appointment_date && b.appointment_date <= today)
+
   return (
-    <div className="flex-1 overflow-auto py-4">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border dark:border-white/[0.06]">
-              <th className="text-left px-3 py-2.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Дата</th>
-              <th className="text-left px-3 py-2.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Время</th>
-              <th className="text-left px-3 py-2.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Врач</th>
-              <th className="text-left px-3 py-2.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider hidden sm:table-cell">Услуга</th>
-              <th className="text-left px-3 py-2.5 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.map((b) => {
-              const statusStyle = BOOKING_STATUS_STYLES[b.booking_status || ''] || 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25'
-              return (
-                <tr key={b.id} className="border-b border-border-light dark:border-white/[0.04]">
-                  <td className="px-3 py-2.5 text-sm text-text-primary whitespace-nowrap">{b.appointment_date || '—'}</td>
-                  <td className="px-3 py-2.5 text-sm text-text-primary whitespace-nowrap">{b.appointment_time || '—'}</td>
-                  <td className="px-3 py-2.5 text-sm text-text-secondary truncate max-w-[150px]">{b.doctor_name || '—'}</td>
-                  <td className="px-3 py-2.5 text-sm text-text-tertiary truncate max-w-[120px] hidden sm:table-cell">{b.service_key || '—'}</td>
-                  <td className="px-3 py-2.5">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium ${statusStyle}`}>
-                      {b.booking_status || '—'}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="flex-1 overflow-auto py-4 px-1">
+      {upcoming.length > 0 && (
+        <>
+          <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-widest mb-2 px-1">
+            Текущие и предстоящие визиты
+          </div>
+          {upcoming.map((b) => <BookingCard key={b.id} booking={b} />)}
+        </>
+      )}
+      {past.length > 0 && (
+        <>
+          <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-widest mb-2 px-1 mt-4 opacity-60">
+            Прошлые визиты
+          </div>
+          <div className="opacity-60">
+            {past.map((b) => <BookingCard key={b.id} booking={b} />)}
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -86,6 +86,16 @@ export const CONFIRMATION_FILTERS = [
   { value: 'no_response', label: 'Визит не подтверждён' },
 ] as const
 
+// ── Confirmation run status config (for Appointments tab) ──
+
+export const RUN_STATUS_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
+  sent:        { label: 'Отправлено',   badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-500/25',   dot: 'bg-orange-500' },
+  no_response: { label: 'Нет ответа',   badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-500/25',             dot: 'bg-gray-500'   },
+  confirmed:   { label: 'Подтверждено', badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500' },
+  cancelled:   { label: 'Отменено',     badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/25',                    dot: 'bg-red-500'    },
+  rescheduled: { label: 'Перенос',      badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/25',              dot: 'bg-blue-500'   },
+}
+
 // ── Action types (linked to statuses) ──
 
 export const ACTION_TYPES: Record<string, { label: string; relatedStatus?: string }> = {
