@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, BOOKING_STATUS_STYLES } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, BOOKING_STATUS_STYLES, getDisplayStatus } from '../../config/adminStatuses'
 import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
@@ -147,13 +147,20 @@ export function AdminChatDetailPage() {
             <h1 className="text-lg font-bold text-text-primary truncate max-w-[200px] sm:max-w-none">{session.patient?.name || 'Без имени'}</h1>
             {/* Controller badge (clickable) */}
             <div className="relative">
-              <button
-                onClick={() => setShowControllerMenu(!showControllerMenu)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors ${CONTROLLER_COLORS[session.controller] || 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'}`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                {CONTROLLER_LABELS[session.controller] || session.controller}
-              </button>
+              {(() => {
+                const ds = getDisplayStatus(session)
+                const badgeCls = STATUS_CONFIG[ds]?.badge || CONTROLLER_COLORS[session.controller] || 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
+                const badgeLabel = STATUS_CONFIG[ds]?.label || CONTROLLER_LABELS[session.controller] || session.controller
+                return (
+                  <button
+                    onClick={() => setShowControllerMenu(!showControllerMenu)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors ${badgeCls}`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                    {badgeLabel}
+                  </button>
+                )
+              })()}
               {showControllerMenu && (
                 <div className="absolute top-full mt-1 left-0 z-50 bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/[0.1] rounded-xl shadow-xl py-1 min-w-[180px]">
                   {CHANGEABLE_CONTROLLERS.map((c) => (

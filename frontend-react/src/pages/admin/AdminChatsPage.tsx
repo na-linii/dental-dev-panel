@@ -4,7 +4,7 @@ import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
 import type { AdminSessionSummary } from '../../api/adminClient'
 import { useSessionsData } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
-import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
 
 type ActiveTab = 'all' | 'blocked'
@@ -22,14 +22,10 @@ function getDisplayTime(s: AdminSessionSummary): string | null {
   return format(new Date(ts), 'HH:mm')
 }
 
-function getAvatarColor(controller: string): string {
-  if (controller === 'operator') return 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+function getAvatarColor(displayStatus: string): string {
+  if (displayStatus === 'operator') return 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+  if (displayStatus === 'operator_active') return 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
   return 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-}
-
-function getDisplayStatus(s: { controller: string; operator_id?: string | null }): string {
-  if (s.controller === 'operator' && s.operator_id) return 'operator_active'
-  return s.controller
 }
 
 export function AdminChatsPage() {
@@ -45,7 +41,15 @@ export function AdminChatsPage() {
 
   // Client-side filtering: controller + blocked + search
   const { sessions, tagCounts } = useMemo(() => {
-    const counts: Record<string, number> = { '': allSessions.length, bot: computed.byController.bot, operator: computed.byController.operator, closed: computed.byController.closed }
+    const operatorActive = allSessions.filter((s) => getDisplayStatus(s) === 'operator_active').length
+    const operatorWaiting = computed.byController.operator - operatorActive
+    const counts: Record<string, number> = {
+      '': allSessions.length,
+      bot: computed.byController.bot,
+      operator: operatorWaiting,
+      operator_active: operatorActive,
+      closed: computed.byController.closed,
+    }
 
     if (activeTab === 'blocked') {
       const filtered = searchQuery
@@ -55,7 +59,11 @@ export function AdminChatsPage() {
     }
 
     let filtered = controllerFilter
-      ? allSessions.filter((s) => s.controller === controllerFilter)
+      ? allSessions.filter((s) =>
+          controllerFilter === 'operator_active'
+            ? getDisplayStatus(s) === 'operator_active'
+            : s.controller === controllerFilter && getDisplayStatus(s) !== 'operator_active'
+        )
       : allSessions
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -144,10 +152,11 @@ export function AdminChatsPage() {
         {activeTab === 'all' && <div className="flex items-center gap-2 flex-wrap">
           {CONTROLLER_FILTER_TAGS.map((tag) => {
             const isActive = controllerFilter === tag.value
-            const isOperator = tag.value === 'operator'
             let cls: string
-            if (isActive && isOperator) {
+            if (isActive && tag.value === 'operator') {
               cls = 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'
+            } else if (isActive && tag.value === 'operator_active') {
+              cls = 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/20'
             } else if (isActive) {
               cls = 'bg-accent-soft text-accent border-accent/20'
             } else {
@@ -199,7 +208,7 @@ export function AdminChatsPage() {
                 const name = s.patient?.name || s.patient?.phone || 'Без имени'
                 const pill = getChannelPill(s.channel)
                 const time = getDisplayTime(s)
-                const isOperator = s.controller === 'operator'
+                const isOperator = getDisplayStatus(s) === 'operator'
 
                 return (
                   <tr
@@ -272,7 +281,7 @@ export function AdminChatsPage() {
               >
                 {/* Top row: avatar + name/preview + time */}
                 <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${getAvatarColor(s.controller)}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${getAvatarColor(getDisplayStatus(s))}`}>
                     {initial}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -51,8 +51,15 @@ export const CONTROLLER_LABELS: Record<string, string> = {
 
 export const CONTROLLER_COLORS: Record<string, string> = {
   bot: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
-  operator: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',
+  operator: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',
   closed: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',
+}
+
+// ── Display status helper (shared between chats list and chat detail) ──
+
+export function getDisplayStatus(s: { controller: string; operator_id?: string | null }): string {
+  if (s.controller === 'operator' && s.operator_id) return 'operator_active'
+  return s.controller
 }
 
 // ── Controller filter tags (short labels for filter buttons) ──
@@ -61,6 +68,7 @@ export const CONTROLLER_FILTER_TAGS = [
   { value: '', label: 'Все' },
   { value: 'bot', label: 'Разговор с агентом' },
   { value: 'operator', label: 'Ожидает администратора' },
+  { value: 'operator_active', label: 'Разговор с администратором' },
   { value: 'closed', label: 'Чат завершён' },
 ] as const
 
