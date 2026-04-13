@@ -444,11 +444,13 @@ function BookingCard({ booking }: { booking: AdminBooking }) {
           </div>
           <div className="text-xs text-text-tertiary mt-0.5">
             {booking.appointment_date ? formatDateRu(booking.appointment_date) : '—'}
-            {booking.appointment_time ? ` · ${booking.appointment_time}` : ''}
             {booking.service_key ? ` · ${booking.service_key}` : ''}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+        <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-2">
+          {booking.appointment_time && (
+            <span className="text-base font-bold text-text-primary tabular-nums">{booking.appointment_time}</span>
+          )}
           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
             {label}
