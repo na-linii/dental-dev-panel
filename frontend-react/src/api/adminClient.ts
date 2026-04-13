@@ -108,9 +108,18 @@ export interface AdminAction {
   doctor_name: string | null
 }
 
+export interface BookingConfirmationRun {
+  id: string
+  attempt_number: number
+  sent_at: string
+  status: 'sent' | 'no_response' | 'confirmed' | 'cancelled' | 'rescheduled'
+  response_at: string | null
+}
+
 // Backend: GET /admin/api/bookings — returns array of these
 export interface AdminBooking {
   id: string
+  crm_booking_id: string | null
   patient_id: string | null
   doctor_id: string | null
   service_key: string | null
@@ -120,6 +129,7 @@ export interface AdminBooking {
   doctor_name: string | null
   patient_name: string | null
   cached_at: string | null
+  confirmation_runs: BookingConfirmationRun[]
 }
 
 // Backend: GET /admin/api/settings/bot
