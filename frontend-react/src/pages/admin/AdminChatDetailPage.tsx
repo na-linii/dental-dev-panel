@@ -2,9 +2,9 @@ import React, { useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
 import { sendAdminMessage, updateSessionController, getAdminSession, getAdminBookings } from '../../api/adminClient'
-import type { AdminSessionDetail, AdminMessage, AdminBooking } from '../../api/adminClient'
+import type { AdminPatientDetail, AdminMessage, AdminBooking, AdminSessionInfo } from '../../api/adminClient'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAdminSessionDetail } from '../../hooks/useAdminQueries'
+import { useAdminSessionDetail, useAdminDashboard } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG, getDisplayStatus } from '../../config/adminStatuses'
@@ -13,11 +13,21 @@ import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
 
+/** Return session-level fields from last session in patient detail */
+function getLastSession(patient: AdminPatientDetail): AdminSessionInfo | null {
+  if (patient.sessions && patient.sessions.length > 0) {
+    return patient.sessions[patient.sessions.length - 1]
+  }
+  return null
+}
+
 export function AdminChatDetailPage() {
-  const { sessionId } = useParams()
+  const { sessionId } = useParams()  // actually patient_id, name kept for router compat
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: session, isLoading } = useAdminSessionDetail(sessionId)
+  const { data: dashboardData } = useAdminDashboard()
+  const timezone = dashboardData?.timezone || 'Europe/Moscow'
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -45,10 +55,8 @@ export function AdminChatDetailPage() {
     if (!container) return
 
     if (prevMsgCount.current === 0) {
-      // First load — jump to bottom
       container.scrollTop = container.scrollHeight
     } else if (count > prevMsgCount.current) {
-      // New messages — only scroll if user is near bottom
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
       if (isNearBottom) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -60,19 +68,20 @@ export function AdminChatDetailPage() {
   const handleSend = async () => {
     if (!messageText.trim() || !session || isSending) return
     const text = messageText.trim()
+    const mutationSessionId = session.last_session_id || session.id
     setMessageText('')
     setIsSending(true)
     try {
-      const result = await sendAdminMessage(session.id, text)
-      // Backend returns {success, message_id, delivered} — add optimistic message
+      const result = await sendAdminMessage(mutationSessionId, text)
       const optimisticMsg: AdminMessage = {
         id: result.message_id || String(Date.now()),
+        session_id: mutationSessionId,
         role: 'operator',
         content: text,
         metadata: null,
         created_at: new Date().toISOString(),
       }
-      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => {
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminPatientDetail | undefined) => {
         if (!prev) return prev
         return { ...prev, messages: [...prev.messages, optimisticMsg] }
       })
@@ -92,10 +101,17 @@ export function AdminChatDetailPage() {
 
   const handleControllerChange = async (newController: string) => {
     if (!session) return
+    const mutationSessionId = session.last_session_id || session.id
     setShowControllerMenu(false)
     try {
-      await updateSessionController(session.id, newController)
-      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => prev ? { ...prev, controller: newController } : prev)
+      await updateSessionController(mutationSessionId, newController)
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminPatientDetail | undefined) => {
+        if (!prev) return prev
+        const sessions = prev.sessions.map((s, i) =>
+          i === prev.sessions.length - 1 ? { ...s, controller: newController } : s
+        )
+        return { ...prev, sessions }
+      })
       invalidateSessions()
     } catch (e) {
       if (import.meta.env.DEV) console.error('Controller update error:', e)
@@ -105,11 +121,12 @@ export function AdminChatDetailPage() {
 
   const savePhone = async () => {
     if (!session || !phoneInput.trim()) return
+    const mutationSessionId = session.last_session_id || session.id
     try {
       const { updatePatientPhone } = await import('../../api/adminClient')
-      await updatePatientPhone(session.id, phoneInput.trim())
-      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) =>
-        prev ? { ...prev, patient: { ...prev.patient, phone: phoneInput.trim() } } : prev)
+      await updatePatientPhone(mutationSessionId, phoneInput.trim())
+      queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminPatientDetail | undefined) =>
+        prev ? { ...prev, phone: phoneInput.trim() } : prev)
       setEditingPhone(false)
     } catch (e) {
       if (import.meta.env.DEV) console.error('Phone update error:', e)
@@ -133,6 +150,17 @@ export function AdminChatDetailPage() {
     )
   }
 
+  // Derive fields from last session for display
+  const lastSession = getLastSession(session)
+  const controller = lastSession?.controller || session.controller || 'bot'
+  const operatorId = lastSession?.operator_id ?? null
+  const confirmationStatus = lastSession?.confirmation_status ?? session.confirmation_status ?? null
+  const confirmationDate = lastSession?.confirmation_appointment_date ?? null
+  const confirmationTime = lastSession?.confirmation_appointment_time ?? null
+  const confirmationDoctor = lastSession?.confirmation_doctor_name ?? null
+  const channel = lastSession?.channel || session.channel || ''
+  const displaySessionProxy = { controller, operator_id: operatorId }
+
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)]">
       {/* Header */}
@@ -145,13 +173,15 @@ export function AdminChatDetailPage() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold text-text-primary truncate max-w-[200px] sm:max-w-none">{session.patient?.name || 'Без имени'}</h1>
+            <h1 className="text-lg font-bold text-text-primary truncate max-w-[200px] sm:max-w-none">
+              {session.name || 'Без имени'}
+            </h1>
             {/* Controller badge (clickable) */}
             <div className="relative">
               {(() => {
-                const ds = getDisplayStatus(session)
-                const badgeCls = STATUS_CONFIG[ds]?.badge || CONTROLLER_COLORS[session.controller] || 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
-                const badgeLabel = STATUS_CONFIG[ds]?.label || CONTROLLER_LABELS[session.controller] || session.controller
+                const ds = getDisplayStatus(displaySessionProxy)
+                const badgeCls = STATUS_CONFIG[ds]?.badge || CONTROLLER_COLORS[controller] || 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
+                const badgeLabel = STATUS_CONFIG[ds]?.label || CONTROLLER_LABELS[controller] || controller
                 return (
                   <button
                     onClick={() => setShowControllerMenu(!showControllerMenu)}
@@ -169,7 +199,7 @@ export function AdminChatDetailPage() {
                       key={c}
                       onClick={() => handleControllerChange(c)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors ${
-                        c === session.controller ? 'text-accent' : 'text-text-secondary'
+                        c === controller ? 'text-accent' : 'text-text-secondary'
                       }`}
                     >
                       {CONTROLLER_LABELS[c] || c}
@@ -178,19 +208,24 @@ export function AdminChatDetailPage() {
                 </div>
               )}
             </div>
-            {session.confirmation_status && STATUS_CONFIG[session.confirmation_status] && (
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${STATUS_CONFIG[session.confirmation_status].badge}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[session.confirmation_status].dot}`} />
-                {STATUS_CONFIG[session.confirmation_status].label}
+            {confirmationStatus && STATUS_CONFIG[confirmationStatus] && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${STATUS_CONFIG[confirmationStatus].badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[confirmationStatus].dot}`} />
+                {STATUS_CONFIG[confirmationStatus].label}
               </span>
             )}
-            {session.channel && (
+            {channel && (
               <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                session.channel === 'tg_bot' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' :
-                session.channel === 'tg_business' ? 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' :
+                channel === 'tg_bot' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' :
+                channel === 'tg_business' ? 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' :
                 'bg-gray-100 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400'
               }`}>
-                {session.channel === 'tg_bot' ? 'TG Bot' : session.channel === 'tg_business' ? 'TG Biz' : session.channel}
+                {channel === 'tg_bot' ? 'TG Bot' : channel === 'tg_business' ? 'TG Biz' : channel}
+              </span>
+            )}
+            {session.sessions.length > 1 && (
+              <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.06]">
+                {session.sessions.length} сессии
               </span>
             )}
           </div>
@@ -205,18 +240,18 @@ export function AdminChatDetailPage() {
               </span>
             ) : (
               <span className="flex items-center gap-1 text-xs text-text-tertiary">
-                {session.patient?.phone || 'Нет телефона'}
-                <button onClick={() => { setPhoneInput(session.patient?.phone || ''); setEditingPhone(true) }}
+                {session.phone || 'Нет телефона'}
+                <button onClick={() => { setPhoneInput(session.phone || ''); setEditingPhone(true) }}
                   className="text-text-muted hover:text-text-secondary transition-colors">✏️</button>
               </span>
             )}
-            {session.confirmation_appointment_date && (
+            {confirmationDate && (
               <span className="text-xs text-text-tertiary">
-                {session.confirmation_appointment_date}{session.confirmation_appointment_time ? `, ${session.confirmation_appointment_time}` : ''}
+                {confirmationDate}{confirmationTime ? `, ${confirmationTime}` : ''}
               </span>
             )}
-            {session.confirmation_doctor_name && (
-              <span className="text-xs text-text-tertiary">{session.confirmation_doctor_name}</span>
+            {confirmationDoctor && (
+              <span className="text-xs text-text-tertiary">{confirmationDoctor}</span>
             )}
           </div>
         </div>
@@ -231,7 +266,7 @@ export function AdminChatDetailPage() {
         <button onClick={() => setActiveTab('appointments')}
           className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'appointments' ? 'bg-accent-soft text-accent border border-accent/20' : 'text-text-tertiary hover:text-text-secondary'}`}>
           Записи
-          {session.confirmation_appointment_id && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 text-[9px] font-bold">1</span>}
+          {lastSession?.confirmation_appointment_id && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 text-[9px] font-bold">1</span>}
         </button>
       </div>
 
@@ -246,8 +281,8 @@ export function AdminChatDetailPage() {
                 setLoadingOlder(true)
                 try {
                   const oldest = session.messages[0]
-                  const older = await getAdminSession(session.id, { messages_limit: 50, before_id: oldest.id })
-                  queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminSessionDetail | undefined) => {
+                  const older = await getAdminSession(session.id, { messages_limit: 100, before_id: oldest.id })
+                  queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminPatientDetail | undefined) => {
                     if (!prev) return prev
                     return { ...prev, messages: [...older.messages, ...prev.messages], has_more_messages: older.has_more_messages }
                   })
@@ -262,13 +297,22 @@ export function AdminChatDetailPage() {
           </div>
         )}
         {session.messages.map((msg, i) => {
-          const msgDate = format(new Date(msg.created_at), 'yyyy-MM-dd')
-          const prevDate = i > 0 ? format(new Date(session.messages[i - 1].created_at), 'yyyy-MM-dd') : null
-          const showSeparator = msgDate !== prevDate
+          const prev = i > 0 ? session.messages[i - 1] : null
+          // Date separator (day boundary)
+          const msgDateStr = new Date(msg.created_at).toLocaleDateString('sv', { timeZone: timezone })
+          const prevDateStr = prev ? new Date(prev.created_at).toLocaleDateString('sv', { timeZone: timezone }) : null
+          const showDateSep = msgDateStr !== prevDateStr
+          // Session boundary separator (new session, not just new day)
+          const sessionChanged = prev && msg.session_id !== prev.session_id
           return (
             <div key={msg.id}>
-              {showSeparator && <DateSeparator date={new Date(msg.created_at)} />}
-              <MessageBubble message={msg} />
+              {sessionChanged && !showDateSep && (
+                <SessionSeparator sessionId={msg.session_id} sessions={session.sessions} timezone={timezone} />
+              )}
+              {showDateSep && (
+                <DateSeparator date={new Date(msg.created_at)} timezone={timezone} />
+              )}
+              <MessageBubble message={msg} timezone={timezone} />
             </div>
           )
         })}
@@ -318,8 +362,7 @@ export function AdminChatDetailPage() {
   )
 }
 
-const MessageBubble = React.memo(function MessageBubble({ message }: { message: AdminMessage }) {
-  // Backend uses 'role': 'patient' | 'agent' | 'operator' | 'system'
+const MessageBubble = React.memo(function MessageBubble({ message, timezone }: { message: AdminMessage; timezone: string }) {
   const isPatient = message.role === 'patient'
   const isAgent = message.role === 'agent' || message.role === 'bot'
   const isOperator = message.role === 'operator'
@@ -350,16 +393,48 @@ const MessageBubble = React.memo(function MessageBubble({ message }: { message: 
     authorLabel = 'Администратор'
   }
 
+  const timeStr = (() => {
+    try {
+      return new Date(message.created_at).toLocaleTimeString('ru', { timeZone: timezone, hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return format(new Date(message.created_at), 'HH:mm')
+    }
+  })()
+
   return (
     <div className={`flex ${align}`}>
       <div className={`max-w-[85%] md:max-w-[70%] border rounded-2xl px-4 py-3 ${bubble}`}>
         <div className={`flex items-center gap-1.5 mb-1 ${authorColor}`}>
           <AuthorIcon className="w-3.5 h-3.5" />
           <span className="text-xs font-medium">{authorLabel}</span>
-          <span className="text-[11px] text-text-muted ml-auto">{format(new Date(message.created_at), 'HH:mm')}</span>
+          <span className="text-[11px] text-text-muted ml-auto">{timeStr}</span>
         </div>
         <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{message.content}</p>
       </div>
+    </div>
+  )
+})
+
+/** Thin separator shown between messages from different sessions (same day) */
+const SessionSeparator = React.memo(function SessionSeparator({
+  sessions,
+  timezone,
+}: {
+  sessionId: string
+  sessions: AdminSessionInfo[]
+  timezone: string
+}) {
+  const sess = sessions[sessions.length > 1 ? sessions.findIndex(s => s) : 0]
+  const dateStr = sess?.created_at
+    ? new Date(sess.created_at).toLocaleDateString('ru', { timeZone: timezone, day: 'numeric', month: 'short' })
+    : null
+  return (
+    <div className="flex items-center gap-3 my-3">
+      <div className="flex-1 h-px bg-border-light dark:bg-white/[0.04]" />
+      <span className="text-[10px] text-text-muted whitespace-nowrap">
+        {dateStr ? `Новый диалог · ${dateStr}` : 'Новый диалог'}
+      </span>
+      <div className="flex-1 h-px bg-border-light dark:bg-white/[0.04]" />
     </div>
   )
 })
@@ -477,11 +552,11 @@ function BookingCard({ booking }: { booking: AdminBooking }) {
   )
 }
 
-function AppointmentsTab({ session }: { session: AdminSessionDetail }) {
+function AppointmentsTab({ session }: { session: AdminPatientDetail }) {
   const [bookings, setBookings] = React.useState<AdminBooking[]>([])
   const [loading, setLoading] = React.useState(true)
 
-  const patientId = session.patient?.ident_patient_id
+  const patientId = session.ident_patient_id
 
   React.useEffect(() => {
     if (!patientId) { setLoading(false); return }
@@ -545,18 +620,24 @@ function AppointmentsTab({ session }: { session: AdminSessionDetail }) {
   )
 }
 
-const DateSeparator = React.memo(function DateSeparator({ date }: { date: Date }) {
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-
-  const isSameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+const DateSeparator = React.memo(function DateSeparator({ date, timezone }: { date: Date; timezone: string }) {
+  const now = new Date()
+  const todayStr = now.toLocaleDateString('sv', { timeZone: timezone })
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  const yesterdayStr = yesterday.toLocaleDateString('sv', { timeZone: timezone })
+  const dateStr = date.toLocaleDateString('sv', { timeZone: timezone })
 
   let label: string
-  if (isSameDay(date, today)) label = 'Сегодня'
-  else if (isSameDay(date, yesterday)) label = 'Вчера'
-  else label = format(date, 'd MMMM yyyy', { locale: ru })
+  if (dateStr === todayStr) label = 'Сегодня'
+  else if (dateStr === yesterdayStr) label = 'Вчера'
+  else {
+    try {
+      label = date.toLocaleDateString('ru', { timeZone: timezone, day: 'numeric', month: 'long', year: 'numeric' })
+    } catch {
+      label = format(date, 'd MMMM yyyy', { locale: ru })
+    }
+  }
 
   return (
     <div className="flex items-center gap-3 my-2">

@@ -26,6 +26,7 @@ interface PaginatedResponse<T> {
 
 // Backend: GET /admin/api/dashboard/stats
 export interface AdminDashboardStats {
+  timezone: string
   sessions: { bot: number; operator: number; closed: number }
   confirmations: Record<string, number>
   pending_actions: number
@@ -33,38 +34,42 @@ export interface AdminDashboardStats {
   prev_month?: { total: number; confirmed: number; rescheduled: number; cancelled: number }
 }
 
-// Backend: GET /admin/api/sessions — returns array of these
-export interface AdminSessionSummary {
-  id: string
+// Backend: GET /admin/api/sessions — patient-centric list
+export interface AdminPatientSummary {
+  id: string            // users.id (patient UUID)
+  kind: 'patient' | 'anonymous'
+  name: string | null
+  phone: string | null
+  last_activity_at: string | null
+  last_session_id: string | null
   channel: string
   thread_id: string
   controller: string
   confirmation_status: string | null
-  crm_sync_status: string | null
-  updated_at: string | null
-  created_at: string | null
-  patient: { id: string | null; name: string | null; phone: string | null } | null
-  last_message: string | null
-  last_message_at: string | null
+  operator_id: string | null
   confirmation_appointment_date: string | null
   confirmation_appointment_time: string | null
   confirmation_doctor_name: string | null
-  operator_id?: string | null
-  is_blocked?: boolean
+  last_message: string | null
+  last_message_at: string | null
+  is_blocked: boolean
 }
 
-// Backend: GET /admin/api/sessions/:id
+/** @deprecated use AdminPatientSummary */
+export type AdminSessionSummary = AdminPatientSummary
+
+// Backend: GET /admin/api/sessions/:patient_id
 export interface AdminMessage {
   id: string
+  session_id: string
   role: string
   content: string
   metadata: Record<string, unknown> | null
   created_at: string
 }
 
-export interface AdminSessionDetail {
+export interface AdminSessionInfo {
   id: string
-  clinic_id: string
   channel: string
   thread_id: string
   controller: string
@@ -79,10 +84,27 @@ export interface AdminSessionDetail {
   crm_sync_error: string | null
   created_at: string | null
   updated_at: string | null
-  patient: { id: string | null; name: string | null; phone: string | null; ident_patient_id: string | null } | null
-  messages: AdminMessage[]
-  has_more_messages?: boolean
 }
+
+export interface AdminPatientDetail {
+  id: string
+  kind: 'patient' | 'anonymous'
+  name: string | null
+  phone: string | null
+  ident_patient_id: string | null
+  last_activity_at: string | null
+  last_session_id: string | null   // session to send messages to
+  sessions: AdminSessionInfo[]
+  messages: AdminMessage[]
+  has_more_messages: boolean
+  // anonymous / backward-compat fields
+  channel?: string
+  controller?: string
+  confirmation_status?: string | null
+}
+
+/** @deprecated use AdminPatientDetail */
+export type AdminSessionDetail = AdminPatientDetail
 
 export interface AdminSendMessageResponse {
   success: boolean
@@ -207,13 +229,13 @@ export const getAdminSessions = async (params?: {
   blocked?: boolean
   limit?: number
   offset?: number
-}): Promise<{ items: AdminSessionSummary[]; total: number }> => {
-  const res = await adminApi.get<PaginatedResponse<AdminSessionSummary>>('/sessions', { params })
+}): Promise<{ items: AdminPatientSummary[]; total: number }> => {
+  const res = await adminApi.get<PaginatedResponse<AdminPatientSummary>>('/sessions', { params })
   return { items: res.data.items, total: res.data.total }
 }
 
-export const getAdminSession = async (id: string, params?: { messages_limit?: number; before_id?: string }) =>
-  (await adminApi.get<AdminSessionDetail>(`/sessions/${id}`, { params })).data
+export const getAdminSession = async (patientId: string, params?: { messages_limit?: number; before_id?: string }) =>
+  (await adminApi.get<AdminPatientDetail>(`/sessions/${patientId}`, { params })).data
 
 export const sendAdminMessage = async (sessionId: string, text: string) =>
   (await adminApi.post<AdminSendMessageResponse>(`/sessions/${sessionId}/messages`, { text })).data
