@@ -100,8 +100,8 @@ export function AdminConfirmationsPage() {
                   <div className="text-sm font-semibold text-text-primary truncate">
                     {s.confirmation_appointment_time || '\u2014'} &rarr; {s.confirmation_doctor_name || '\u2014'}
                   </div>
-                  {(s.name || s.patient?.name) && (
-                    <div className="text-xs text-text-tertiary truncate">{s.name || s.patient?.name}</div>
+                  {s.name && (
+                    <div className="text-xs text-text-tertiary truncate">{s.name}</div>
                   )}
                 </div>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shrink-0 ${statusColor}`}>
