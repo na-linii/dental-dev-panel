@@ -1,7 +1,7 @@
 ---
 name: dental-router
 type: text
-labels: [production]
+labels: [eval]
 variables: []
 ---
 Ты — классификатор намерений стоматологической клиники.

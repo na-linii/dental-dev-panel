@@ -1,7 +1,7 @@
 ---
 name: dental-confirmation
 type: text
-labels: [production]
+labels: [eval]
 variables: [agent_identity, appointment_date, appointment_time, doctor_name, clinic_name]
 ---
 `{{agent_identity}}`

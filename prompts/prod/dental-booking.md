@@ -1,7 +1,7 @@
 ---
 name: dental-booking
 type: text
-labels: [production]
+labels: [eval]
 variables: [agent_identity, booking_rules, service_catalog]
 ---
 `{{agent_identity}}`
