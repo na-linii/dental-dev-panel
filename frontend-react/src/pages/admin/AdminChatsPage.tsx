@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
-import type { AdminSessionSummary } from '../../api/adminClient'
-import { useSessionsData } from '../../hooks/useAdminQueries'
-import { format } from 'date-fns'
+import type { AdminPatientSummary } from '../../api/adminClient'
+import { useSessionsData, useAdminDashboard } from '../../hooks/useAdminQueries'
 import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
 
@@ -16,10 +15,20 @@ function getChannelPill(channel: string | null | undefined) {
   return { text: channel, cls: 'bg-gray-100 dark:bg-gray-500/10 text-gray-500 dark:text-gray-400' }
 }
 
-function getDisplayTime(s: AdminSessionSummary): string | null {
-  const ts = s.last_message_at || s.updated_at
+function formatActivityTime(ts: string | null | undefined, timezone: string): string | null {
   if (!ts) return null
-  return format(new Date(ts), 'HH:mm')
+  try {
+    const d = new Date(ts)
+    const now = new Date()
+    const todayStr = now.toLocaleDateString('sv', { timeZone: timezone })
+    const dateStr = d.toLocaleDateString('sv', { timeZone: timezone })
+    if (dateStr === todayStr) {
+      return d.toLocaleTimeString('ru', { timeZone: timezone, hour: '2-digit', minute: '2-digit' })
+    }
+    return d.toLocaleDateString('ru', { timeZone: timezone, day: 'numeric', month: 'short' })
+  } catch {
+    return null
+  }
 }
 
 function getAvatarColor(displayStatus: string): string {
@@ -37,6 +46,8 @@ export function AdminChatsPage() {
   const navigate = useNavigate()
 
   const { allSessions, computed, isLoading, error: queryError, refetch } = useSessionsData()
+  const { data: dashboardData } = useAdminDashboard()
+  const timezone = dashboardData?.timezone || 'Europe/Moscow'
   const error = queryError ? 'Не удалось загрузить чаты' : null
 
   // Client-side filtering: controller + blocked + search
@@ -53,7 +64,7 @@ export function AdminChatsPage() {
 
     if (activeTab === 'blocked') {
       const filtered = searchQuery
-        ? computed.blocked.filter((s) => (s.patient?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.patient?.phone || '').includes(searchQuery))
+        ? computed.blocked.filter((s) => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.phone || '').includes(searchQuery))
         : computed.blocked
       return { sessions: filtered, tagCounts: counts }
     }
@@ -67,7 +78,7 @@ export function AdminChatsPage() {
       : allSessions
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
-      filtered = filtered.filter((s) => (s.patient?.name || '').toLowerCase().includes(q) || (s.patient?.phone || '').includes(q))
+      filtered = filtered.filter((s) => (s.name || '').toLowerCase().includes(q) || (s.phone || '').includes(q))
     }
     return { sessions: filtered, tagCounts: counts }
   }, [allSessions, computed, controllerFilter, activeTab, searchQuery])
@@ -82,6 +93,117 @@ export function AdminChatsPage() {
       else prev.delete('controller')
       return prev
     }, { replace: true })
+  }
+
+  function renderRow(s: AdminPatientSummary) {
+    const name = s.name || s.phone || 'Без имени'
+    const pill = getChannelPill(s.channel)
+    const time = formatActivityTime(s.last_activity_at || s.last_message_at, timezone)
+    const isOperator = getDisplayStatus(s) === 'operator'
+    const isBlocked = activeTab === 'blocked'
+
+    return (
+      <tr
+        key={s.id}
+        onClick={() => navigate(`/admin/chats/${s.id}`)}
+        className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.03] ${
+          isBlocked
+            ? 'bg-red-50/30 dark:bg-red-500/[0.03] hover:bg-red-50/60 dark:hover:bg-red-500/[0.06] border-l-2 border-l-red-600'
+            : isOperator ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
+        }`}
+      >
+        <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-text-primary">{name}</span>
+            {pill && (
+              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${pill.cls}`}>
+                {pill.text}
+              </span>
+            )}
+          </div>
+          {s.phone && <div className="text-xs text-gray-500">{s.phone}</div>}
+        </td>
+        <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04] max-w-[360px]">
+          <div className="text-text-secondary truncate">{s.last_message || '—'}</div>
+          {time && <div className="text-[10px] text-text-muted mt-0.5">{time}</div>}
+        </td>
+        <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
+              {STATUS_CONFIG[getDisplayStatus(s)]?.label}
+            </span>
+            {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
+                {STATUS_CONFIG[s.confirmation_status].label}
+              </span>
+            )}
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  function renderCard(s: AdminPatientSummary) {
+    const name = s.name || s.phone || 'Без имени'
+    const initial = name.charAt(0).toUpperCase()
+    const pill = getChannelPill(s.channel)
+    const time = formatActivityTime(s.last_activity_at || s.last_message_at, timezone)
+    const isOperator = s.controller === 'operator'
+    const isBlocked = activeTab === 'blocked'
+
+    return (
+      <div
+        key={s.id}
+        onClick={() => navigate(`/admin/chats/${s.id}`)}
+        className={`px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
+          isBlocked
+            ? 'bg-red-50/30 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/15 hover:bg-red-50/60 dark:hover:bg-red-500/[0.06]'
+            : isOperator
+              ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-red-200 dark:border-red-500/15 hover:bg-red-50 dark:hover:bg-red-500/[0.07]'
+              : 'bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+        }`}
+      >
+        {/* Top row: avatar + name/preview + time */}
+        <div className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${getAvatarColor(getDisplayStatus(s))}`}>
+            {initial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-text-primary truncate">{name}</span>
+              {pill && (
+                <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
+                  {pill.text}
+                </span>
+              )}
+              {time && (
+                <span className="text-[10px] text-text-muted ml-auto shrink-0">{time}</span>
+              )}
+            </div>
+            {s.last_message && (
+              <p className="text-xs text-text-secondary mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                {s.last_message}
+              </p>
+            )}
+          </div>
+        </div>
+        {/* Bottom row: status badges */}
+        <div className="flex items-center gap-1.5 mt-2 ml-9">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
+            {STATUS_CONFIG[getDisplayStatus(s)]?.label}
+          </span>
+          {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.confirmation_status].dot}`} />
+              {STATUS_CONFIG[s.confirmation_status].label}
+            </span>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -204,54 +326,7 @@ export function AdminChatsPage() {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => {
-                const name = s.patient?.name || s.patient?.phone || 'Без имени'
-                const pill = getChannelPill(s.channel)
-                const time = getDisplayTime(s)
-                const isOperator = getDisplayStatus(s) === 'operator'
-
-                return (
-                  <tr
-                    key={s.id}
-                    onClick={() => navigate(`/admin/chats/${s.id}`)}
-                    className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.03] ${
-                      activeTab === 'blocked'
-                        ? 'bg-red-50/30 dark:bg-red-500/[0.03] hover:bg-red-50/60 dark:hover:bg-red-500/[0.06] border-l-2 border-l-red-600'
-                        : isOperator ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-l-2 border-l-red-400' : ''
-                    }`}
-                  >
-                    <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-text-primary">{name}</span>
-                        {pill && (
-                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${pill.cls}`}>
-                            {pill.text}
-                          </span>
-                        )}
-                      </div>
-                      {s.patient?.phone && <div className="text-xs text-gray-500">{s.patient.phone}</div>}
-                    </td>
-                    <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04] max-w-[360px]">
-                      <div className="text-text-secondary truncate">{s.last_message || '—'}</div>
-                      {time && <div className="text-[10px] text-text-muted mt-0.5">{time}</div>}
-                    </td>
-                    <td className="text-sm px-4 py-3 border-b border-border-light dark:border-white/[0.04]">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
-                          {STATUS_CONFIG[getDisplayStatus(s)]?.label}
-                        </span>
-                        {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-                            {STATUS_CONFIG[s.confirmation_status].label}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+              {sessions.map((s) => renderRow(s))}
             </tbody>
           </table>
         </div>
@@ -260,72 +335,14 @@ export function AdminChatsPage() {
       {/* Mobile: Card layout */}
       {!isLoading && sessions.length > 0 && (
         <div className="md:hidden space-y-2">
-          {sessions.map((s) => {
-            const name = s.patient?.name || s.patient?.phone || 'Без имени'
-            const initial = name.charAt(0).toUpperCase()
-            const pill = getChannelPill(s.channel)
-            const time = getDisplayTime(s)
-            const isOperator = s.controller === 'operator'
-
-            return (
-              <div
-                key={s.id}
-                onClick={() => navigate(`/admin/chats/${s.id}`)}
-                className={`px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
-                  activeTab === 'blocked'
-                    ? 'bg-red-50/30 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/15 hover:bg-red-50/60 dark:hover:bg-red-500/[0.06]'
-                    : isOperator
-                      ? 'bg-red-50/50 dark:bg-red-500/[0.04] border-red-200 dark:border-red-500/15 hover:bg-red-50 dark:hover:bg-red-500/[0.07]'
-                      : 'bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-                }`}
-              >
-                {/* Top row: avatar + name/preview + time */}
-                <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${getAvatarColor(getDisplayStatus(s))}`}>
-                    {initial}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-text-primary truncate">{name}</span>
-                      {pill && (
-                        <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold shrink-0 ${pill.cls}`}>
-                          {pill.text}
-                        </span>
-                      )}
-                      {time && (
-                        <span className="text-[10px] text-text-muted ml-auto shrink-0">{time}</span>
-                      )}
-                    </div>
-                    {s.last_message && (
-                      <p className="text-xs text-text-secondary mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
-                        {s.last_message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {/* Bottom row: status badges */}
-                <div className="flex items-center gap-1.5 mt-2 ml-9">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[getDisplayStatus(s)]?.badge || ''}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
-                    {STATUS_CONFIG[getDisplayStatus(s)]?.label}
-                  </span>
-                  {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-                      {STATUS_CONFIG[s.confirmation_status].label}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+          {sessions.map((s) => renderCard(s))}
         </div>
       )}
 
       {/* Footer */}
       {!isLoading && sessions.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2">
-          {sessions.length} {pluralize(sessions.length, 'диалог', 'диалога', 'диалогов')}
+          {sessions.length} {pluralize(sessions.length, 'пациент', 'пациента', 'пациентов')}
         </div>
       )}
     </div>

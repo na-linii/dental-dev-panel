@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 hub_data/
 .claude/
+.superpowers/
+brainstorm.html
+prompt-research/

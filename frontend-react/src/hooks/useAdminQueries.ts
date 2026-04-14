@@ -5,7 +5,7 @@ import {
   getAdminSession,
   getAdminActions,
 } from '../api/adminClient'
-import type { AdminSessionSummary } from '../api/adminClient'
+import type { AdminPatientSummary } from '../api/adminClient'
 import { useMemo } from 'react'
 
 // ── Single data source: all sessions ──
@@ -25,13 +25,13 @@ export function useAllSessions() {
 /** Derived data from useAllSessions — use on any page that needs sessions */
 export function useSessionsData() {
   const { data, isLoading, error, refetch } = useAllSessions()
-  const allSessions: AdminSessionSummary[] = data?.items ?? []
+  const allSessions: AdminPatientSummary[] = data?.items ?? []
 
   const computed = useMemo(() => {
     const byController = { bot: 0, operator: 0, closed: 0 }
     const byConfirmation: Record<string, number> = {}
-    const blocked: AdminSessionSummary[] = []
-    const withConfirmation: AdminSessionSummary[] = []
+    const blocked: AdminPatientSummary[] = []
+    const withConfirmation: AdminPatientSummary[] = []
 
     for (const s of allSessions) {
       if (s.controller in byController) byController[s.controller as keyof typeof byController]++
