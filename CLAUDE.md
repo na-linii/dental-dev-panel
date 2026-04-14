@@ -97,6 +97,7 @@ Hub API (`hub/api.py`):
 - **Roadmap:** tasks + epics (через Jira REST API)
 - **Quality:** summary + history
 - **Admin Panel** (`/admin/api/`): login, dashboard, sessions, messages, actions, bot toggle, blocklist, confirmations
+- **Telegram Import** (`/admin/api/telegram/import`): proxy to dental-core for chat import (start, cancel, status, history)
 
 Auth: `hub/auth.py` — GitHub PAT + org membership check (na-linii).
 Admin auth: username/password (bcrypt).
