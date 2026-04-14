@@ -172,6 +172,39 @@ export interface AdminBlocklistItem {
   created_at: string | null
 }
 
+// Telegram Import
+export interface TelegramImportStatus {
+  task_id: string | null
+  status: 'idle' | 'running' | 'completed' | 'failed'
+  processed: number
+  total: number
+  new_messages: number
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+  last_run: {
+    task_id: string
+    status: string
+    mode: string
+    processed: number
+    new_messages: number
+    started_at: string
+    finished_at: string | null
+    error: string | null
+  } | null
+}
+
+export interface TelegramImportHistoryItem {
+  task_id: string
+  status: string
+  mode: string
+  processed: number
+  new_messages: number
+  started_at: string
+  finished_at: string | null
+  error: string | null
+}
+
 // ── API Client ──
 
 const adminApi = axios.create({ baseURL: '/admin/api', timeout: 30_000 })
@@ -284,3 +317,19 @@ export const addAdminBlocklistEntry = async (body: { phone?: string; telegram_us
 
 export const removeAdminBlocklistEntry = async (id: string) =>
   (await adminApi.delete(`/blocklist/${id}`)).data
+
+// Telegram Import
+export const startTelegramImport = async (params: {
+  mode: string
+  message_limit: number
+  dry_run: boolean
+}) => (await adminApi.post<{ task_id: string; status: string }>('/telegram/import', params)).data
+
+export const getTelegramImportStatus = async () =>
+  (await adminApi.get<TelegramImportStatus>('/telegram/import/status')).data
+
+export const cancelTelegramImport = async () =>
+  (await adminApi.post<{ status: string; task_id: string }>('/telegram/import/cancel')).data
+
+export const getTelegramImportHistory = async () =>
+  (await adminApi.get<{ runs: TelegramImportHistoryItem[] }>('/telegram/import/history')).data
