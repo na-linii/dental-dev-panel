@@ -13,16 +13,16 @@ nginx reverse proxy — единый домен:
 - `/api/*` → Hub API (FastAPI)
 - `/langfuse/*` → Langfuse Web
 - `/api/public/*` → Langfuse API (для агентов через ngrok)
-- `/admin/*` → Admin Panel (stub, login/password)
+- `/admin/*` → Admin Panel (login/password)
 
 ## Stack
 
 - **Frontend:** React 19, TypeScript 5.9, Vite 8, Tailwind CSS 4, React Query 5, Three.js, 3D Force Graph
 - **Backend:** Python 3.12, FastAPI, asyncpg (PostgreSQL schema `hub` в langfuse-postgres)
-- **Infra:** Docker Compose (8 контейнеров), nginx reverse proxy, ngrok (static domain)
-- **Observability:** Langfuse v3 (self-hosted: web, worker, postgres, clickhouse, redis, minio)
+- **Infra:** Docker Compose (10 контейнеров), nginx reverse proxy, ngrok (static domain)
+- **Observability:** Langfuse v3 (self-hosted: web, worker×3, postgres, clickhouse, redis, minio, minio-init)
 - **CI/CD:** GitHub Actions → SSH deploy на nalinii-test (158.160.85.19)
-- **Security:** HUB_SERVICE_SECRET required via env var (no hardcoded fallback), Langfuse secrets required via env vars (no weak defaults in docker-compose.yml)
+- **Security:** HUB_SERVICE_SECRET required via env var (no hardcoded fallback), Langfuse secrets required via env vars
 
 ## Frontend Structure
 
@@ -44,7 +44,7 @@ frontend-react/src/
 │   ├── ConfigField.tsx    # Поле конфига (text, checkbox, array)
 │   ├── ShapeIcon.tsx      # Иконка формы узла
 │   └── ErrorBoundary.tsx  # Error fallback
-├── pages/                 # 18 страниц
+├── pages/                 # 19 страниц
 │   ├── ClinicsPage.tsx            # Грид клиник с health polling
 │   ├── ClinicCreatePage.tsx       # Форма регистрации клиники
 │   ├── ClinicLayout.tsx           # Табы (Visualizer, Config, Admins)
@@ -56,18 +56,19 @@ frontend-react/src/
 │   ├── RoadmapPage.tsx            # Jira таймлайн + прогресс
 │   ├── SettingsPage.tsx           # Редактор цветов/форм для 3D
 │   ├── QualityPage.tsx            # Оценка качества
-│   └── admin/                     # Admin Panel (7 страниц)
+│   └── admin/                     # Admin Panel (8 страниц)
 │       ├── AdminLoginPage.tsx
 │       ├── AdminDashboardPage.tsx
 │       ├── AdminChatsPage.tsx
 │       ├── AdminChatDetailPage.tsx
 │       ├── AdminActionsPage.tsx    # visible for ALL roles (no role guard)
 │       ├── AdminConfirmationsPage.tsx
-│       └── AdminSettingsPage.tsx
-├── layouts/AdminLayout.tsx  # Layout для админки (nav visible for all roles, no role filter)
+│       ├── AdminSettingsPage.tsx
+│       └── AdminGuidePage.tsx      # Гайд для операторов
+├── layouts/AdminLayout.tsx  # Layout для админки (nav visible for all roles)
 ├── hooks/useAuth.ts         # GitHub PAT auth
 ├── config/viz.ts            # 3D colors/shapes/labels
-└── types/index.ts           # TypeScript interfaces (~289 строк)
+└── types/index.ts           # TypeScript interfaces
 ```
 
 ## Key Features
@@ -82,11 +83,11 @@ frontend-react/src/
 - **Roadmap:** Jira integration (epics с progress bars, tasks с фильтром по статусу)
 - **Settings:** Редактор цветов/форм для 3D визуализации (hub.viz_config)
 - **Eval:** LLM-as-Judge (scripts/run_eval.py) — security, handoff, dialog evaluators
-- **Admin Panel:** login/password auth, dashboard, chats, actions (visible for ALL roles), confirmations, settings
+- **Admin Panel:** login/password auth, dashboard, chats, actions (visible for ALL roles), confirmations, guide, settings
 - **Deploy:** SSH-based deployment (clone → config → build → start → health check)
 - **Traces:** Langfuse trace viewer per clinic
 
-## API (42 маршрута)
+## API (45 маршрутов)
 
 Hub API (`hub/api.py`):
 - **Clinics:** CRUD, health, config, chat proxy, graph, deploy (SSE), admins
@@ -95,7 +96,7 @@ Hub API (`hub/api.py`):
 - **Settings:** viz-config (GET/PUT)
 - **Roadmap:** tasks + epics (через Jira REST API)
 - **Quality:** summary + history
-- **Admin Panel** (`/admin/api/`): login, dashboard, sessions, messages, actions, bot toggle, blocklist
+- **Admin Panel** (`/admin/api/`): login, dashboard, sessions, messages, actions, bot toggle, blocklist, confirmations
 
 Auth: `hub/auth.py` — GitHub PAT + org membership check (na-linii).
 Admin auth: username/password (bcrypt).
@@ -112,47 +113,17 @@ PostgreSQL schema `hub` (в langfuse-postgres):
 
 ## Prompts
 
-4 промпта в `prompts/*.md` (YAML frontmatter + Markdown body):
-- **dental-router** — классификация интентов (3 интента: booking/faq/handoff)
-- **dental-booking** — запись на приём (7 шагов, slot_number system)
+5 промптов в `prompts/dev/*.md` и `prompts/prod/*.md` (YAML frontmatter + Markdown body):
+- **dental-router** — классификация интентов (4 интента: booking/faq/confirm/social)
+- **dental-booking** — запись на приём (slot_number system)
 - **dental-faq** — FAQ (Tier 1 YAML + Tier 2 pgvector)
 - **dental-confirmation** — подтверждение визитов (reschedule = cancel + new booking)
+- **dental-social** — социальные сообщения (opt-in per clinic)
 
 Sync: `hub/sync_prompts.py` — загрузка в Langfuse при старте hub-api (lifespan event).
+Labels: `production` (prod) / `dev` (dev) — управляется через `LANGFUSE_PROMPT_LABEL`.
 
 ## Repos
 
 - **dental-hub** (этот) — платформа управления
 - **dental-core** — инстанс клиники (agent + CRM + gateway)
-
-## Tools
-
-### Telethon Messaging
-Отправка сообщений в Telegram от имени пользователя. Credentials: `~/dental-e2e-tests/.env` (TELETHON_SESSION, TELETHON_API_ID, TELETHON_API_HASH).
-```bash
-cd ~/dental-e2e-tests && python3 -c "
-import asyncio, os
-from dotenv import load_dotenv; load_dotenv()
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-async def send(name, msg):
-    c = TelegramClient(StringSession(os.environ['TELETHON_SESSION']),int(os.environ['TELETHON_API_ID']),os.environ['TELETHON_API_HASH'])
-    await c.start()
-    for d in await c.get_dialogs(limit=200):
-        if name.lower() in (d.name or '').lower():
-            await c.send_message(d.entity, msg); print(f'Sent to {d.name}'); break
-    await c.disconnect()
-asyncio.run(send('ИМЯ', 'ТЕКСТ'))
-"
-```
-
-### E2E Testing (Telethon)
-Тестирование бота через Telethon selfbot. Guide: `~/dental-e2e-tests/` с `send_and_wait()` и `check_no_response()`.
-
-## Development Rules
-
-- Промпты ТОЛЬКО через Langfuse, НОЛЬ хардкода
-- Ветки + PR, не в main
-- Тесты вместе с кодом
-- НЕ трогать production без подтверждения
-- Язык: русский
