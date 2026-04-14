@@ -961,6 +961,12 @@ async def admin_telegram_import_start(request: Request, admin_user=Depends(_get_
     return await _proxy_to_clinic(clinic, "POST", "/admin/api/telegram/import", body=body)
 
 
+@app.post("/admin/api/telegram/import/cancel")
+async def admin_telegram_import_cancel(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "POST", "/admin/api/telegram/import/cancel")
+
+
 @app.get("/admin/api/telegram/import/status")
 async def admin_telegram_import_status(admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)

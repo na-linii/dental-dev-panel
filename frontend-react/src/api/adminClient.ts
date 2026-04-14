@@ -328,5 +328,8 @@ export const startTelegramImport = async (params: {
 export const getTelegramImportStatus = async () =>
   (await adminApi.get<TelegramImportStatus>('/telegram/import/status')).data
 
+export const cancelTelegramImport = async () =>
+  (await adminApi.post<{ status: string; task_id: string }>('/telegram/import/cancel')).data
+
 export const getTelegramImportHistory = async () =>
   (await adminApi.get<{ runs: TelegramImportHistoryItem[] }>('/telegram/import/history')).data

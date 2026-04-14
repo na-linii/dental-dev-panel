@@ -4,7 +4,7 @@ import { pluralize } from '../../utils/pluralize'
 import {
   getAdminBotStatus, toggleAdminBot,
   getAdminBlocklist, addAdminBlocklistEntry, removeAdminBlocklistEntry,
-  startTelegramImport, getTelegramImportStatus, getTelegramImportHistory,
+  startTelegramImport, cancelTelegramImport, getTelegramImportStatus, getTelegramImportHistory,
 } from '../../api/adminClient'
 import type { AdminBotStatus, AdminBlocklistItem, TelegramImportStatus, TelegramImportHistoryItem } from '../../api/adminClient'
 
@@ -58,6 +58,12 @@ function TelegramImportSection() {
     }
   }
 
+  const handleCancel = async () => {
+    try {
+      await cancelTelegramImport()
+    } catch { /* ignore */ }
+  }
+
   const progressPercent = status && status.total > 0 ? Math.round((status.processed / status.total) * 100) : 0
   const lastRun = status?.last_run || (history.length > 0 ? history[0] : null)
 
@@ -107,7 +113,7 @@ function TelegramImportSection() {
           </label>
         </div>
       </div>
-      <div className="mb-4">
+      <div className="mb-4 flex gap-3">
         <button
           onClick={handleStart}
           disabled={isRunning || loading}
@@ -115,6 +121,14 @@ function TelegramImportSection() {
         >
           {loading ? 'Запускаем...' : isRunning ? 'Импорт выполняется...' : 'Запустить импорт'}
         </button>
+        {isRunning && (
+          <button
+            onClick={handleCancel}
+            className="bg-destructive text-destructive-foreground px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+          >
+            Остановить
+          </button>
+        )}
       </div>
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
