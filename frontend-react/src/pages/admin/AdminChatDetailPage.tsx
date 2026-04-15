@@ -7,11 +7,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail, useAdminDashboard } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG, getDisplayStatus } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG, getDisplayStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
 import type { BookingConfirmationRun } from '../../api/adminClient'
 import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
+
+const TEXTAREA_LINE_HEIGHT = 24
+const TEXTAREA_MAX_ROWS = 5
 
 /** Return session-level fields from last session in patient detail */
 function getLastSession(patient: AdminPatientDetail): AdminSessionInfo | null {
@@ -65,11 +68,19 @@ export function AdminChatDetailPage() {
     prevMsgCount.current = count
   }, [session])
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageText(e.target.value)
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, TEXTAREA_LINE_HEIGHT * TEXTAREA_MAX_ROWS) + 'px'
+  }
+
   const handleSend = async () => {
     if (!messageText.trim() || !session || isSending) return
     const text = messageText.trim()
     const mutationSessionId = session.last_session_id || session.id
     setMessageText('')
+    if (inputRef.current) inputRef.current.style.height = 'auto'
     setIsSending(true)
     try {
       const result = await sendAdminMessage(mutationSessionId, text)
@@ -214,15 +225,14 @@ export function AdminChatDetailPage() {
                 {STATUS_CONFIG[confirmationStatus].label}
               </span>
             )}
-            {channel && (
-              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                channel === 'tg_bot' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' :
-                channel === 'tg_business' ? 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' :
-                'bg-gray-100 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400'
-              }`}>
-                {channel === 'tg_bot' ? 'TG Bot' : channel === 'tg_business' ? 'TG Biz' : channel}
-              </span>
-            )}
+            {channel && (() => {
+              const chCfg = CHANNEL_CONFIG[channel] ?? { text: channel, cls: 'bg-gray-100 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400' }
+              return (
+                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${chCfg.cls}`}>
+                  {chCfg.text}
+                </span>
+              )
+            })()}
             {session.sessions.length > 1 && (
               <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.06]">
                 {session.sessions.length} сессии
@@ -339,12 +349,13 @@ export function AdminChatDetailPage() {
             <textarea
               ref={inputRef}
               value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
+              onChange={handleMessageChange}
               onKeyDown={handleKeyDown}
               placeholder="Написать от имени администратора..."
               disabled={isSending}
               rows={1}
-              className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200 disabled:opacity-50 resize-none overflow-y-auto max-h-[120px]"
+              style={{ minHeight: `${TEXTAREA_LINE_HEIGHT}px`, maxHeight: `${TEXTAREA_LINE_HEIGHT * TEXTAREA_MAX_ROWS}px` }}
+              className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200 disabled:opacity-50 resize-none overflow-y-auto"
             />
           </div>
           <button
