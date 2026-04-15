@@ -77,10 +77,7 @@ export function AdminLayout() {
         <div className="px-5 py-4 border-b border-gray-200 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             <NaLiniiLogo className="w-8 h-8 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Личный кабинет</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5 truncate">{user.clinic_id}</p>
-            </div>
+            <span className="text-base font-bold text-gray-900 dark:text-white tracking-tight">НаЛинии</span>
           </div>
         </div>
 
@@ -114,6 +111,9 @@ export function AdminLayout() {
             <div className="flex-1 min-w-0">
               <p className="text-sm text-gray-900 dark:text-white truncate">{user.full_name || user.username}</p>
               <p className="text-xs text-gray-500">{user.role}</p>
+              {user.clinic_name && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{user.clinic_name}</p>
+              )}
             </div>
           </div>
           <div className="space-y-0.5 mt-1">
@@ -145,7 +145,7 @@ export function AdminLayout() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="text-sm font-medium text-text-secondary">{user.clinic_id}</span>
+          <span className="text-sm font-medium text-text-secondary">{user.clinic_name || 'НаЛинии'}</span>
           <button
             onClick={handleLogout}
             className="p-2 rounded-lg text-text-tertiary hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -155,7 +155,7 @@ export function AdminLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto bg-surface-secondary dark:bg-[#0d0d1a]">
           <Outlet />
         </main>
       </div>
