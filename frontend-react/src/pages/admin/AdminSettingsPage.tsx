@@ -186,8 +186,8 @@ export function AdminSettingsPage() {
       {isSuperadmin && <RedButtonSection />}
       <BlocklistSection />
 
-      {/* Telegram Import */}
-      <TelegramImportSection />
+      {/* Telegram Import (superadmin only) */}
+      {isSuperadmin && <TelegramImportSection />}
     </div>
   )
 }
