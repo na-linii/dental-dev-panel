@@ -362,6 +362,7 @@ function BlocklistSection() {
   const [input, setInput] = useState('')
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [inputError, setInputError] = useState(false)
 
   useEffect(() => {
     getAdminBlocklist()
@@ -373,6 +374,27 @@ function BlocklistSection() {
   const handleAdd = async () => {
     const trimmed = input.trim()
     if (!trimmed || saving) return
+
+    // Валидация формата
+    if (inputType === 'phone') {
+      const digits = trimmed.replace(/\D/g, '')
+      if (digits.length < 10 || digits.length > 15) {
+        setError('Введите корректный номер телефона (от 10 до 15 цифр)')
+        setInputError(true)
+        setTimeout(() => { setError(null); setInputError(false) }, 4000)
+        return
+      }
+    }
+    if (inputType === 'tg') {
+      if (!/^\d+$/.test(trimmed)) {
+        setError('Telegram ID должен состоять только из цифр')
+        setInputError(true)
+        setTimeout(() => { setError(null); setInputError(false) }, 4000)
+        return
+      }
+    }
+
+    setInputError(false)
     setSaving(true)
     try {
       const body = inputType === 'phone'
@@ -441,14 +463,14 @@ function BlocklistSection() {
         <div className="p-4 border-b border-border-light dark:border-white/[0.04] bg-surface-secondary dark:bg-white/[0.01] space-y-3">
           <div className="flex rounded-lg border border-border dark:border-white/[0.08] overflow-hidden w-fit">
             <button
-              onClick={() => { setInputType('phone'); setInput('') }}
+              onClick={() => { setInputType('phone'); setInput(''); setInputError(false); setError(null) }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${inputType === 'phone' ? 'bg-accent text-white' : 'bg-surface-secondary dark:bg-white/[0.04] text-text-tertiary hover:bg-surface-tertiary dark:hover:bg-white/[0.08]'}`}
             >
               <Phone className="w-3 h-3" />
               Телефон
             </button>
             <button
-              onClick={() => { setInputType('tg'); setInput('') }}
+              onClick={() => { setInputType('tg'); setInput(''); setInputError(false); setError(null) }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${inputType === 'tg' ? 'bg-accent text-white' : 'bg-surface-secondary dark:bg-white/[0.04] text-text-tertiary hover:bg-surface-tertiary dark:hover:bg-white/[0.08]'}`}
             >
               <Send className="w-3 h-3" />
@@ -469,7 +491,7 @@ function BlocklistSection() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={inputType === 'phone' ? '+7 (999) 123-45-67' : '123456789'}
-                  className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200"
+                  className={`w-full bg-surface-secondary dark:bg-white/[0.04] border rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none transition-all duration-200 ${inputError ? 'border-red-400 dark:border-red-500/60 focus:border-red-400' : 'border-border dark:border-white/[0.08] focus:border-accent/40'}`}
                 />
               </div>
               <input
