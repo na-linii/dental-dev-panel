@@ -128,6 +128,13 @@ export const BOOKING_STATUS_STYLES: Record<string, string> = {
   'завершён': 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-500/25',
 }
 
+// ── Channel display config (shared between chats list and chat detail) ──
+
+export const CHANNEL_CONFIG: Record<string, { text: string; cls: string }> = {
+  tg_bot:      { text: 'TG Bot', cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  tg_business: { text: 'TG Biz', cls: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+}
+
 // ── Navigation items ──
 
 export const NAV_ITEMS = [
