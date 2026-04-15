@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   ArrowUp, Eye, Bot,
-  Info, Phone,
+  Info, Phone, Users, Clock,
 } from 'lucide-react'
 import { STATUS_CONFIG, GUIDE_INCOMING_STATUSES, GUIDE_OUTGOING_STATUSES } from '../../config/adminStatuses'
 
@@ -33,6 +33,7 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 const toc = [
   { id: 'service-logic', label: 'Логика работы', icon: Bot },
   { id: 'statuses', label: 'Статусы', icon: Eye },
+  { id: 'features', label: 'Особенности', icon: Info },
 ]
 
 /* ── Main component ──────────────────────────────────── */
@@ -70,7 +71,7 @@ export function AdminGuidePage() {
           </div>
 
           {/* ── TOC grid ─────────────────────────────────── */}
-          <nav className="mt-8 grid grid-cols-2 gap-2.5">
+          <nav className="mt-8 grid grid-cols-3 gap-2.5">
             {toc.map((t) => (
               <a key={t.id} href={`#${t.id}`}
                 className="flex items-center gap-2.5 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm border border-gray-200 dark:border-white/[0.06] rounded-xl px-3.5 py-3 hover:border-accent/30 hover:bg-white dark:hover:bg-white/[0.06] transition-all duration-200 group">
@@ -299,6 +300,56 @@ export function AdminGuidePage() {
               )
             })}
           </div>
+        </Section>
+
+        {/* ── 3. Features ──────────────────────────────────── */}
+        <Section id="features" number={3} title="Особенности системы">
+
+          {/* Блок 1: Первичные пациенты */}
+          <Reveal>
+            <div className="bg-orange-50 dark:bg-orange-500/[0.07] border border-orange-200 dark:border-orange-500/20 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <Users className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-1">Первичные пациенты — агент не отвечает</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Агент настроен так, чтобы не отвечать на сообщения первичных пациентов. Первичный пациент — это любой пациент, у которого в базе данных IDENT не было записей на приём последние полгода.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {[
+                      'У пациента нет номера телефона — агент не может сопоставить его с данными из IDENT',
+                      'Есть номер телефона, но по этому номеру в IDENT нет записей на приём',
+                      'Есть номер телефона и пациент приходил в клинику, но более полугода назад',
+                    ].map((item) => (
+                      <div key={item} className="flex items-start gap-2">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Блок 2: Получасовые интервалы */}
+          <Reveal delay={80}>
+            <div className="bg-teal-50 dark:bg-teal-500/[0.07] border border-teal-200 dark:border-teal-500/20 rounded-2xl p-5 mt-4">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-teal-700 dark:text-teal-300 mb-1">Запись через Medflex — только получасовые слоты</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    IDENT не разрешает добавлять записи напрямую, поэтому агент делает это через сервис Medflex (Продокторов), который поддерживает только получасовые записи.
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mt-2">
+                    Если приём длится дольше 30 минут — создаётся несколько последовательных записей. Например, для часового приёма создаются две записи подряд по 30 минут.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
         </Section>
       </div>
 
