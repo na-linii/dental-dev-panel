@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { RefreshCw, CheckCircle, ClipboardList } from 'lucide-react'
 import { updateAdminAction } from '../../api/adminClient'
 import { useAdminActions } from '../../hooks/useAdminQueries'
@@ -5,7 +6,21 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import type { AdminAction } from '../../api/adminClient'
-import { ACTION_TYPES } from '../../config/adminStatuses'
+import { ACTION_TYPES, STATUS_CONFIG } from '../../config/adminStatuses'
+
+function ActionTypeBadge({ actionType }: { actionType: string }) {
+  const relatedStatus = ACTION_TYPES[actionType]?.relatedStatus
+  const cfg = relatedStatus ? STATUS_CONFIG[relatedStatus] : null
+  if (cfg) {
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${cfg.badge}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+        {cfg.label}
+      </span>
+    )
+  }
+  return <span className="text-sm text-text-secondary">{ACTION_TYPES[actionType]?.label || actionType}</span>
+}
 
 export function AdminActionsPage() {
   const { data, isLoading, error: queryError, refetch } = useAdminActions({ status: 'pending' })
@@ -13,20 +28,28 @@ export function AdminActionsPage() {
   const queryClient = useQueryClient()
   const actions: AdminAction[] = Array.isArray(data) ? data : []
   const error = queryError ? 'Не удалось загрузить действия' : null
+  const [confirmingActionId, setConfirmingActionId] = useState<string | null>(null)
 
-  const handleAction = async (e: React.MouseEvent, actionId: string) => {
+  const handleActionClick = (e: React.MouseEvent, actionId: string) => {
     e.stopPropagation()
+    setConfirmingActionId(actionId)
+  }
+
+  const handleConfirm = async () => {
+    if (!confirmingActionId) return
     try {
-      await updateAdminAction(actionId, 'done')
+      await updateAdminAction(confirmingActionId, 'done')
       queryClient.invalidateQueries({ queryKey: ['admin', 'actions'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
     } catch (err) {
       if (import.meta.env.DEV) console.error('Action update error:', err)
+    } finally {
+      setConfirmingActionId(null)
     }
   }
 
   const handleRowClick = (action: AdminAction) => {
-    if (action.session_id) navigate(`/admin/chats/${action.session_id}`)
+    if (action.patient_id) navigate(`/admin/chats/${action.patient_id}`)
   }
 
   const PatientCell = ({ action }: { action: AdminAction }) => (
@@ -54,6 +77,32 @@ export function AdminActionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Confirm dialog */}
+      {confirmingActionId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/[0.1] rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4">
+            <h3 className="text-base font-semibold text-text-primary mb-2">Подтвердите действие</h3>
+            <p className="text-sm text-text-tertiary mb-5">
+              Отметить задачу как выполненную? Это действие нельзя отменить.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirm}
+                className="flex-1 px-4 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/90 transition-colors"
+              >
+                Подтвердить
+              </button>
+              <button
+                onClick={() => setConfirmingActionId(null)}
+                className="flex-1 px-4 py-2.5 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] text-text-secondary rounded-xl text-sm hover:bg-surface-tertiary dark:hover:bg-white/[0.08] transition-colors"
+              >
+                Отменить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -89,10 +138,10 @@ export function AdminActionsPage() {
           <div
             key={a.id}
             onClick={() => handleRowClick(a)}
-            className={`p-3 rounded-xl border bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none ${a.session_id ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]' : ''} transition-all duration-150`}
+            className={`p-3 rounded-xl border bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none ${a.patient_id ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]' : ''} transition-all duration-150`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-accent">{ACTION_TYPES[a.action_type]?.label || a.action_type}</span>
+              <ActionTypeBadge actionType={a.action_type} />
               {a.created_at && (
                 <span className="text-[10px] text-text-muted">{format(new Date(a.created_at), 'dd.MM HH:mm')}</span>
               )}
@@ -111,7 +160,7 @@ export function AdminActionsPage() {
             </div>
             {a.status === 'pending' && (
               <button
-                onClick={(e) => handleAction(e, a.id)}
+                onClick={(e) => handleActionClick(e, a.id)}
                 className="w-full flex items-center justify-center gap-1 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/15"
               >
                 <CheckCircle className="w-3 h-3" /> Готово
@@ -156,10 +205,10 @@ export function AdminActionsPage() {
                 <tr
                   key={action.id}
                   onClick={() => handleRowClick(action)}
-                  className={`border-b border-border-light dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 ${action.session_id ? 'cursor-pointer' : ''}`}
+                  className={`border-b border-border-light dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 ${action.patient_id ? 'cursor-pointer' : ''}`}
                 >
-                  <td className="px-4 py-3 text-sm text-accent font-medium whitespace-nowrap">
-                    {ACTION_TYPES[action.action_type]?.label || action.action_type}
+                  <td className="px-4 py-3">
+                    <ActionTypeBadge actionType={action.action_type} />
                   </td>
                   <td className="px-4 py-3">
                     <PatientCell action={action} />
@@ -174,7 +223,7 @@ export function AdminActionsPage() {
                     {action.status === 'pending' && (
                       <div className="flex justify-end">
                         <button
-                          onClick={(e) => handleAction(e, action.id)}
+                          onClick={(e) => handleActionClick(e, action.id)}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/15 transition-colors"
                         >
                           <CheckCircle className="w-3.5 h-3.5" />
