@@ -3,16 +3,21 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
 import type { AdminPatientSummary } from '../../api/adminClient'
 import { useSessionsData, useAdminDashboard } from '../../hooks/useAdminQueries'
-import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
 
 type ActiveTab = 'all' | 'blocked'
 
 function getChannelPill(channel: string | null | undefined) {
   if (!channel) return null
-  if (channel === 'tg_bot') return { text: 'TG', cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' }
-  if (channel === 'tg_business') return { text: 'BIZ', cls: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' }
-  return { text: channel, cls: 'bg-gray-100 dark:bg-gray-500/10 text-gray-500 dark:text-gray-400' }
+  return CHANNEL_CONFIG[channel] ?? { text: channel, cls: 'bg-gray-100 dark:bg-gray-500/10 text-gray-500 dark:text-gray-400' }
+}
+
+const OPERATOR_ATTENTION_STATUSES = ['awaiting_cancel', 'awaiting_reschedule']
+
+function needsOperator(s: AdminPatientSummary): boolean {
+  return s.controller === 'operator' ||
+    OPERATOR_ATTENTION_STATUSES.includes(s.confirmation_status ?? '')
 }
 
 function formatActivityTime(ts: string | null | undefined, timezone: string): string | null {
@@ -52,14 +57,16 @@ export function AdminChatsPage() {
 
   // Client-side filtering: controller + blocked + search
   const { sessions, tagCounts } = useMemo(() => {
-    const operatorActive = allSessions.filter((s) => getDisplayStatus(s) === 'operator_active').length
-    const operatorWaiting = computed.byController.operator - operatorActive
+    // "Все диалоги" — без заблокированных
+    const unblocked = allSessions.filter((s) => !s.is_blocked)
+
+    const operatorActive = unblocked.filter((s) => getDisplayStatus(s) === 'operator_active').length
     const counts: Record<string, number> = {
-      '': allSessions.length,
-      bot: computed.byController.bot,
-      operator: operatorWaiting,
+      '': unblocked.length,
+      bot: unblocked.filter((s) => s.controller === 'bot' && !needsOperator(s)).length,
+      operator: unblocked.filter((s) => needsOperator(s) && getDisplayStatus(s) !== 'operator_active').length,
       operator_active: operatorActive,
-      closed: computed.byController.closed,
+      closed: unblocked.filter((s) => s.controller === 'closed').length,
     }
 
     if (activeTab === 'blocked') {
@@ -70,12 +77,12 @@ export function AdminChatsPage() {
     }
 
     let filtered = controllerFilter
-      ? allSessions.filter((s) =>
-          controllerFilter === 'operator_active'
-            ? getDisplayStatus(s) === 'operator_active'
-            : s.controller === controllerFilter && getDisplayStatus(s) !== 'operator_active'
-        )
-      : allSessions
+      ? unblocked.filter((s) => {
+          if (controllerFilter === 'operator_active') return getDisplayStatus(s) === 'operator_active'
+          if (controllerFilter === 'operator') return needsOperator(s) && getDisplayStatus(s) !== 'operator_active'
+          return s.controller === controllerFilter && !needsOperator(s)
+        })
+      : unblocked
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       filtered = filtered.filter((s) => (s.name || '').toLowerCase().includes(q) || (s.phone || '').includes(q))
