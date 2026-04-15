@@ -5,7 +5,7 @@ import { clinicsApi, tracesApi, settingsApi } from '../api/client'
 import { ForceGraph3D } from '../components/ForceGraph3D'
 import type { ForceGraph3DHandle } from '../components/ForceGraph3D'
 import { ChatPlayground } from '../components/ChatPlayground'
-import { TraceLog, buildAnimPath, setGraphNodes } from '../components/TraceLog'
+import { TraceLog, buildAnimPath, initAnimGraph } from '../components/TraceLog'
 import { VizLegend } from '../components/VizLegend'
 import type { GraphData } from '../types'
 import type { VizConfigEntry } from '../types'
@@ -47,7 +47,7 @@ export function ClinicVisualizerTab() {
         clinicsApi
           .graph(clinicId)
           .then((data) => {
-            setGraphNodes(data.nodes || [])
+            initAnimGraph(data.nodes || [], data.links || [])
             // Merge: DB config takes priority over graph meta viz_config
             const graphVc = data.meta?.viz_config || {}
             const merged = { ...graphVc, ...dbVizConfig }

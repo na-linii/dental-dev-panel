@@ -9,10 +9,7 @@ import { ClinicLayout } from './pages/ClinicLayout'
 import { ClinicVisualizerTab } from './pages/ClinicVisualizerTab'
 import { ClinicConfigTab } from './pages/ClinicConfigTab'
 import { ClinicAdminsTab } from './pages/ClinicAdminsTab'
-import { ArchitecturePage } from './pages/ArchitecturePage'
-import { RoadmapPage } from './pages/RoadmapPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { EdgeCasesPage } from './pages/EdgeCasesPage'
 import { AdminLayout } from './layouts/AdminLayout'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
@@ -72,9 +69,6 @@ export default function App() {
                 <Route path="config" element={<ClinicConfigTab />} />
                 <Route path="admins" element={<ClinicAdminsTab />} />
               </Route>
-              <Route path="/architecture" element={<ArchitecturePage />} />
-              <Route path="/edge-cases" element={<EdgeCasesPage />} />
-              <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/visualizer" element={<Navigate to="/" replace />} />
             </Route>

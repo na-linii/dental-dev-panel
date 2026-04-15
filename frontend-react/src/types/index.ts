@@ -78,17 +78,6 @@ export interface GraphData {
   meta?: GraphMeta
 }
 
-export interface EdgeCaseItem {
-  id: string
-  category: string
-  message: string
-  expected: string
-  patient_name?: string | null
-  patient_phone?: string | null
-  is_identified: boolean
-  history: Array<{ role: string; content: string }>
-}
-
 export interface TraceFlow {
   name: string
   type: string
@@ -119,39 +108,6 @@ export interface User {
   login: string
   avatar: string
   name: string
-}
-
-export interface EpicTask {
-  key: string
-  summary: string
-  status: string
-  statusCategory: string
-  assignee: string | null
-  assigneeAvatar: string | null
-  url: string
-}
-
-export interface EpicProgress {
-  total: number
-  done: number
-  review: number
-  in_progress: number
-  todo: number
-  backlog: number
-  percent: number
-}
-
-export interface Epic {
-  key: string
-  summary: string
-  status: string
-  url?: string
-  progress: EpicProgress
-  tasks: EpicTask[]
-}
-
-export interface EpicsResponse {
-  epics: Epic[]
 }
 
 export interface AdminUser {

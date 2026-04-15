@@ -11,122 +11,111 @@ export interface AnimStep {
   llmNodes?: Record<string, 'openai' | 'openrouter'>
 }
 
-// Name → graph node ID mapping — built dynamically from /graph API data
+// Graph state — built dynamically from /graph API data
 let _nameToNode: Record<string, string> = {}
-let _toolNames: string[] = []
+let _graphLinks: [string, string][] = []
+let _knownNodeIds: Set<string> = new Set()
 
-/** Update the name→nodeId mapping from graph nodes. Call once when graph data loads. */
-export function setGraphNodes(nodes: Array<{ id: string; name: string; group: string }>) {
+/**
+ * Register graph structure from clinic's /graph endpoint.
+ * Must be called before buildAnimPath to enable dynamic node matching.
+ */
+export function initAnimGraph(
+  nodes: Array<{ id: string; name: string; group: string }>,
+  links: Array<{ source: string; target: string }>,
+) {
   _nameToNode = {}
-  _toolNames = []
+  _graphLinks = links.map((l) => [l.source, l.target] as [string, string])
+  _knownNodeIds = new Set()
+
   for (const n of nodes) {
+    _knownNodeIds.add(n.id)
     _nameToNode[n.name] = n.id
-    // Also map by ID for tool names (traces use short names like "get_availability")
-    const shortName = n.id.includes(':') ? n.id.split(':')[1] : n.id
-    if (shortName !== n.name) _nameToNode[shortName] = n.id
-    if (n.group === 'tool') _toolNames.push(shortName)
+    // Also map by short ID (e.g. "tier1" from "tool:tier1")
+    const shortId = n.id.includes(':') ? n.id.split(':').pop()! : n.id
+    if (shortId !== n.id) _nameToNode[shortId] = n.id
   }
 }
 
-function toNodeId(name: string): string {
-  return _nameToNode[name] || name.toLowerCase().replace(/\s+/g, '_')
+/**
+ * Resolve an observation name to a graph node ID.
+ * Checks: exact node ID → display name mapping → short name mapping.
+ */
+function resolveNodeId(name: string): string | null {
+  if (!name) return null
+  if (_knownNodeIds.has(name)) return name
+  return _nameToNode[name] || null
 }
 
-function obsDur(obs?: { startTime?: string; endTime?: string }): number {
-  if (obs?.startTime && obs?.endTime) {
-    return Math.max(Math.round(new Date(obs.endTime).getTime() - new Date(obs.startTime).getTime()), 50)
+function detectProvider(obs: TraceFlow): 'openai' | 'openrouter' {
+  if (!obs.model) return 'openai'
+  const m = obs.model.toLowerCase()
+  if (m.includes('openrouter') || m.includes('anthropic') || m.includes('mistral') || m.includes('claude')) {
+    return 'openrouter'
+  }
+  return 'openai'
+}
+
+function obsDur(obs: Pick<TraceFlow, 'startTime' | 'endTime'>): number {
+  if (obs.startTime && obs.endTime) {
+    return Math.max(
+      Math.round(new Date(obs.endTime).getTime() - new Date(obs.startTime).getTime()),
+      50,
+    )
   }
   return 150
 }
 
-/** Build animation path from trace observations */
+/**
+ * Build animation path from Langfuse trace observations.
+ *
+ * Produces two types of AnimStep:
+ *  1. Data flow  — links: [[source, target], ...] — particles travel along graph edges
+ *  2. Thinking   — llmNodes: {nodeId: provider}  — node border changes color
+ *
+ * Both use real observation timestamps for accurate timing.
+ * Animation adapts to any clinic's graph structure via initAnimGraph().
+ */
 export function buildAnimPath(flow: TraceFlow[]): AnimStep[] {
   if (!flow?.length) return []
 
-  const root = flow.find((o) => !o.parentId) || flow[0]
-  const routerObs = flow.find((o) => o.name === 'router')
-  const routerParent = routerObs?.parentId
-  const faqObs = flow.find((o) => o.name === 'faq' && o.parentId === routerParent)
-  const bookingObs = flow.find((o) => o.name === 'booking' && o.parentId === routerParent)
-  const agentName = faqObs ? 'FAQ Agent' : bookingObs ? 'Booking Agent' : null
-  const agentObs = faqObs || bookingObs
-
-  // Detect LLM provider from ChatOpenAI observations
-  const llmObservations = flow.filter((o) => o.name === 'ChatOpenAI')
-  function detectProvider(obs?: TraceFlow): 'openai' | 'openrouter' {
-    if (!obs?.model) return 'openai'
-    const model = obs.model.toLowerCase()
-    if (model.includes('openrouter') || model.includes('anthropic') || model.includes('mistral')) return 'openrouter'
-    return 'openai'
-  }
-  // Router's LLM
-  const routerLlm = llmObservations.find((o) => routerObs && o.parentId === routerObs.id)
-  const routerProvider = detectProvider(routerLlm)
-  // Agent's LLM (any ChatOpenAI not belonging to router)
-  const agentLlm = llmObservations.find((o) => !routerObs || o.parentId !== routerObs.id)
-  const agentProvider = detectProvider(agentLlm)
-  const hookObs = flow.find((o) => o.name === 'pre_model_hook')
+  // Sort by startTime (fallback to 0 if missing)
+  const sorted = [...flow]
+    .filter((o) => !!o.name)
+    .sort((a, b) => {
+      const ta = a.startTime ? new Date(a.startTime).getTime() : 0
+      const tb = b.startTime ? new Date(b.startTime).getTime() : 0
+      return ta - tb
+    })
 
   const path: AnimStep[] = []
 
-  function add(from: string, to: string, obs?: TraceFlow | typeof root) {
-    path.push({ links: [[toNodeId(from), toNodeId(to)]], dur: obsDur(obs as { startTime?: string; endTime?: string }) })
-  }
+  for (const obs of sorted) {
+    if (obs.type === 'llm') {
+      // Thinking animation: the parent node (e.g. 'router', 'faq') is "thinking"
+      // while this LLM observation is active. ChatOpenAI itself is not a graph node.
+      const parentObs = flow.find((o) => o.id === obs.parentId)
+      const thinkingId = parentObs ? resolveNodeId(parentObs.name) : null
+      if (!thinkingId) continue
 
-  // Forward path: Telegram → Gateway → Router → Agent
-  add('Telegram', 'Chat Gateway', root)
-  add('Chat Gateway', 'Identity DB')
-  add('Identity DB', 'Chat Gateway')
-  if (routerObs) {
-    // Router is "thinking" — LLM call for intent classification
-    path.push({
-      links: [[toNodeId('Chat Gateway'), toNodeId('Dental Router')]],
-      dur: obsDur(routerObs),
-      llmNodes: { [toNodeId('Dental Router')]: routerProvider },
-    })
-  }
-  if (agentName && agentObs) add('Dental Router', agentName, agentObs)
-
-  // Knowledge lookup: agent → tool:tier1, then tool:tier2 → db:kb (real graph links)
-  if (hookObs && agentName) {
-    add(agentName, 'Tier 1+2 Search', hookObs)    // faq:agent → tool:tier1
-    // tier2 → db:kb is the real link in graph
-    path.push({ links: [[toNodeId('Tier 1+2 Search'), 'tool:tier2']], dur: obsDur(hookObs) / 2 })
-    path.push({ links: [['tool:tier2', toNodeId('Knowledge Base')]], dur: obsDur(hookObs) / 2 })
-    // Return: db:kb → tool:tier2 → faq:agent (reverse of real links)
-    path.push({ links: [[toNodeId('Knowledge Base'), 'tool:tier2']], dur: obsDur(hookObs) / 2 })
-    path.push({ links: [['tool:tier2', toNodeId(agentName)]], dur: obsDur(hookObs) / 2 })
-    // Agent "thinking" — LLM generates response
-    if (agentLlm) {
+      // Animate incoming edges + node thinking glow simultaneously
+      const incoming = _graphLinks.filter(([, t]) => t === thinkingId)
       path.push({
-        links: [],  // no link animation, just node glow
-        dur: obsDur(agentLlm),
-        llmNodes: { [toNodeId(agentName)]: agentProvider },
+        links: incoming,
+        dur: obsDur(obs),
+        llmNodes: { [thinkingId]: detectProvider(obs) },
       })
+    } else {
+      // Data flow animation: find the graph node and animate its incoming edges
+      const nodeId = resolveNodeId(obs.name)
+      if (!nodeId) continue
+
+      const incoming = _graphLinks.filter(([, t]) => t === nodeId)
+      if (incoming.length > 0) {
+        path.push({ links: incoming, dur: obsDur(obs) })
+      }
     }
   }
-
-  // CRM tools: agent → tool → crm_gateway (real graph links)
-  flow.forEach((obs) => {
-    if (obs.name && _toolNames.includes(obs.name)) {
-      add(agentName || 'Booking Agent', obs.name, obs)
-      add(obs.name, 'CRM Gateway', obs)
-    }
-  })
-
-  // Handoff: agent → tool:handoff → chat_gateway (real graph links)
-  const handoffObs = flow.find((o) => o.name?.includes('handoff'))
-  if (handoffObs) {
-    add(agentName || '?', 'Handoff', handoffObs)
-    add('Handoff', 'Chat Gateway', handoffObs)
-  }
-
-  // Return path: agent → router → chat_gateway → telegram (reverse of real links)
-  if (agentName && agentObs) {
-    add(agentName, 'Dental Router', agentObs)        // faq:agent → router (reverse of router→faq:agent)
-    add('Dental Router', 'Chat Gateway', agentObs)    // router → chat_gateway (reverse of chat_gateway→router)
-  }
-  add('Chat Gateway', 'Telegram', root)               // chat_gateway → telegram (reverse of telegram→chat_gateway)
 
   return path
 }
@@ -158,7 +147,6 @@ function formatValue(val: unknown): string {
   if (val === null || val === undefined) return '—'
   if (typeof val === 'string') return val.length > 300 ? val.slice(0, 300) + '...' : val
   if (typeof val === 'object') {
-    // Extract meaningful content from common structures
     const obj = val as Record<string, unknown>
     if (obj.content) return String(obj.content).slice(0, 300)
     if (obj.text) return String(obj.text).slice(0, 300)
@@ -209,7 +197,17 @@ function StepDetail({ step }: { step: StepData }) {
   )
 }
 
-function TraceRow({ trace, clinicId, onReplay, speed }: { trace: TraceSummary; clinicId: string; onReplay?: (id: string, speed: number) => void; speed: number }) {
+function TraceRow({
+  trace,
+  clinicId,
+  onReplay,
+  speed,
+}: {
+  trace: TraceSummary
+  clinicId: string
+  onReplay?: (id: string, speed: number) => void
+  speed: number
+}) {
   const [open, setOpen] = useState(false)
   const [steps, setSteps] = useState<StepData[] | null>(null)
 
@@ -218,19 +216,20 @@ function TraceRow({ trace, clinicId, onReplay, speed }: { trace: TraceSummary; c
     setOpen(true)
     try {
       const data = await tracesApi.detail(clinicId, trace.id)
-      // Build readable steps from flow observations
-      const readable: StepData[] = []
-      const built = buildAnimPath(data.flow)
-      const flowMap = new Map(data.flow.map((f) => [f.name, f]))
+      const animSteps = buildAnimPath(data.flow)
+      const flowByName = new Map(data.flow.map((f) => [f.name, f]))
+      const flowById = new Map(data.flow.map((f) => [f.id, f]))
 
-      for (const animStep of built) {
+      const readable: StepData[] = []
+      for (const animStep of animSteps) {
         if (animStep.links.length === 0) continue
         const [from, to] = animStep.links[0]
-        // Find matching observation for input/output
-        const obsName = Object.entries(_nameToNode).find(([, v]) => v === to)?.[0] || to
-        const obs = flowMap.get(obsName) || flowMap.get(to)
+        // Find matching observation by resolved node ID
+        const obs = flowByName.get(to) ||
+          [...flowById.values()].find((f) => resolveNodeId(f.name) === to)
         readable.push({
-          from, to,
+          from,
+          to,
           dur: animStep.dur,
           input: obs?.input,
           output: obs?.output,
@@ -291,12 +290,10 @@ export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const seenIdsRef = useRef<Set<string>>(new Set())
 
-  // Poll for new traces (top of list)
   useQuery({
     queryKey: ['traces-poll', clinicId],
     queryFn: async () => {
       const fresh = await tracesApi.list(clinicId, undefined, limit)
-      // Merge: keep existing order, prepend new ones
       setTraces((prev) => {
         const newTraces: TraceSummary[] = []
         for (const t of fresh) {
@@ -306,7 +303,6 @@ export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
           }
         }
         if (newTraces.length > 0) return [...newTraces, ...prev]
-        // Update existing traces (latency may have appeared)
         return fresh.length > 0 ? fresh : prev
       })
       return fresh
@@ -315,7 +311,6 @@ export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
     enabled: !!clinicId,
   })
 
-  // Initial load
   useEffect(() => {
     if (!clinicId) return
     setLoading(true)
@@ -326,7 +321,6 @@ export function TraceLog({ clinicId, onReplay }: TraceLogProps) {
     }).finally(() => setLoading(false))
   }, [clinicId])
 
-  // Infinite scroll
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el || loading || !hasMore) return
