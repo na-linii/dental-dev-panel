@@ -153,6 +153,9 @@ export interface ClinicCreateData {
     telegram_enabled: boolean
     telegram_bot_token: string
     telegram_streaming: boolean
+    max_enabled: boolean
+    max_bot_token: string
+    max_webhook_secret: string
     google_sheets_enabled: boolean
     google_sheets_id: string
     google_sa_key_path: string
