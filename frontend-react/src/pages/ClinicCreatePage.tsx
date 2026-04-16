@@ -112,6 +112,9 @@ function defaultForm(): ClinicCreateData {
       telegram_enabled: false,
       telegram_bot_token: '',
       telegram_streaming: true,
+      max_enabled: false,
+      max_bot_token: '',
+      max_webhook_secret: '',
       google_sheets_enabled: false,
       google_sheets_id: '',
       google_sa_key_path: '/app/credentials/dental-crm-sa.json',
@@ -195,6 +198,15 @@ function formToYaml(form: ClinicCreateData): string {
         },
       },
     },
+  }
+
+  if (cfg.max_enabled) {
+    doc.gateway = doc.gateway || {}
+    doc.gateway.max = {
+      enabled: true,
+      bot_token: cfg.max_bot_token || '${MAX_BOT_TOKEN}',
+      webhook_secret: cfg.max_webhook_secret || '${MAX_WEBHOOK_SECRET}',
+    }
   }
 
   // Channels
@@ -384,6 +396,11 @@ function yamlToForm(text: string): ClinicCreateData {
     form.config.telegram_enabled = doc.gateway.telegram.enabled ?? true
     form.config.telegram_bot_token = doc.gateway.telegram.bot_token || form.config.telegram_bot_token
     form.config.telegram_streaming = doc.gateway.telegram.streaming ?? true
+  }
+  if (doc.gateway?.max) {
+    form.config.max_enabled = doc.gateway.max.enabled ?? false
+    form.config.max_bot_token = doc.gateway.max.bot_token || ''
+    form.config.max_webhook_secret = doc.gateway.max.webhook_secret || ''
   }
 
   return form
@@ -755,6 +772,38 @@ export function ClinicCreatePage() {
                   />
                 </div>
                 <Toggle value={form.config.telegram_streaming} onChange={(v) => patchConfig({ telegram_streaming: v })} label="Streaming" />
+              </div>
+            )}
+          </div>
+
+          {/* MAX Messenger */}
+          <div className="bg-[#0a0a1a] rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-white">MAX Messenger</span>
+              <Toggle value={form.config.max_enabled} onChange={(v) => patchConfig({ max_enabled: v })} />
+            </div>
+            {form.config.max_enabled && (
+              <div className="space-y-3 pl-2 border-l-2 border-[#2a2a4a] ml-1">
+                <div>
+                  <label className={LABEL}>Bot Token</label>
+                  <input
+                    type="password"
+                    value={form.config.max_bot_token}
+                    onChange={(e) => patchConfig({ max_bot_token: e.target.value })}
+                    placeholder="${MAX_BOT_TOKEN}"
+                    className={INPUT_MONO}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Webhook Secret</label>
+                  <input
+                    type="password"
+                    value={form.config.max_webhook_secret}
+                    onChange={(e) => patchConfig({ max_webhook_secret: e.target.value })}
+                    placeholder="${MAX_WEBHOOK_SECRET}"
+                    className={INPUT_MONO}
+                  />
+                </div>
               </div>
             )}
           </div>
