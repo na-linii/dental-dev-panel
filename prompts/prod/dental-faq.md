@@ -1,7 +1,7 @@
 ---
 name: dental-faq
 type: text
-labels: [production]
+labels: [eval]
 variables: [agent_identity, no_data_behavior]
 ---
 `{{agent_identity}}`
