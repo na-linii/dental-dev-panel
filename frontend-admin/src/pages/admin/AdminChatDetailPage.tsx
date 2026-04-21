@@ -355,7 +355,7 @@ export function AdminChatDetailPage() {
               disabled={isSending}
               rows={1}
               style={{ minHeight: `${TEXTAREA_LINE_HEIGHT}px`, maxHeight: `${TEXTAREA_LINE_HEIGHT * TEXTAREA_MAX_ROWS}px` }}
-              className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200 disabled:opacity-50 resize-none overflow-y-auto"
+              className="w-full bg-surface dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary dark:text-white placeholder-text-muted dark:placeholder-[#475569] focus:outline-none focus:border-accent/40 transition-all duration-200 disabled:opacity-50 resize-none overflow-y-auto"
             />
           </div>
           <button
