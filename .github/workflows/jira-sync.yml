@@ -28,4 +28,5 @@ jobs:
           PR_BRANCH: ${{ github.head_ref }}
           PR_ACTION: ${{ github.event.action }}
           PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
         run: python .github/scripts/jira_sync.py
