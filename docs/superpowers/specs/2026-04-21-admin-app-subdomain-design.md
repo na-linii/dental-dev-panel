@@ -90,7 +90,7 @@ DNS для `app.na-linii.com` привязан к тому же серверу. 
 | `src/config/adminStatuses.ts` | `src/config/adminStatuses.ts` (все `to: '/admin/X'` → `to: '/X'`) |
 | `src/hooks/useAdminQueries.ts` | `src/hooks/useAdminQueries.ts` |
 | `src/utils/pluralize.ts` | `src/utils/pluralize.ts` |
-| `index.html` | копия текущего (title "Dental Admin") |
+| `index.html` | копия текущего, title `"НаЛинии — Админ-панель"` |
 | `vite.config.ts` | proxy `'/api'` на `http://localhost:8000/admin/api` для dev |
 | `package.json`, `tsconfig*.json` | копия текущего |
 
