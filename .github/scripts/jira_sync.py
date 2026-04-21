@@ -93,6 +93,7 @@ def main() -> int:
         print(f"Action={pr_action} merged={pr_merged} base={pr_base!r} → comment only for {keys}")
 
     failures = 0
+    rate_limited: list[tuple[str, str]] = []  # (key, "transition"|"comment")
     for key in keys:
         print(f"--- {key} ---")
         if transition_id:
@@ -104,7 +105,10 @@ def main() -> int:
                     timeout=30,
                 )
                 print(f"  transition → HTTP {r.status_code}")
-                if r.status_code != 204:
+                if r.status_code == 429:
+                    print(f"  body: {r.text[:300]}")
+                    rate_limited.append((key, "transition"))
+                elif r.status_code != 204:
                     print(f"  body: {r.text[:300]}")
                     failures += 1
             except requests.RequestException as exc:
@@ -131,12 +135,60 @@ def main() -> int:
                 timeout=30,
             )
             print(f"  comment → HTTP {r.status_code}")
-            if r.status_code not in (200, 201):
+            if r.status_code == 429:
+                print(f"  body: {r.text[:300]}")
+                rate_limited.append((key, "comment"))
+            elif r.status_code not in (200, 201):
                 print(f"  body: {r.text[:300]}")
         except requests.RequestException as exc:
             print(f"  comment request failed: {exc}")
 
+    if rate_limited:
+        _emit_rate_limit_notice(jira_api, rate_limited, transition_name)
+
     return 0 if failures == 0 else 1
+
+
+def _emit_rate_limit_notice(
+    jira_api: str,
+    rate_limited: list[tuple[str, str]],
+    transition_name: str,
+) -> None:
+    """Print a warning and write to GitHub Actions step summary.
+
+    Rate limits are transient and user-visible: don't fail the job, surface
+    exactly what was skipped so the human can transition / comment manually.
+    """
+    lines = [
+        "⚠️  Jira rate-limited (HTTP 429) — перетяните руками:",
+    ]
+    for key, what in rate_limited:
+        url = f"{jira_api}/browse/{key}"
+        if what == "transition" and transition_name:
+            lines.append(f"  - {key} ({url}): transition → «{transition_name}»")
+        else:
+            lines.append(f"  - {key} ({url}): {what} not delivered")
+
+    print("\n".join(lines))
+
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+
+    md_lines = ["## ⚠️ Jira rate-limited (HTTP 429)", "", "Перетяните руками:", ""]
+    for key, what in rate_limited:
+        url = f"{jira_api}/browse/{key}"
+        if what == "transition" and transition_name:
+            md_lines.append(f"- [{key}]({url}) — transition → **{transition_name}**")
+        else:
+            md_lines.append(f"- [{key}]({url}) — {what} not delivered")
+    md_lines.append("")
+
+    try:
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write("\n".join(md_lines) + "\n")
+    except OSError as exc:
+        print(f"  failed to write step summary: {exc}")
 
 
 if __name__ == "__main__":
