@@ -7,3 +7,4 @@ hub_data/
 brainstorm.html
 prompt-research/
 .worktrees/
+.tmp_*
