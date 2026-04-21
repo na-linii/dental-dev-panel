@@ -78,9 +78,15 @@ def main() -> int:
     elif pr_action == "closed":
         comment_text = f"PR #{pr_number} closed without merge: {pr_url}"
     elif pr_action in ("opened", "reopened", "ready_for_review"):
-        kind = "in_progress"
-        transition_id, transition_name = TRANSITIONS[kind]
-        comment_text = f"PR #{pr_number} opened (target `{pr_base}`): {pr_url}"
+        # Release PR (dev → main) аккумулирует уже review-нутые задачи —
+        # transition на "В работе" регрессировал бы их статус. Только коммент.
+        if pr_branch == "dev" and pr_base == "main":
+            print("Release PR (dev → main); skip transition on opened, comment only.")
+            comment_text = f"Release PR #{pr_number} opened: {pr_url}"
+        else:
+            kind = "in_progress"
+            transition_id, transition_name = TRANSITIONS[kind]
+            comment_text = f"PR #{pr_number} opened (target `{pr_base}`): {pr_url}"
     else:
         print(f"Unhandled action {pr_action!r}; nothing to do.")
         return 0
