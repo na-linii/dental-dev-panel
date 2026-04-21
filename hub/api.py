@@ -12,7 +12,6 @@ import time as _time
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from hub.auth import verify_github_token
@@ -837,22 +836,3 @@ async def remove_clinic_admin(clinic_id: str, admin_id: int, user=Depends(verify
     if result and result == "DELETE 0":
         raise HTTPException(404, "Admin not found in this clinic")
     return {"ok": True}
-
-
-# --- Frontend (React SPA with fallback) ---
-
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
-if os.path.isdir(frontend_dir):
-    from fastapi.responses import FileResponse
-
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dir, "assets")), name="assets")
-
-    @app.get("/{path:path}")
-    async def spa_fallback(path: str):
-        """Serve React SPA — all non-API routes return index.html (includes /admin/*)."""
-        if path.startswith("langfuse"):
-            raise HTTPException(404)
-        file_path = os.path.join(frontend_dir, path)
-        if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(frontend_dir, "index.html"))
