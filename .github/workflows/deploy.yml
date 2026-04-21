@@ -14,16 +14,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend-react/package-lock.json
 
-      - name: Build frontend
+      - name: Build frontend-hub
         run: |
-          cd frontend-react
+          cd frontend-hub
           npm ci
           npm run build
 
-      - name: Deploy to server
+      - name: Build frontend-admin
+        run: |
+          cd frontend-admin
+          npm ci
+          npm run build
+
+      - name: Deploy repo to server
         uses: appleboy/ssh-action@v1
         with:
           host: 158.160.85.19
@@ -34,13 +38,23 @@ jobs:
             git fetch origin main
             git reset --hard FETCH_HEAD
 
-      - name: Copy frontend build
+      - name: Copy frontend-hub build
         uses: appleboy/scp-action@v0.1.7
         with:
           host: 158.160.85.19
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "frontend-react/dist/"
+          source: "frontend-hub/dist/"
+          target: "/opt/dental-hub/"
+          overwrite: true
+
+      - name: Copy frontend-admin build
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 158.160.85.19
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "frontend-admin/dist/"
           target: "/opt/dental-hub/"
           overwrite: true
 
@@ -53,6 +67,6 @@ jobs:
           script: |
             cd /opt/dental-hub
             docker compose build hub-api
-            docker compose up -d hub-api
+            docker compose up -d hub-api nginx
             sleep 5
             curl -sf http://localhost:8880/ > /dev/null && echo "Hub healthy" || echo "Hub unhealthy"

@@ -8,12 +8,13 @@ Dental-core инстансы подключаются к hub для tracing и p
 
 ## Architecture
 
-nginx reverse proxy — единый домен:
-- `/` → Hub React SPA (Vite)
-- `/api/*` → Hub API (FastAPI)
-- `/langfuse/*` → Langfuse Web
-- `/api/public/*` → Langfuse API (для агентов через ngrok)
-- `/admin/*` → Admin Panel (login/password)
+nginx reverse proxy — два поддомена:
+- `hub.na-linii.com/` → Hub React SPA (frontend-hub, Vite)
+- `hub.na-linii.com/api/*` → Hub API (FastAPI)
+- `hub.na-linii.com/langfuse/*` → Langfuse Web
+- `hub.na-linii.com/api/public/*` → Langfuse API (для агентов через ngrok)
+- `app.na-linii.com/` → Admin Panel SPA (frontend-admin, Vite)
+- `app.na-linii.com/api/*` → hub-api `/admin/api/*` (internal namespace, login/password auth)
 
 ## Stack
 
@@ -26,50 +27,40 @@ nginx reverse proxy — единый домен:
 
 ## Frontend Structure
 
+Два независимых Vite-приложения:
+
+### frontend-hub/ — Hub SPA (hub.na-linii.com)
+
 ```
-frontend-react/src/
-├── api/
-│   ├── client.ts          # typed axios client (clinics, traces, settings, roadmap, quality APIs)
-│   └── adminClient.ts     # admin panel HTTP client
-├── components/            # 12 компонентов
-│   ├── ForceGraph3D.tsx   # 3D граф (3d-force-graph + Three.js)
-│   ├── ChatPlayground.tsx # Чат-тестирование справа от графа
-│   ├── TraceLog.tsx       # Список сообщений trace
-│   ├── Layout.tsx         # Навигация + контейнер
-│   ├── ClinicCard.tsx     # Карточка клиники (health, actions)
-│   ├── Login.tsx          # GitHub PAT форма
-│   ├── EdgeCaseCard.tsx   # Раскрываемый тестовый кейс
-│   ├── VizLegend.tsx      # Легенда для 3D
-│   ├── ConfigSection.tsx  # Секция конфига клиники
-│   ├── ConfigField.tsx    # Поле конфига (text, checkbox, array)
-│   ├── ShapeIcon.tsx      # Иконка формы узла
-│   └── ErrorBoundary.tsx  # Error fallback
-├── pages/                 # 19 страниц
-│   ├── ClinicsPage.tsx            # Грид клиник с health polling
-│   ├── ClinicCreatePage.tsx       # Форма регистрации клиники
-│   ├── ClinicLayout.tsx           # Табы (Visualizer, Config, Admins)
-│   ├── ClinicVisualizerTab.tsx    # 3D граф + чат + трейсы
-│   ├── ClinicConfigTab.tsx        # Редактор конфига клиники
-│   ├── ClinicAdminsTab.tsx        # Управление админами
-│   ├── ArchitecturePage.tsx       # 3D диаграмма системы + инспектор
-│   ├── EdgeCasesPage.tsx          # Тесты из Langfuse dataset
-│   ├── RoadmapPage.tsx            # Jira таймлайн + прогресс
-│   ├── SettingsPage.tsx           # Редактор цветов/форм для 3D
-│   ├── QualityPage.tsx            # Оценка качества
-│   └── admin/                     # Admin Panel (8 страниц)
-│       ├── AdminLoginPage.tsx
-│       ├── AdminDashboardPage.tsx
-│       ├── AdminChatsPage.tsx
-│       ├── AdminChatDetailPage.tsx
-│       ├── AdminActionsPage.tsx    # visible for ALL roles (no role guard)
-│       ├── AdminConfirmationsPage.tsx
-│       ├── AdminSettingsPage.tsx
-│       └── AdminGuidePage.tsx      # Гайд для операторов
-├── layouts/AdminLayout.tsx  # Layout для админки (nav visible for all roles)
-├── hooks/useAuth.ts         # GitHub PAT auth
-├── config/viz.ts            # 3D colors/shapes/labels
-└── types/index.ts           # TypeScript interfaces
+frontend-hub/src/
+├── api/client.ts          # axios client для /api (clinics, traces, settings, quality)
+├── components/            # ChatPlayground, ClinicCard, ConfigField, ConfigSection,
+│                          # ErrorBoundary, ForceGraph3D, Layout, Login, ShapeIcon,
+│                          # TraceLog, VizLegend
+├── pages/                 # ClinicsPage, ClinicCreatePage, ClinicLayout,
+│                          # ClinicVisualizerTab, ClinicConfigTab, ClinicAdminsTab,
+│                          # SettingsPage, QualityPage
+├── hooks/useAuth.ts       # GitHub PAT auth
+├── config/viz.ts          # 3D colors/shapes/labels
+└── types/index.ts
 ```
+
+### frontend-admin/ — Admin Panel SPA (app.na-linii.com)
+
+```
+frontend-admin/src/
+├── api/client.ts          # axios client для /api (проксируется на /admin/api/*)
+├── layouts/AdminLayout.tsx
+├── pages/admin/           # AdminLoginPage, AdminDashboardPage, AdminChatsPage,
+│                          # AdminChatDetailPage, AdminActionsPage,
+│                          # AdminConfirmationsPage, AdminSettingsPage, AdminGuidePage
+├── config/adminStatuses.ts
+├── contexts/ThemeContext.tsx
+├── hooks/useAdminQueries.ts
+└── utils/pluralize.ts
+```
+
+Admin routes — чистые, без `/admin` префикса: `/login`, `/dashboard`, `/chats/:id`, и т.д.
 
 ## Key Features
 
@@ -96,7 +87,7 @@ Hub API (`hub/api.py`):
 - **Settings:** viz-config (GET/PUT)
 - **Roadmap:** tasks + epics (через Jira REST API)
 - **Quality:** summary + history
-- **Admin Panel** (`/admin/api/`): login, dashboard, sessions, messages, actions, bot toggle, blocklist, confirmations
+- **Admin Panel** (backend namespace `/admin/api/*`, публично — `app.na-linii.com/api/*`): login, dashboard, sessions, messages, actions, bot toggle, blocklist, confirmations
 - **Telegram Import** (`/admin/api/telegram/import`): proxy to dental-core for chat import (start, cancel, status, history)
 
 Auth: `hub/auth.py` — GitHub PAT + org membership check (na-linii).
