@@ -43,13 +43,22 @@ PD-XXX должен присутствовать **хотя бы в одном**
 
 ## Особенности репов
 
-**dental-core** — полный flow:
-1. `feat/PD-XXX` → PR в `dev` → merge → ON REVIEW
-2. PR из `dev` в `main` → merge → DONE
+Оба репо (`dental-hub` и `dental-core`) используют одинаковый flow с веткой `dev`:
 
-**dental-hub** — упрощённый (нет `dev`):
-1. `feat/PD-XXX` → PR в `main` → merge → DONE напрямую
-2. ON REVIEW стадия пропускается. Если нужна — завести `dev` ветку и мёрджить через неё.
+1. `feat/PD-XXX` → PR в `dev` → merge → **ON REVIEW**
+2. Release PR `dev` → `main` → merge → **Готово**
+
+## Release PR (dev → main)
+
+Convention для release PR:
+- `head_ref = dev`, `base_ref = main`
+- Title: `chore: release dev → main` или `release: ...` — **БЕЗ PD-XXX в title**, чтобы не получить путаницу
+- Body: **МОЖНО** перечислить PD-XXX-задачи которые в релизе — workflow на opened-event для release PR транзишн пропускает (только коммент), поэтому статусы не регрессируют
+- На merge release PR — workflow находит все PD-XXX в title/body/branch и переводит их в **Готово**
+
+Если в hub нет release-веты для конкретного PD-XXX (например, hotfix напрямую в main):
+- PR `feat/PD-XXX` → `main` напрямую → merge → **Готово** (минуя ON REVIEW)
+- ON REVIEW тогда не будет; ставим вручную если надо.
 
 ## Реализация
 
@@ -75,13 +84,19 @@ GitHub → Settings → Secrets and variables → Actions:
 - **Synchronize event** (push в существующий PR) — НЕ обрабатывается (не нужно двигать статусы при каждом коммите).
 - **Merge в нестандартный base** (не `dev`, не `main`) — только коммент, без transition.
 
-## Что осталось сделать
+## Что сделано (статус 2026-04-21)
 
-- [ ] Замёрджить [PR #59](https://github.com/na-linii/dental-hub/pull/59) (после добавления секретов)
-- [ ] Скопировать оба файла в `dental-core` + добавить те же 3 секрета
-- [ ] (опц.) Завести `dev` ветку в `dental-hub` для полного flow с ON REVIEW стадией
+- [x] [PR #59](https://github.com/na-linii/dental-hub/pull/59) — workflow добавлен в `dental-hub`
+- [x] [PR #62](https://github.com/na-linii/dental-hub/pull/62) — fix release PR не регрессирует ON REVIEW
+- [x] dev ветка заведена в `dental-hub`, flow одинаковый с `dental-core`
+- [x] PD-343 проверен end-to-end: TO DO → В работе (manual MCP) → ON REVIEW (merge dev) → Готово (release main)
+
+## Что осталось
+
+- [ ] Скопировать workflow + script в `dental-core` + добавить те же 3 секрета
 - [ ] (опц.) Установить marketplace-app **GitHub for Jira** (Atlassian) для богатого Dev panel в Jira
 - [ ] (опц.) Написать `/pd` slash command для Claude Code: `/pd start PD-XXX` создаёт ветку и переводит задачу в «В работе»
+- [ ] (опц.) Расширить workflow на сканирование commit messages в merged PR (для случая когда PD-XXX только в коммитах)
 
 ## Что НЕ делает (нужно отдельно если понадобится)
 
