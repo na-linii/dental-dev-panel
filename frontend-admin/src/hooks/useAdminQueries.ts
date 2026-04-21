@@ -5,7 +5,8 @@ import {
   getAdminSession,
   getAdminActions,
 } from '../api/client'
-import type { AdminPatientSummary } from '../api/client'
+import type { AdminAction, AdminPatientSummary } from '../api/client'
+import { isAwaitingOperator } from '../config/adminStatuses'
 import { useMemo } from 'react'
 
 // ── Single data source: all sessions ──
@@ -109,6 +110,53 @@ export function useAdminActions(params?: { status?: string }) {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   })
+}
+
+// ── Unified pending-work feed for /admin/actions ──
+
+export type PendingRow =
+  | { kind: 'action'; sortTs: string; data: AdminAction }
+  | { kind: 'operator'; sortTs: string; data: AdminPatientSummary }
+
+// actions poll at 30s (PATCH invalidates explicitly — 30s is a safety net),
+// sessions poll at 10s (operator-waiting is latency-critical, shares cache with ChatsPage).
+export function usePendingAdminWork() {
+  const actions = useAdminActions({ status: 'pending' })
+  const sessions = useAllSessions()
+
+  const rows = useMemo<PendingRow[]>(() => {
+    const actionsList: AdminAction[] = Array.isArray(actions.data) ? actions.data : []
+    const sessionsList: AdminPatientSummary[] = sessions.data?.items ?? []
+
+    const actionRows: PendingRow[] = actionsList.map((a) => ({
+      kind: 'action',
+      sortTs: a.created_at ?? '',
+      data: a,
+    }))
+    const operatorRows: PendingRow[] = sessionsList
+      .filter(isAwaitingOperator)
+      .map((s) => ({
+        kind: 'operator',
+        sortTs: s.last_activity_at ?? '',
+        data: s,
+      }))
+
+    return [...actionRows, ...operatorRows].sort((a, b) => {
+      const byTs = (b.sortTs || '').localeCompare(a.sortTs || '')
+      if (byTs !== 0) return byTs
+      return a.data.id.localeCompare(b.data.id)
+    })
+  }, [actions.data, sessions.data])
+
+  return {
+    rows,
+    isLoading: actions.isLoading || sessions.isLoading,
+    error: actions.error ?? sessions.error,
+    refetch: () => {
+      actions.refetch()
+      sessions.refetch()
+    },
+  }
 }
 
 // ── Invalidation helper: call after any session mutation ──
