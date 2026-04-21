@@ -21,10 +21,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('dp_token')
       localStorage.removeItem('dp_user')
-      // Don't clear admin_token/admin_user — separate auth system
-      if (!window.location.pathname.startsWith('/admin')) {
-        window.location.reload()
-      }
+      window.location.reload()
     }
     return Promise.reject(err)
   },
