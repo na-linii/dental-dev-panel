@@ -65,29 +65,24 @@ Admin routes — чистые, без `/admin` префикса: `/login`, `/das
 ## Key Features
 
 - **Clinics Page:** grid with health polling, create/deploy/manage clinics
-- **Visualizer:** 3D force graph + LIVE/REPLAY trace animation + Chat Playground + Trace Log
-- **Architecture:** 3D diagram with node inspector sidebar (inputs, outputs, requires, conflicts_with)
+- **Visualizer:** 3D force graph + LIVE/REPLAY trace animation + Chat Playground + Trace Log + node inspector sidebar (clinic architecture graph)
 - **Config:** Per-clinic configuration editor (OpenAI, Telegram, Google Sheets, booking rules)
 - **Admins:** Per-clinic admin management (bcrypt passwords)
-- **Edge Cases:** loaded from Langfuse dataset, run against agent (single + batch)
 - **Quality:** LLM-as-Judge evaluation dashboard
-- **Roadmap:** Jira integration (epics с progress bars, tasks с фильтром по статусу)
 - **Settings:** Редактор цветов/форм для 3D визуализации (hub.viz_config)
-- **Eval:** LLM-as-Judge (scripts/run_eval.py) — security, handoff, dialog evaluators
+- **Eval:** LLM-as-Judge (scripts/run_eval.py) — security, handoff, dialog evaluators. Edge cases хранятся в Langfuse dataset (UI-экран удалён, запуск через скрипт)
 - **Admin Panel:** login/password auth, dashboard, chats, actions (visible for ALL roles), confirmations, guide, settings
 - **Deploy:** SSH-based deployment (clone → config → build → start → health check)
 - **Traces:** Langfuse trace viewer per clinic
 
-## API (45 маршрутов)
+## API (43 маршрута)
 
 Hub API (`hub/api.py`):
 - **Clinics:** CRUD, health, config, chat proxy, graph, deploy (SSE), admins
 - **Traces:** list + detail (через Langfuse API)
-- **Edge Cases:** list, run, run-all (через Langfuse dataset)
 - **Settings:** viz-config (GET/PUT)
-- **Roadmap:** tasks + epics (через Jira REST API)
 - **Quality:** summary + history
-- **Admin Panel** (backend namespace `/admin/api/*`, публично — `app.na-linii.com/api/*`): login, dashboard, sessions, messages, actions, bot toggle, blocklist, confirmations
+- **Admin Panel** (backend namespace `/admin/api/*`, публично — `app.na-linii.com/api/*`): login, dashboard, sessions, messages, actions, bookings, bot toggle, blocklist, confirmations
 - **Telegram Import** (`/admin/api/telegram/import`): proxy to dental-core for chat import (start, cancel, status, history)
 
 Auth: `hub/auth.py` — GitHub PAT + org membership check (na-linii).

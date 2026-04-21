@@ -130,7 +130,7 @@ export interface BookingConfirmationRun {
   id: string
   attempt_number: number
   sent_at: string
-  status: 'sent' | 'no_response' | 'confirmed' | 'cancelled' | 'rescheduled'
+  status: 'sent' | 'silent_timeout' | 'confirmed' | 'cancelled' | 'rescheduled'
   response_at: string | null
 }
 

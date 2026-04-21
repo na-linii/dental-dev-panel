@@ -21,7 +21,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
   sent:                { label: 'Напоминание о визите',       description: 'Агент отправил напоминание, ждёт ответа от клиента',                                                           icon: Bell,           badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500 dark:bg-emerald-400', category: 'outgoing' },
   awaiting_confirm:    { label: 'Подтвердите в МИС',          description: 'Клиент ответил, что придёт. Подтвердите в IDENT и нажмите «Готово» на странице «Действия»',                      icon: ClipboardCheck, badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400', category: 'outgoing' },
   confirmed:           { label: 'Визит подтверждён',           description: 'Визит подтверждён',                                                                                            icon: CircleCheck,    badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',         dot: 'bg-gray-500 dark:bg-gray-400',     category: 'outgoing' },
-  no_response:         { label: 'Визит не подтверждён',        description: 'Пациент не ответил на напоминания',                                                                             icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400',       category: 'outgoing' },
+  silent_timeout:      { label: 'Визит не подтверждён',        description: 'Пациент не ответил на напоминания',                                                                             icon: AlertCircle,    badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',            dot: 'bg-red-500 dark:bg-red-400',       category: 'outgoing' },
 
   // ── Shared statuses (incoming + outgoing) ──
   awaiting_cancel:     { label: 'Отмените в МИС',             description: 'Пациент попросил отменить визит. Отмените в IDENT и нажмите «Готово» на странице «Действия»',                     icon: Ban,            badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/25',    dot: 'bg-orange-500 dark:bg-orange-400', category: 'incoming' },
@@ -39,7 +39,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
 // ── Guide: statuses grouped by category ──
 
 export const GUIDE_INCOMING_STATUSES = ['bot', 'awaiting_cancel', 'cancelled', 'awaiting_reschedule', 'rescheduled', 'operator', 'operator_active', 'closed'] as const
-export const GUIDE_OUTGOING_STATUSES = ['sent', 'awaiting_confirm', 'confirmed', 'no_response'] as const
+export const GUIDE_OUTGOING_STATUSES = ['sent', 'awaiting_confirm', 'confirmed', 'silent_timeout'] as const
 
 // ── Controller labels (for dropdown in chat detail header) ──
 
@@ -83,26 +83,33 @@ export const CONFIRMATION_FILTERS = [
   { value: 'confirmed', label: 'Визит подтверждён' },
   { value: 'cancelled', label: 'Отменён' },
   { value: 'rescheduled', label: 'Перенесён' },
-  { value: 'no_response', label: 'Визит не подтверждён' },
+  { value: 'silent_timeout', label: 'Визит не подтверждён' },
 ] as const
 
 // ── Confirmation run status config (for Appointments tab) ──
 
 export const RUN_STATUS_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
   sent:        { label: 'Отправлено',   badge: 'bg-orange-50 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-500/25',   dot: 'bg-orange-500' },
-  no_response: { label: 'Нет ответа',   badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-500/25',             dot: 'bg-gray-500'   },
+  silent_timeout: { label: 'Нет ответа', badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-500/25',             dot: 'bg-gray-500'   },
   confirmed:   { label: 'Подтверждено', badge: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/25', dot: 'bg-emerald-500' },
   cancelled:   { label: 'Отменено',     badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/25',                    dot: 'bg-red-500'    },
   rescheduled: { label: 'Перенос',      badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/25',              dot: 'bg-blue-500'   },
 }
 
 // ── Action types (linked to statuses) ──
-
+//
+// Лейблы привязаны к языку инструкции админа: на странице «Действия» карточка
+// говорит ту же фразу, что и confirmation-статус сессии — «Подтвердите в МИС»,
+// «Отмените в МИС», «Перенесите в МИС». Один язык, одна инструкция.
+//
+// F2: legacy ключ `cancel` («Пациент отказался») удалён — вся отмена идёт через
+// `cancel_appointment`. Миграция переводит существующие `cancel` записи в
+// `cancel_appointment`; если вдруг записи старой формы окажутся в ответе API —
+// AdminActionsPage делает fallback на `{}` / пустой label.
 export const ACTION_TYPES: Record<string, { label: string; relatedStatus?: string }> = {
-  cancel_appointment: { label: 'Отменить запись',       relatedStatus: 'awaiting_cancel' },
-  cancel:             { label: 'Пациент отказался',     relatedStatus: 'awaiting_cancel' },
-  reschedule:         { label: 'Перенести визит',       relatedStatus: 'awaiting_reschedule' },
-  confirm:            { label: 'Подтвердить визит',     relatedStatus: 'awaiting_confirm' },
+  confirm:            { label: 'Подтвердите в МИС',     relatedStatus: 'awaiting_confirm' },
+  cancel_appointment: { label: 'Отмените в МИС',        relatedStatus: 'awaiting_cancel' },
+  reschedule:         { label: 'Перенесите в МИС',      relatedStatus: 'awaiting_reschedule' },
   update_booking_status: { label: 'Обновить статус' },
   book_appointment:   { label: 'Новая запись' },
   register_patient:   { label: 'Регистрация пациента' },
