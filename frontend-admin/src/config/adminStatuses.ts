@@ -131,8 +131,9 @@ export const BOOKING_STATUS_STYLES: Record<string, string> = {
 // ── Channel display config (shared between chats list and chat detail) ──
 
 export const CHANNEL_CONFIG: Record<string, { text: string; cls: string }> = {
-  tg_bot:      { text: 'TG Bot', cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  tg_business: { text: 'TG Biz', cls: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+  tg_bot:      { text: 'TG Bot',  cls: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  tg_business: { text: 'TG Biz',  cls: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+  max:         { text: 'MaxBot', cls: 'bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400' },
 }
 
 // ── Navigation items ──
