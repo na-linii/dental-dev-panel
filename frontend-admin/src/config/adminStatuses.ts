@@ -62,6 +62,10 @@ export function getDisplayStatus(s: { controller: string; operator_id?: string |
   return s.controller
 }
 
+export function isAwaitingOperator(s: { controller: string; operator_id?: string | null }): boolean {
+  return s.controller === 'operator' && !s.operator_id
+}
+
 // ── Controller filter tags (short labels for filter buttons) ──
 
 export const CONTROLLER_FILTER_TAGS = [
