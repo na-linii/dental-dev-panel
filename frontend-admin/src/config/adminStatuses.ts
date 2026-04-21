@@ -138,10 +138,10 @@ export const CHANNEL_CONFIG: Record<string, { text: string; cls: string }> = {
 // ── Navigation items ──
 
 export const NAV_ITEMS = [
-  { to: '/admin/dashboard', label: 'Дашборд', icon: LayoutDashboard },
-  { to: '/admin/chats', label: 'Переписка', icon: MessageCircle },
-  { to: '/admin/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
-  { to: '/admin/actions', label: 'Действия', icon: ClipboardList },
-  { to: '/admin/settings', label: 'Настройки', icon: Settings },
-  { to: '/admin/guide', label: 'Инструкция', icon: BookOpen },
+  { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
+  { to: '/chats', label: 'Переписка', icon: MessageCircle },
+  { to: '/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
+  { to: '/actions', label: 'Действия', icon: ClipboardList },
+  { to: '/settings', label: 'Настройки', icon: Settings },
+  { to: '/guide', label: 'Инструкция', icon: BookOpen },
 ] as const

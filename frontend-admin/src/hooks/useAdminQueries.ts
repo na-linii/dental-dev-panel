@@ -4,8 +4,8 @@ import {
   getAdminSessions,
   getAdminSession,
   getAdminActions,
-} from '../api/adminClient'
-import type { AdminPatientSummary } from '../api/adminClient'
+} from '../api/client'
+import type { AdminPatientSummary } from '../api/client'
 import { useMemo } from 'react'
 
 // ── Single data source: all sessions ──

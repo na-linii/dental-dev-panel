@@ -1,14 +1,14 @@
 import React, { useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bot, User, ShieldCheck, Send } from 'lucide-react'
-import { sendAdminMessage, updateSessionController, getAdminSession, getAdminBookings } from '../../api/adminClient'
-import type { AdminPatientDetail, AdminMessage, AdminBooking, AdminSessionInfo } from '../../api/adminClient'
+import { sendAdminMessage, updateSessionController, getAdminSession, getAdminBookings } from '../../api/client'
+import type { AdminPatientDetail, AdminMessage, AdminBooking, AdminSessionInfo } from '../../api/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAdminSessionDetail, useAdminDashboard } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG, getDisplayStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
-import type { BookingConfirmationRun } from '../../api/adminClient'
+import type { BookingConfirmationRun } from '../../api/client'
 import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
 const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
@@ -134,7 +134,7 @@ export function AdminChatDetailPage() {
     if (!session || !phoneInput.trim()) return
     const mutationSessionId = session.last_session_id || session.id
     try {
-      const { updatePatientPhone } = await import('../../api/adminClient')
+      const { updatePatientPhone } = await import('../../api/client')
       await updatePatientPhone(mutationSessionId, phoneInput.trim())
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminPatientDetail | undefined) =>
         prev ? { ...prev, phone: phoneInput.trim() } : prev)
@@ -177,7 +177,7 @@ export function AdminChatDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-4 pb-4 border-b border-border dark:border-white/[0.06]">
         <button
-          onClick={() => navigate('/admin/chats')}
+          onClick={() => navigate('/chats')}
           className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] hover:bg-surface-tertiary dark:hover:bg-white/[0.08] transition-colors"
         >
           <ArrowLeft className="w-4 h-4 text-text-secondary" />

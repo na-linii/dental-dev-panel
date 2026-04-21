@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
-import type { AdminPatientSummary } from '../../api/adminClient'
+import type { AdminPatientSummary } from '../../api/client'
 import { useSessionsData, useAdminDashboard } from '../../hooks/useAdminQueries'
 import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
@@ -112,7 +112,7 @@ export function AdminChatsPage() {
     return (
       <tr
         key={s.id}
-        onClick={() => navigate(`/admin/chats/${s.id}`)}
+        onClick={() => navigate(`/chats/${s.id}`)}
         className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.03] ${
           isBlocked
             ? 'bg-red-50/30 dark:bg-red-500/[0.03] hover:bg-red-50/60 dark:hover:bg-red-500/[0.06] border-l-2 border-l-red-600'
@@ -163,7 +163,7 @@ export function AdminChatsPage() {
     return (
       <div
         key={s.id}
-        onClick={() => navigate(`/admin/chats/${s.id}`)}
+        onClick={() => navigate(`/chats/${s.id}`)}
         className={`px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
           isBlocked
             ? 'bg-red-50/30 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/15 hover:bg-red-50/60 dark:hover:bg-red-500/[0.06]'

@@ -24,7 +24,6 @@ interface PaginatedResponse<T> {
   offset: number
 }
 
-// Backend: GET /admin/api/dashboard/stats
 export interface AdminDashboardStats {
   timezone: string
   sessions: { bot: number; operator: number; closed: number }
@@ -34,7 +33,6 @@ export interface AdminDashboardStats {
   prev_month?: { total: number; confirmed: number; rescheduled: number; cancelled: number }
 }
 
-// Backend: GET /admin/api/sessions — patient-centric list
 export interface AdminPatientSummary {
   id: string            // users.id (patient UUID)
   kind: 'patient' | 'anonymous'
@@ -58,7 +56,6 @@ export interface AdminPatientSummary {
 /** @deprecated use AdminPatientSummary */
 export type AdminSessionSummary = AdminPatientSummary
 
-// Backend: GET /admin/api/sessions/:patient_id
 export interface AdminMessage {
   id: string
   session_id: string
@@ -112,7 +109,6 @@ export interface AdminSendMessageResponse {
   delivered: boolean
 }
 
-// Backend: GET /admin/api/actions — returns array of these
 export interface AdminAction {
   id: string
   action_type: string
@@ -138,7 +134,6 @@ export interface BookingConfirmationRun {
   response_at: string | null
 }
 
-// Backend: GET /admin/api/bookings — returns array of these
 export interface AdminBooking {
   id: string
   crm_booking_id: string | null
@@ -154,7 +149,6 @@ export interface AdminBooking {
   confirmation_runs: BookingConfirmationRun[]
 }
 
-// Backend: GET /admin/api/settings/bot
 export interface AdminBotStatus {
   bot_enabled: boolean
   reason: string | null
@@ -162,7 +156,6 @@ export interface AdminBotStatus {
   toggled_by: string | null
 }
 
-// Backend: GET /admin/api/settings/blocklist — returns array of these
 export interface AdminBlocklistItem {
   id: string
   phone: string | null
@@ -207,7 +200,7 @@ export interface TelegramImportHistoryItem {
 
 // ── API Client ──
 
-const adminApi = axios.create({ baseURL: '/admin/api', timeout: 30_000 })
+const adminApi = axios.create({ baseURL: '/api', timeout: 30_000 })
 
 adminApi.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token')
@@ -222,7 +215,7 @@ adminApi.interceptors.response.use(
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/admin/login'
+        window.location.href = '/login'
       }
     }
     if (err.response?.status === 502 || err.response?.status === 503) {

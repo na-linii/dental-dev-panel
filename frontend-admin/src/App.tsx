@@ -1,15 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useAuth } from './hooks/useAuth'
-import { Layout } from './components/Layout'
-import { Login } from './components/Login'
-import { ClinicsPage } from './pages/ClinicsPage'
-import { ClinicCreatePage } from './pages/ClinicCreatePage'
-import { ClinicLayout } from './pages/ClinicLayout'
-import { ClinicVisualizerTab } from './pages/ClinicVisualizerTab'
-import { ClinicConfigTab } from './pages/ClinicConfigTab'
-import { ClinicAdminsTab } from './pages/ClinicAdminsTab'
-import { SettingsPage } from './pages/SettingsPage'
 import { AdminLayout } from './layouts/AdminLayout'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
@@ -26,7 +16,7 @@ function SuperadminGuard({ children }: { children: React.ReactNode }) {
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}')
     if (user.role === 'superadmin') return <>{children}</>
   } catch {}
-  return <Navigate to="/admin/dashboard" replace />
+  return <Navigate to="/dashboard" replace />
 }
 
 const queryClient = new QueryClient({
@@ -41,42 +31,15 @@ const queryClient = new QueryClient({
   },
 })
 
-function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth()
-  const location = useLocation()
-
-  // Admin routes have their own auth — skip Hub auth gate
-  if (location.pathname.startsWith('/admin')) {
-    return <>{children}</>
-  }
-
-  if (loading) return null
-  return isAuthenticated ? <>{children}</> : <Login />
-}
-
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthGate>
+        <ThemeProvider>
           <Routes>
-            {/* Hub routes */}
-            <Route element={<Layout />}>
-              <Route path="/" element={<ClinicsPage />} />
-              <Route path="/clinics/new" element={<ClinicCreatePage />} />
-              <Route path="/clinic/:clinicId" element={<ClinicLayout />}>
-                <Route index element={<ClinicVisualizerTab />} />
-                <Route path="config" element={<ClinicConfigTab />} />
-                <Route path="admins" element={<ClinicAdminsTab />} />
-              </Route>
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/visualizer" element={<Navigate to="/" replace />} />
-            </Route>
-
-            {/* Admin Panel routes */}
-            <Route path="/admin/login" element={<ThemeProvider><AdminLoginPage /></ThemeProvider>} />
-            <Route path="/admin" element={<ThemeProvider><AdminLayout /></ThemeProvider>}>
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/login" element={<AdminLoginPage />} />
+            <Route path="/" element={<AdminLayout />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="chats" element={<AdminChatsPage />} />
               <Route path="chats/:sessionId" element={<AdminChatDetailPage />} />
@@ -85,10 +48,9 @@ export default function App() {
               <Route path="settings" element={<AdminSettingsPage />} />
               <Route path="guide" element={<AdminGuidePage />} />
             </Route>
-
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-        </AuthGate>
+        </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )

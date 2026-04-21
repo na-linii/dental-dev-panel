@@ -103,7 +103,7 @@ export function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {/* Ожидает оператора */}
         <button
-          onClick={() => navigate('/admin/chats?controller=operator')}
+          onClick={() => navigate('/chats?controller=operator')}
           className={`${cardBase} text-left cursor-pointer hover:border-red-500/20`}
         >
           <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-600 dark:text-red-400 mb-3 md:mb-4 group-hover:scale-105 transition-transform duration-200">

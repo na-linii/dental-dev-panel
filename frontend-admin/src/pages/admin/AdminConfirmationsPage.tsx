@@ -90,7 +90,7 @@ export function AdminConfirmationsPage() {
             const StatusIcon = cfg?.icon || CalendarCheck
 
             return (
-              <div key={s.id} onClick={() => navigate(`/admin/chats/${s.id}`)}
+              <div key={s.id} onClick={() => navigate(`/chats/${s.id}`)}
                    className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
                 <div className="text-center min-w-[40px]">
                   <div className="text-xl font-extrabold text-text-primary leading-none">{day}</div>

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { RefreshCw, CheckCircle, ClipboardList } from 'lucide-react'
-import { updateAdminAction } from '../../api/adminClient'
+import { updateAdminAction } from '../../api/client'
 import { useAdminActions } from '../../hooks/useAdminQueries'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import type { AdminAction } from '../../api/adminClient'
+import type { AdminAction } from '../../api/client'
 import { ACTION_TYPES, STATUS_CONFIG } from '../../config/adminStatuses'
 
 function ActionTypeBadge({ actionType }: { actionType: string }) {
@@ -49,7 +49,7 @@ export function AdminActionsPage() {
   }
 
   const handleRowClick = (action: AdminAction) => {
-    if (action.patient_id) navigate(`/admin/chats/${action.patient_id}`)
+    if (action.patient_id) navigate(`/chats/${action.patient_id}`)
   }
 
   const PatientCell = ({ action }: { action: AdminAction }) => (

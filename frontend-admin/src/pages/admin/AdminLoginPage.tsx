@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, Lock, AlertCircle } from 'lucide-react'
-import { adminLogin } from '../../api/adminClient'
+import { adminLogin } from '../../api/client'
 
 export function AdminLoginPage() {
   const [username, setUsername] = useState('')
@@ -12,7 +12,7 @@ export function AdminLoginPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
-    if (token) navigate('/admin/dashboard', { replace: true })
+    if (token) navigate('/dashboard', { replace: true })
   }, [navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,7 +23,7 @@ export function AdminLoginPage() {
       const result = await adminLogin(username, password)
       localStorage.setItem('admin_token', result.access_token)
       localStorage.setItem('admin_user', JSON.stringify(result.user))
-      navigate('/admin/dashboard', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch {
       setError('Неверное имя пользователя или пароль')
     } finally {

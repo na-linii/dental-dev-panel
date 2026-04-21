@@ -5,8 +5,8 @@ import {
   getAdminBotStatus, toggleAdminBot,
   getAdminBlocklist, addAdminBlocklistEntry, removeAdminBlocklistEntry,
   startTelegramImport, cancelTelegramImport, getTelegramImportStatus, getTelegramImportHistory,
-} from '../../api/adminClient'
-import type { AdminBotStatus, AdminBlocklistItem, TelegramImportStatus, TelegramImportHistoryItem } from '../../api/adminClient'
+} from '../../api/client'
+import type { AdminBotStatus, AdminBlocklistItem, TelegramImportStatus, TelegramImportHistoryItem } from '../../api/client'
 
 function TelegramImportSection() {
   const [mode, setMode] = useState<'incremental' | 'full'>('incremental')

@@ -5,8 +5,8 @@ import { LogOut, Menu, Sun, Moon } from 'lucide-react'
 function NaLiniiLogo({ className = 'w-8 h-8' }: { className?: string }) {
   return <img src="/logo.svg" alt="НаЛинии" className={className} />
 }
-import { adminMe } from '../api/adminClient'
-import type { AdminUser } from '../api/adminClient'
+import { adminMe } from '../api/client'
+import type { AdminUser } from '../api/client'
 import { useTheme } from '../contexts/ThemeContext'
 import { NAV_ITEMS } from '../config/adminStatuses'
 
@@ -19,7 +19,7 @@ export function AdminLayout() {
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
     if (!token) {
-      navigate('/admin/login', { replace: true })
+      navigate('/login', { replace: true })
       return
     }
     const stored = localStorage.getItem('admin_user')
@@ -29,14 +29,14 @@ export function AdminLayout() {
     adminMe().then(setUser).catch(() => {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
-      navigate('/admin/login', { replace: true })
+      navigate('/login', { replace: true })
     })
   }, [navigate])
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
-    navigate('/admin/login', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   // Session inactivity timeout (4 hours)
@@ -47,7 +47,7 @@ export function AdminLayout() {
       timeout = setTimeout(() => {
         localStorage.removeItem('admin_token')
         localStorage.removeItem('admin_user')
-        navigate('/admin/login', { replace: true })
+        navigate('/login', { replace: true })
       }, 4 * 60 * 60 * 1000)
     }
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
