@@ -23,24 +23,27 @@ Requires `.env` with Langfuse secrets (no weak defaults in docker-compose).
 ## Architecture
 
 ```
-nginx reverse proxy (single domain)
-├── /           → React SPA (Vite)
-├── /api/*      → Hub API (FastAPI)
-├── /admin/*    → Admin Panel
-├── /langfuse/* → Langfuse Web
-└── /api/public/* → Langfuse API (for agents via ngrok)
+nginx reverse proxy (два поддомена)
+├── hub.na-linii.com/
+│   ├── /           → Hub SPA (frontend-hub, Vite)
+│   ├── /api/*      → Hub API (FastAPI)
+│   ├── /langfuse/* → Langfuse Web
+│   └── /api/public/* → Langfuse API (for agents via ngrok)
+└── app.na-linii.com/
+    ├── /           → Admin Panel SPA (frontend-admin, Vite)
+    └── /api/*      → hub-api `/admin/api/*` (internal namespace)
 ```
 
-8 containers: hub-api, hub-frontend, nginx, langfuse-web, langfuse-worker,
-postgres, clickhouse, redis, minio, ngrok.
+Containers: hub-api, nginx, langfuse-web, langfuse-worker, postgres, clickhouse,
+redis, minio, minio-init, ngrok.
 
 ## Key Endpoints
 
-| Path | Description |
+| URL | Description |
 |------|-------------|
-| `/api/clinics` | Clinic CRUD, health, config, deploy |
-| `/admin/api/*` | Admin login, dashboard, chats, actions, confirmations |
-| `/langfuse/*` | Langfuse UI (shared across all clinics) |
+| `hub.na-linii.com/api/clinics` | Clinic CRUD, health, config, deploy |
+| `app.na-linii.com/api/*` | Admin login, dashboard, chats, actions, confirmations (проксируется на hub-api `/admin/api/*`) |
+| `hub.na-linii.com/langfuse/*` | Langfuse UI (shared across all clinics) |
 
 ## Repos
 

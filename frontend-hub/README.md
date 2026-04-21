@@ -1,41 +1,38 @@
-# Dental Hub Frontend
+# frontend-hub
 
-React SPA for the Dental Hub platform -- admin panel and management UI for dental clinics.
+Hub SPA — управление клиниками, мониторинг, 3D визуализация. Домен: `hub.na-linii.com`.
 
 ## Stack
 
 - React 19, TypeScript 5.9, Vite 8
 - Tailwind CSS 4, React Query 5
-- Three.js + 3D Force Graph (visualization)
+- Three.js + 3D Force Graph
 
 ## Pages
 
-- **Dashboard** -- clinic overview, health status
-- **Clinics** -- register, deploy, configure clinic instances
-- **Visualizer** -- 3D force graph with live/replay trace animation
-- **Admin Panel** -- chats, chat detail, actions, confirmations, settings
-- **Edge Cases** -- test scenarios from Langfuse datasets
-- **Quality** -- LLM-as-Judge evaluation dashboard
-- **Roadmap** -- Jira integration (epics + tasks)
-- **Settings** -- 3D visualization config editor
+- **Clinics** — реестр клиник, health polling, регистрация/деплой
+- **Clinic Layout** — Visualizer, Config, Admins (per-clinic)
+- **Visualizer** — 3D граф + LIVE/REPLAY trace + Chat Playground
+- **Settings** — редактор 3D колоризации
+- **Quality** — LLM-as-Judge dashboard
 
-## Development
+## Dev
 
 ```bash
-npm install
-npm run dev     # http://localhost:5173
+npm ci
+npm run dev     # http://localhost:5173, proxy /api → http://localhost:8000
 ```
 
 ## Build
 
 ```bash
-npm run build   # output in dist/
+npm run build   # dist/
 ```
+
+Раздаётся nginx-ом из `/usr/share/nginx/html/hub` на `hub.na-linii.com`.
 
 ## API
 
-Connects to Hub API:
-- `/api/*` -- clinics, traces, settings, roadmap, quality
-- `/admin/api/*` -- admin panel (login, dashboard, sessions, messages, actions)
+- `/api/*` — Hub API (clinics, traces, settings, quality, и т.д.)
 
-Auth: GitHub PAT (main UI) or username/password (admin panel).
+Auth: GitHub PAT.

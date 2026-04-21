@@ -15,7 +15,7 @@ const ALL_SESSIONS_KEY = ['admin', 'allSessions'] as const
 export function useAllSessions() {
   return useQuery({
     queryKey: ALL_SESSIONS_KEY,
-    queryFn: () => getAdminSessions({ limit: 500 }),
+    queryFn: () => getAdminSessions({ limit: 2000 }),
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,

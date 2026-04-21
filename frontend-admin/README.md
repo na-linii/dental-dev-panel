@@ -1,41 +1,35 @@
-# Dental Hub Frontend
+# frontend-admin
 
-React SPA for the Dental Hub platform -- admin panel and management UI for dental clinics.
+Admin Panel SPA (оператор клиники). Домен: `app.na-linii.com`.
 
-## Stack
-
-- React 19, TypeScript 5.9, Vite 8
-- Tailwind CSS 4, React Query 5
-- Three.js + 3D Force Graph (visualization)
-
-## Pages
-
-- **Dashboard** -- clinic overview, health status
-- **Clinics** -- register, deploy, configure clinic instances
-- **Visualizer** -- 3D force graph with live/replay trace animation
-- **Admin Panel** -- chats, chat detail, actions, confirmations, settings
-- **Edge Cases** -- test scenarios from Langfuse datasets
-- **Quality** -- LLM-as-Judge evaluation dashboard
-- **Roadmap** -- Jira integration (epics + tasks)
-- **Settings** -- 3D visualization config editor
-
-## Development
+## Dev
 
 ```bash
-npm install
-npm run dev     # http://localhost:5173
+npm ci
+npm run dev     # http://localhost:5174, proxy /api → http://localhost:8000/admin/api
 ```
 
 ## Build
 
 ```bash
-npm run build   # output in dist/
+npm run build   # dist/
 ```
+
+Раздаётся nginx-ом из `/usr/share/nginx/html/app` на `app.na-linii.com`.
+
+## Routes
+
+- `/login` — форма логина
+- `/dashboard` — главная
+- `/chats`, `/chats/:id` — переписки
+- `/confirmations` — подтверждения (superadmin only)
+- `/actions` — действия
+- `/settings` — настройки
+- `/guide` — инструкция
 
 ## API
 
-Connects to Hub API:
-- `/api/*` -- clinics, traces, settings, roadmap, quality
-- `/admin/api/*` -- admin panel (login, dashboard, sessions, messages, actions)
+Клиент в `src/api/client.ts`, baseURL `/api`. Все endpoint-пути — без `/admin/api` префикса.
+На проде nginx проксирует `/api/*` → `hub-api:8000/admin/api/*`.
 
-Auth: GitHub PAT (main UI) or username/password (admin panel).
+Auth: username/password (bcrypt, Bearer token в `localStorage.admin_token`).
