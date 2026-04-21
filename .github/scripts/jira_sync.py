@@ -2,17 +2,17 @@
 
 Triggered by GitHub Actions on `pull_request` events. Looks for `PD-XXX` keys
 in branch name, PR title, and PR body, then transitions matching Jira issues
-based on the workflow stage and posts a comment with the PR URL.
+and posts a comment with the PR URL.
 
-Workflow stages (target-branch driven):
-    PR opened/reopened/ready_for_review     → "В работе"  (transition id 21)
-    PR merged into `dev`                     → "ON REVIEW" (transition id 2)
-    PR merged into `main`                    → "Готово"    (transition id 31)
-    PR closed without merge                  → comment only, no transition
+Transitions:
+    PR opened/reopened/ready_for_review (feature)  → "В работе"  (id 21)
+    PR opened/reopened/ready_for_review (release: dev → main) → comment only
+    PR merged into `dev` or `main`                  → "ON REVIEW" (id 2)
+    PR closed without merge                          → comment only
 
-For repos without a `dev` branch (currently dental-hub) all merges go to `main`,
-so issues land directly in "Готово". Add a `dev` branch + PR target to use the
-ON REVIEW stage.
+DONE — выставляется руками после прогона эвалов / финальной валидации в проде.
+Авто-перевод в DONE на merge в main был убран чтобы не было казусов с регрессией
+оценки (eval ещё не прошёл, а задача уже DONE).
 
 Required env: JIRA_EMAIL, JIRA_TOKEN, JIRA_API
 """
@@ -31,7 +31,6 @@ KEY_RE = re.compile(r"\b(PD-\d+)\b")
 TRANSITIONS = {
     "in_progress": ("21", "В работе"),
     "review": ("2", "ON REVIEW"),
-    "done": ("31", "Готово"),
 }
 
 
@@ -65,15 +64,11 @@ def main() -> int:
     transition_id: str | None = None
     transition_name = ""
     if pr_action == "closed" and pr_merged:
-        if pr_base == "dev":
+        if pr_base in ("dev", "main"):
             kind = "review"
-        elif pr_base == "main":
-            kind = "done"
+            transition_id, transition_name = TRANSITIONS[kind]
         else:
             print(f"Merged into unexpected base={pr_base!r}; comment only, no transition.")
-            kind = None
-        if kind:
-            transition_id, transition_name = TRANSITIONS[kind]
         comment_text = f"PR #{pr_number} merged into `{pr_base}`: {pr_url}"
     elif pr_action == "closed":
         comment_text = f"PR #{pr_number} closed without merge: {pr_url}"

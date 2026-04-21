@@ -31,13 +31,16 @@ PD-XXX должен присутствовать **хотя бы в одном**
 
 | GitHub event | Jira transition | Status |
 |--------------|-----------------|--------|
-| PR opened / reopened / ready_for_review | id `21` | **В работе** |
-| PR closed без merge | (без transition, только коммент) | — |
+| PR opened / reopened / ready_for_review (feature) | id `21` | **В работе** |
+| PR opened release (head=dev, base=main) | (только коммент) | — |
+| PR closed без merge | (только коммент) | — |
 | PR merged + `base=dev` | id `2` | **ON REVIEW** |
-| PR merged + `base=main` | id `31` | **Готово** |
-| PR merged + `base=other` | (без transition, только коммент) | — |
+| PR merged + `base=main` | id `2` | **ON REVIEW** |
+| PR merged + `base=other` | (только коммент) | — |
 
-Перевод **TO DO → IN PROGRESS** делается **вручную** (или через будущий `/pd start PD-XXX` slash command). Это сигнал «беру в работу» — выставляется ДО открытия PR.
+**Manual переходы:**
+- **TO DO → IN PROGRESS** — вручную (или через будущий `/pd start PD-XXX`). Сигнал «беру в работу», выставляется ДО открытия PR.
+- **ON REVIEW → DONE** — вручную после прогона эвалов / финальной валидации в проде. Авто-DONE убран чтобы не было казусов с регрессией оценки (eval не прошёл, а задача уже DONE).
 
 При каждом event'е добавляется коммент в issue со ссылкой на PR.
 
@@ -45,20 +48,19 @@ PD-XXX должен присутствовать **хотя бы в одном**
 
 Оба репо (`dental-hub` и `dental-core`) используют одинаковый flow с веткой `dev`:
 
-1. `feat/PD-XXX` → PR в `dev` → merge → **ON REVIEW**
-2. Release PR `dev` → `main` → merge → **Готово**
+1. Manual: TO DO → **В работе** при старте работы
+2. `feat/PD-XXX` → PR в `dev` → workflow подтверждает **В работе** на opened
+3. Merge PR в `dev` → workflow → **ON REVIEW**
+4. Release PR `dev` → `main` (открытие — только коммент, статусы не регрессируют)
+5. Merge release PR в `main` → workflow → **ON REVIEW** (idempotent если уже там)
+6. Manual после эвалов / прод-проверки → **Готово**
 
 ## Release PR (dev → main)
 
 Convention для release PR:
 - `head_ref = dev`, `base_ref = main`
-- Title: `chore: release dev → main` или `release: ...` — **БЕЗ PD-XXX в title**, чтобы не получить путаницу
-- Body: **МОЖНО** перечислить PD-XXX-задачи которые в релизе — workflow на opened-event для release PR транзишн пропускает (только коммент), поэтому статусы не регрессируют
-- На merge release PR — workflow находит все PD-XXX в title/body/branch и переводит их в **Готово**
-
-Если в hub нет release-веты для конкретного PD-XXX (например, hotfix напрямую в main):
-- PR `feat/PD-XXX` → `main` напрямую → merge → **Готово** (минуя ON REVIEW)
-- ON REVIEW тогда не будет; ставим вручную если надо.
+- Title: `chore: release dev → main` или `release: ...`
+- Body: можно перечислить PD-XXX-задачи в релизе — workflow на opened пропускает transition (защита от регрессии), на merge переведёт в ON REVIEW
 
 ## Реализация
 
