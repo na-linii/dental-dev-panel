@@ -2,134 +2,119 @@
 
 ## Контекст
 
-Начальник видит в адресной строке админки ссылки вида `http://app.na-linii.com/chats/b07895fd-d144-415e-ad92-49a887723b07` — длинные UUID-ы мозолят глаз. Часть записей на клинике **starsmile** уже отдаётся с короткими числовыми id (например `/chats/15180`) — dental-core начал их выдавать для новых пациентов независимо от канала (Telegram, MaxBot, WhatsApp, и т.д.). Остальные старые записи на starsmile всё ещё имеют UUID — backfill не доехал.
+URL чата в админке сейчас: `http://app.na-linii.com/chats/7a9dca4d-7bb9-42ec-a70f-cf0a24f48322` — UUID пациента. Надо короткий числовой ID: `/chats/1234`.
 
-## Цель
+Исходная постановка эпика PD-338, пункт 1 (low): «поменять url'ы, убрать колбасу».
 
-У всех пациентов на starsmile (новых и уже существующих) chat id в URL — короткое число. Per-clinic уникальность (внутри одной клиники не повторяется, между клиниками пересечение ок — у них разные БД).
+## Текущее состояние (по исследованию)
 
-## Не-цели
+`users.id`, `chat_sessions.id`, `action_queue.id` — все UUID v4 ([dental-core/agent/db/migrate.py](https://github.com/na-linii/dental-core/blob/main/agent/db/migrate.py)).
 
-- Показ id где-либо в UI (в списке, хедере чата, карточках) — id скрыт, видно только в URL.
-- Миграция не-starsmile клиник в рамках PD-362.
-- Переписывание Langfuse `session_id` под новые id.
-- Изменение типов id на backend-side в hub (остаётся `string` — прозрачный passthrough).
+Флоу навигации:
 
-## Ключевая особенность
+- Route `/chats/:sessionId` — на самом деле `patient_id = users.id` (см. комментарий в [AdminChatDetailPage.tsx:28](../../../frontend-admin/src/pages/admin/AdminChatDetailPage.tsx#L28) — «actually patient_id, name kept for router compat»).
+- `AdminChatsPage` → `navigate(/chats/${s.id})`, где `s.id = users.id` UUID — **работает**.
+- `AdminActionsPage` → `navigate(/chats/${action.patient_id})`, где `patient_id = ident_patient_id` (CRM id, короткий строковый) — **НЕ работает**: `GET /admin/api/sessions/{id}` ищет по `users.id`, а не по `ident_patient_id`. Это наблюдение пользователя про starsmile.
+- API lookup: [dental-core/agent/admin/sessions.py:159](https://github.com/na-linii/dental-core/blob/main/agent/admin/sessions.py#L159) — по `users.id`, fallback на `chat_sessions.id`.
 
-Id не рендерится **нигде** в UI, кроме URL. Весь user-visible эффект — только формат адресной строки и ссылок-переходов.
+Короткий числовой ID на уровне пациентов **отсутствует**. `action_queue.patient_id` хранит CRM `ident_patient_id` — короткий строковый CRM-код, но не все пациенты имеют CRM-привязку (анонимы).
 
-## Аудит dental-hub: где используется chat id
+## Решение
 
-Поиск по `frontend-admin/`, `frontend-hub/`, `hub/` выявил полный список точек касания. Формат id нигде не парсится и не валидируется — везде `string`. **В dental-hub менять код не надо** (кроме одного комментария); аудит нужен, чтобы это зафиксировать.
+**Добавить `users.public_id BIGSERIAL UNIQUE`** — автоинкрементный числовой ID (1, 2, 3…). Postgres `BIGSERIAL` сам создаст sequence и backfill-ит существующие строки.
 
-### Переходы `navigate('/chats/${id}')`
+API возвращает `public_id` как **отдельное поле** рядом с `id` (UUID), не подменяет `id`. Это позволяет фронту навигировать по `public_id`, а старые UUID-ссылки продолжают резолвиться через `users.id` lookup.
 
-| Файл | Строка | Источник id |
+### Почему не `ident_patient_id`
+
+- Не все пациенты имеют CRM-привязку (анонимы, новые).
+- Не гарантирована уникальность между клиниками.
+- Завязка на CRM — не наша ответственность.
+
+### Почему не hashid (`aB9x2K`)
+
+- User прямо просит «числовой id» — читабельнее и короче.
+- Количество пациентов не секрет.
+
+## Реализация
+
+### dental-core ([PR #160](https://github.com/na-linii/dental-core/pull/160))
+
+**Миграция** в `SCHEMA` блоке [migrate.py](https://github.com/na-linii/dental-core/blob/main/agent/db/migrate.py):
+
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS public_id BIGSERIAL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id);
+```
+
+Идемпотентно (`IF NOT EXISTS`). `BIGSERIAL` в `ALTER TABLE ADD COLUMN` атомарно создаёт sequence и backfill-ит существующие строки уникальными значениями.
+
+**API (`agent/admin/sessions.py`)**:
+
+- `GET /admin/api/sessions/{id}` — dual-lookup:
+  - `id.isdigit()` → `SELECT ... FROM users WHERE public_id = $1`
+  - иначе → UUID-логика как была (`users.id`, fallback на `chat_sessions.id` для анонимов)
+  - если числовой id не нашёлся как `public_id` — 404 (не пробрасывать в UUID-fallback, иначе type cast error).
+- `list_sessions` и детальная ручка возвращают `public_id` в каждом элементе / ответе.
+- `update_patient_phone`, `send_operator_message`, `update_controller`, `update_confirmation` — **не трогаем**: принимают `session_id` (UUID `chat_sessions`), не `patient_id`.
+
+**API (`agent/admin/actions.py`)**:
+
+- `list_actions` — добавить `LEFT JOIN chat_sessions` + `LEFT JOIN users u_sess` + `COALESCE(u.public_id, u_sess.public_id) AS patient_public_id` в SELECT. Итого в ответе новое поле `patient_public_id: number | null`.
+
+### dental-hub ([PR этой ветки](https://github.com/na-linii/dental-hub/pulls))
+
+**`frontend-admin/src/api/client.ts`**:
+
+- `AdminPatientSummary.public_id: number | null`
+- `AdminPatientDetail.public_id?: number | null`
+- `AdminAction.patient_public_id: number | null`
+
+**Навигация** — `navigate(/chats/${public_id ?? id})` (fallback на UUID если `public_id` ещё не подъехал):
+
+- [`AdminChatsPage.tsx`](../../../frontend-admin/src/pages/admin/AdminChatsPage.tsx) — table + mobile card.
+- [`AdminConfirmationsPage.tsx`](../../../frontend-admin/src/pages/admin/AdminConfirmationsPage.tsx).
+- [`AdminActionsPage.tsx`](../../../frontend-admin/src/pages/admin/AdminActionsPage.tsx) — в `toView`: для action-рядов навигация по `patient_public_id` (не `patient_id` = CRM), для operator-рядов — `s.public_id ?? s.id`.
+
+Роут `/chats/:sessionId` **не меняем** — API принимает оба формата.
+
+### hub-api proxy
+
+`hub/api.py` пересылает ответ dental-core один-к-одному, новые поля проходят без whitelist — изменений не требуется.
+
+## Backward-compat
+
+| Источник | Ссылка | После PD-362 |
 |---|---|---|
-| `frontend-admin/src/pages/admin/AdminChatsPage.tsx` | 115, 166 | `s.id` из `AdminPatientSummary` |
-| `frontend-admin/src/pages/admin/AdminConfirmationsPage.tsx` | 93 | `s.id` |
-| `frontend-admin/src/pages/admin/AdminActionsPage.tsx` | 100 | `a.patient_id` (action) или `s.id` (operator-waiting) |
+| Старые закладки операторов | `/chats/<uuid>` | ✅ работают через UUID-lookup по `users.id` |
+| Новые переходы из UI | `/chats/<numeric>` | ✅ public_id lookup |
+| Анонимы без users-записи | `/chats/<chat_sessions.id uuid>` | ✅ UUID-fallback на `chat_sessions.id` |
+| Клики из `/admin/actions` (раньше 404) | `/chats/<numeric>` | ✅ фикс — navigate по `patient_public_id` |
 
-### Роутер
-- `frontend-admin/src/App.tsx:45` — `<Route path="chats/:sessionId" />` — React Router принимает любую строку; менять не нужно.
+У пациентов в переписках URL не шлются (это админка), миграция старых ссылок на клиентской стороне не нужна.
 
-### Чтение деталей
-- `frontend-admin/src/pages/admin/AdminChatDetailPage.tsx:28` — `useParams() → sessionId`, далее через `useAdminSessionDetail` (`hooks/useAdminQueries.ts:92`) в `getAdminSession` (`api/client.ts:263`) → `GET /sessions/${id}`.
-
-### Мутации (все прозрачные)
-- `frontend-admin/src/api/client.ts:266-276` — `sendAdminMessage`, `updateSessionController`, `updateSessionConfirmation`, `updatePatientPhone` — `POST/PATCH /sessions/${id}/...`.
-
-### Типы
-- `frontend-admin/src/api/client.ts:37` — комментарий обновлён с `// users.id (patient UUID)` на `// patient id (short numeric per clinic after PD-362; legacy UUIDs still accepted)`. Тип остаётся `string`.
-
-### Hub backend
-- `hub/api.py:666-705` — `_proxy_to_clinic()` пересылает `session_id` в dental-core как есть, ничего не валидирует.
-
-**Итого код-чендж в dental-hub: 1 строка комментария в `api/client.ts`.** Весь остальной deliverable — ТЗ для dental-core (отдельный репо) и тест-план.
-
-## ТЗ для dental-core (вне этого репо)
-
-1. **Backfill starsmile.** Для всех `patients`/`users` на starsmile, у которых `display_id IS NULL`, присвоить `display_id` из `BIGSERIAL`-последовательности в порядке `created_at`. Выполнить в окне минимального трафика, в одной транзакции.
-
-2. **API возвращает `id = display_id`** во всех admin endpoints (`GET /admin/api/sessions`, `GET /admin/api/sessions/{id}`, и во всех связанных объектах `AdminAction.patient_id`, `AdminBooking.patient_id`). Поле `id` в ответе становится короткой числовой строкой.
-
-3. **Legacy UUID lookup.** `GET /admin/api/sessions/<old-uuid>` должен продолжать работать (резолвит по `users.id` → `display_id` → отдаёт запись с новым `id` в теле). Опционально: отдавать 301 на `/sessions/<numeric>`. Нужно минимум для закладок операторов и входящих ссылок из Langfuse / CRM.
-
-4. **Уникальность per-clinic.** `display_id` уникален в пределах одного dental-core instance. Между клиниками пересечение допустимо (разные БД).
-
-5. **Langfuse trace continuity (nice-to-have).** При создании трейса после миграции — добавить `metadata.legacy_uuid = <old_uuid>` если он есть. Иначе старые трейсы не связываются с новыми сессиями. Не блокер для PD-362.
-
-## Верификация
-
-### До (baseline) на starsmile prod
-
-```sql
--- в БД dental-core.starsmile
-SELECT COUNT(*) FILTER (WHERE display_id IS NULL)   AS legacy_count,
-       COUNT(*) FILTER (WHERE display_id IS NOT NULL) AS migrated_count
-FROM patients;
-```
-
-### После миграции dental-core
-
-```sql
-SELECT COUNT(*) FROM patients WHERE display_id IS NULL;  -- ожидание: 0
-SELECT MIN(display_id), MAX(display_id), COUNT(*), COUNT(DISTINCT display_id) FROM patients;
--- MIN=1, COUNT == COUNT(DISTINCT), нет дыр/дублей
-```
-
-### API smoke (через hub)
-
-```bash
-TOKEN=<admin jwt для starsmile>
-HUB=https://hub.na-linii.com
-
-# Список — у всех id числовые
-curl -s -H "Authorization: Bearer $TOKEN" $HUB/admin/api/sessions?limit=10 \
-  | jq -r '.items[].id' | grep -vE '^[0-9]+$' && echo "FAIL: non-numeric id found" || echo "OK"
-
-# Новый numeric id открывается
-curl -s -H "Authorization: Bearer $TOKEN" $HUB/admin/api/sessions/15180 | jq '.id, .name'
-
-# Legacy UUID всё ещё резолвится
-curl -s -H "Authorization: Bearer $TOKEN" $HUB/admin/api/sessions/b07895fd-d144-415e-ad92-49a887723b07 | jq '.id, .name'
-```
-
-### End-to-end UI
-
-```bash
-cd frontend-admin && npm run dev   # app.na-linii.com через /etc/hosts
-```
-
-Сценарии:
-1. Логин оператором starsmile → `/chats` → клик по любой записи → URL = `/chats/<numeric>`.
-2. `/chats/<старый-uuid>` (подставить из baseline запроса) → открывается, чат рендерится.
-3. Экран «Действия» → клик по строке с `patient_id` → URL = `/chats/<numeric>`.
-4. Экран «Подтверждения» → клик → URL = `/chats/<numeric>`.
-5. В чате: отправка сообщения, смена контроллера (bot → operator), правка телефона → всё успешно (мутации работают под новым id).
-
-### Пост-релиз (через неделю)
-
-В Langfuse traces-фильтр по starsmile:
-```
-session_id ~ ^[0-9a-f]{8}-[0-9a-f]{4}-...  (UUID-regex)
-```
-Новых трейсов с UUID-session_id быть не должно.
-
-## Риски и митигации
+## Что может сломаться
 
 | Риск | Митигация |
 |---|---|
-| Закладки операторов на `/chats/<uuid>` сломаются | dental-core сохраняет legacy UUID lookup (пункт 3 ТЗ) |
-| React Query кэширует по id — одна и та же сессия в разных ключах `['admin','session','<uuid>']` и `[...,'<numeric>']` | Self-heal на F5; не блокер. Можно дополнительно инвалидировать `['admin','session']` при mount деталей |
-| Race: во время backfill создаётся новый пациент — получает не тот display_id | Backfill в окне низкого трафика, в одной транзакции с `FOR UPDATE` |
-| Потеря связи trace ↔ session в Langfuse | Опциональный `metadata.legacy_uuid` в новых трейсах; не блокер |
-| Другие клиники (не starsmile) получают backfill одновременно | Scope PD-362 — только starsmile; миграция параметризована `WHERE clinic_id = 'starsmile'` или запускается per-instance |
+| `ALTER TABLE ADD COLUMN BIGSERIAL` блокирует таблицу | На текущих объёмах (тысячи строк) — OK. Если вырастем — разделим: `ADD COLUMN BIGINT` + ручной backfill через sequence + `UNIQUE INDEX CONCURRENTLY`. |
+| Race INSERT во время деплоя | `BIGSERIAL` атомарный, sequence уникален — race невозможен. |
+| CRM `ident_patient_id` случайно цифровой совпадёт с чьим-то `public_id` | Не проблема: в API мы смотрим на формат переданной строки (`isdigit()`) и лукапим разные колонки. CRM id строковый и приходит в других полях. |
+| Langfuse trace_id | Отдельная система — не затрагивается. |
+| React Query кэширует по id | Self-heal на F5; не блокер — детали получаются по тому id, который в URL. |
 
-## Out of scope
+## Порядок раскатки
 
-- Изменение формата id для не-starsmile клиник (отдельные тикеты при необходимости).
-- Показ `#1234` где-либо в UI (не требуется).
-- Переписывание Langfuse session_id под новые id (дорого, без выгоды — UUID в трейсах ок).
-- Rewrite hub-api proxy под новые типы (остаётся `string`).
+1. `dental-core` `feat/PD-362-numeric-chat-ids` → `dev` → ✅ PR #160.
+2. `dental-hub` `feat/PD-362-numeric-chat-ids` → `dev` → ✅ этот PR.
+3. Merge обоих в `dev`, дев-инстанс сам применит миграцию на старте (lifespan hook).
+4. Smoke на dev: список → клик по любой карточке в `/chats`, клик из `/actions`, клик из `/confirmations`, старая UUID-ссылка.
+5. Release PR `dev → main` в обоих репо.
+
+## Acceptance criteria
+
+- [ ] URL чата в браузере — короткое число (`/chats/1234`), не UUID.
+- [ ] Клик по карточке на `/admin/actions` открывает правильный чат (регрессия фикса стары баг со starsmile).
+- [ ] Старые UUID-ссылки продолжают открывать те же чаты.
+- [ ] Миграция на starsmile не теряет пациентов (`count(*)` до/после совпадает).
+- [ ] Все клинические потоки (отправка сообщения, смена controller'а, смена статуса confirmation) работают под новым id.
