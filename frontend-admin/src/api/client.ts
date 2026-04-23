@@ -34,7 +34,8 @@ export interface AdminDashboardStats {
 }
 
 export interface AdminPatientSummary {
-  id: string            // patient id (short numeric per clinic after PD-362; legacy UUIDs still accepted)
+  id: string            // users.id UUID (legacy, still accepted by API for bookmarks)
+  public_id: number | null  // short numeric id for URLs (PD-362)
   kind: 'patient' | 'anonymous'
   name: string | null
   phone: string | null
@@ -85,6 +86,7 @@ export interface AdminSessionInfo {
 
 export interface AdminPatientDetail {
   id: string
+  public_id?: number | null       // PD-362: set for identified patients
   kind: 'patient' | 'anonymous'
   name: string | null
   phone: string | null
@@ -98,6 +100,13 @@ export interface AdminPatientDetail {
   channel?: string
   controller?: string
   confirmation_status?: string | null
+  patient?: {
+    id: string | null
+    public_id?: number | null
+    name: string | null
+    phone: string | null
+    ident_patient_id: string | null
+  } | null
 }
 
 /** @deprecated use AdminPatientDetail */
@@ -112,7 +121,8 @@ export interface AdminSendMessageResponse {
 export interface AdminAction {
   id: string
   action_type: string
-  patient_id: string | null
+  patient_id: string | null           // CRM ident_patient_id (not the patient UUID)
+  patient_public_id: number | null    // PD-362: users.public_id — use this for chat navigation
   description: string | null
   data: Record<string, unknown> | null
   status: string

@@ -40,9 +40,11 @@ type RowView = {
 function toView(row: PendingRow): RowView {
   if (row.kind === 'action') {
     const a = row.data
+    // PD-362: navigate via users.public_id, not CRM ident_patient_id (broken lookup).
+    const navId = a.patient_public_id != null ? String(a.patient_public_id) : null
     return {
       key: a.id,
-      patientId: a.patient_id,
+      patientId: navId,
       patientName: a.patient_name,
       patientPhone: a.patient_phone,
       appointmentDate: a.appointment_date,
@@ -56,7 +58,7 @@ function toView(row: PendingRow): RowView {
   const s = row.data
   return {
     key: 'op-' + s.id,
-    patientId: s.id,
+    patientId: s.public_id != null ? String(s.public_id) : s.id,
     patientName: s.name,
     patientPhone: s.phone,
     appointmentDate: null,
