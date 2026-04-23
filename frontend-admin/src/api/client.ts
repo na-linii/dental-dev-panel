@@ -34,7 +34,7 @@ export interface AdminDashboardStats {
 }
 
 export interface AdminPatientSummary {
-  id: string            // users.id (patient UUID)
+  id: string            // patient id (short numeric per clinic after PD-362; legacy UUIDs still accepted)
   kind: 'patient' | 'anonymous'
   name: string | null
   phone: string | null
