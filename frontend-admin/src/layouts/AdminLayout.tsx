@@ -110,7 +110,6 @@ export function AdminLayout() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-gray-900 dark:text-white truncate">{user.full_name || user.username}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
               {user.clinic_name && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{user.clinic_name}</p>
               )}
