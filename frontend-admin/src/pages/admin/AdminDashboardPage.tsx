@@ -48,7 +48,6 @@ export function AdminDashboardPage() {
         <h1 className="text-2xl font-bold text-text-primary">
           Добро пожаловать, {user.full_name?.split(' ')[1] || user.full_name?.split(' ')[0] || user.username}
         </h1>
-        <p className="text-text-tertiary mt-1">{user.clinic_id}</p>
       </div>
 
       {/* Top row: 4 stat cards */}
