@@ -42,16 +42,20 @@ export const GUIDE_INCOMING_STATUSES = ['bot', 'awaiting_cancel', 'cancelled', '
 export const GUIDE_OUTGOING_STATUSES = ['sent', 'awaiting_confirm', 'confirmed', 'no_response'] as const
 
 // ── Controller labels (for dropdown in chat detail header) ──
+// PD-378: 4 пункта в дропдауне. operator_active = «взять чат на себя» без отправки сообщения,
+// маппится бэкендом в БД на controller='operator' + operator_id=user.username.
 
 export const CONTROLLER_LABELS: Record<string, string> = {
   bot: 'Разговор с агентом',
   operator: 'Ожидает администратора',
+  operator_active: 'Разговор с администратором',
   closed: 'Чат завершён',
 }
 
 export const CONTROLLER_COLORS: Record<string, string> = {
   bot: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/25',
   operator: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',
+  operator_active: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25',
   closed: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25',
 }
 
