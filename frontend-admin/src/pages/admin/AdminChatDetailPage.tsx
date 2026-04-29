@@ -11,7 +11,9 @@ import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG,
 import type { BookingConfirmationRun } from '../../api/client'
 import { useInvalidateSessions } from '../../hooks/useAdminQueries'
 
-const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'closed']
+// PD-378: 4 варианта в дропдауне. operator_active бэкендом маппится в БД на
+// controller='operator' + operator_id=<админ> (взять чат на себя без отправки сообщения).
+const CHANGEABLE_CONTROLLERS = ['bot', 'operator', 'operator_active', 'closed']
 
 const TEXTAREA_LINE_HEIGHT = 24
 const TEXTAREA_MAX_ROWS = 5
@@ -116,10 +118,27 @@ export function AdminChatDetailPage() {
     setShowControllerMenu(false)
     try {
       await updateSessionController(mutationSessionId, newController)
+      // PD-378: оптимистично выставляем controller + operator_id чтобы бейдж сразу
+      // показал правильный статус (без 5-секундного ожидания авто-рефетча).
+      // Бэкенд маппит operator_active → controller='operator' + operator_id=user; для
+      // operator/bot/closed operator_id=NULL.
+      let nextController = newController
+      let nextOperatorId: string | null = null
+      if (newController === 'operator_active') {
+        nextController = 'operator'
+        try {
+          const stored = JSON.parse(localStorage.getItem('admin_user') || '{}')
+          nextOperatorId = stored?.username ?? 'admin'
+        } catch {
+          nextOperatorId = 'admin'
+        }
+      }
       queryClient.setQueryData(['admin', 'session', sessionId], (prev: AdminPatientDetail | undefined) => {
         if (!prev) return prev
         const sessions = prev.sessions.map((s, i) =>
-          i === prev.sessions.length - 1 ? { ...s, controller: newController } : s
+          i === prev.sessions.length - 1
+            ? { ...s, controller: nextController, operator_id: nextOperatorId }
+            : s
         )
         return { ...prev, sessions }
       })
@@ -205,17 +224,22 @@ export function AdminChatDetailPage() {
               })()}
               {showControllerMenu && (
                 <div className="absolute top-full mt-1 left-0 z-50 bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/[0.1] rounded-xl shadow-xl py-1 min-w-[180px]">
-                  {CHANGEABLE_CONTROLLERS.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => handleControllerChange(c)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors ${
-                        c === controller ? 'text-accent' : 'text-text-secondary'
-                      }`}
-                    >
-                      {CONTROLLER_LABELS[c] || c}
-                    </button>
-                  ))}
+                  {CHANGEABLE_CONTROLLERS.map((c) => {
+                    // PD-378: подсветка активного пункта по display-статусу,
+                    // чтобы «Разговор с администратором» (operator_active = controller=operator + operator_id) подсветился корректно.
+                    const isActive = c === getDisplayStatus(displaySessionProxy)
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => handleControllerChange(c)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors ${
+                          isActive ? 'text-accent' : 'text-text-secondary'
+                        }`}
+                      >
+                        {CONTROLLER_LABELS[c] || c}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
