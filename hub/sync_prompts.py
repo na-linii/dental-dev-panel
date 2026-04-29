@@ -24,9 +24,9 @@ def parse_prompt_file(path: Path) -> dict:
 
 
 def sync_all():
-    """Upload all prompts to Langfuse from dev/ and prod/ subdirs."""
+    """Upload all prompts to Langfuse from dev/, prod/ and voice/ subdirs."""
     lf = Langfuse()
-    for env_dir in ["dev", "prod"]:
+    for env_dir in ["dev", "prod", "voice"]:
         env_path = PROMPTS_DIR / env_dir
         if not env_path.exists():
             continue
