@@ -5,8 +5,13 @@ import {
   getAdminBotStatus, toggleAdminBot,
   getAdminBlocklist, addAdminBlocklistEntry, removeAdminBlocklistEntry,
   startTelegramImport, cancelTelegramImport, getTelegramImportStatus, getTelegramImportHistory,
+  startMaxUserbotImport, cancelMaxUserbotImport, getMaxUserbotImportStatus, getMaxUserbotImportHistory,
 } from '../../api/client'
-import type { AdminBotStatus, AdminBlocklistItem, TelegramImportStatus, TelegramImportHistoryItem } from '../../api/client'
+import type {
+  AdminBotStatus, AdminBlocklistItem,
+  TelegramImportStatus, TelegramImportHistoryItem,
+  MaxUserbotImportStatus, MaxUserbotImportHistoryItem,
+} from '../../api/client'
 
 function TelegramImportSection() {
   const [mode, setMode] = useState<'incremental' | 'full'>('incremental')
@@ -188,6 +193,188 @@ export function AdminSettingsPage() {
 
       {/* Telegram Import (superadmin only) */}
       {isSuperadmin && <TelegramImportSection />}
+
+      {/* MAX userbot Import (superadmin only) */}
+      {isSuperadmin && <MaxUserbotImportSection />}
+    </div>
+  )
+}
+
+// ── MAX userbot Import ──
+
+function MaxUserbotImportSection() {
+  const [chatIdsInput, setChatIdsInput] = useState('')
+  const [mode, setMode] = useState<'incremental' | 'full'>('incremental')
+  const [dryRun, setDryRun] = useState(false)
+  const [status, setStatus] = useState<MaxUserbotImportStatus | null>(null)
+  const [history, setHistory] = useState<MaxUserbotImportHistoryItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const isRunning = status?.status === 'running'
+
+  useEffect(() => {
+    getMaxUserbotImportStatus().then(setStatus).catch(() => {})
+    getMaxUserbotImportHistory().then(r => setHistory(r.runs)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!isRunning) return
+    const interval = setInterval(async () => {
+      try {
+        const s = await getMaxUserbotImportStatus()
+        setStatus(s)
+        if (s.status !== 'running') {
+          clearInterval(interval)
+          getMaxUserbotImportHistory().then(r => setHistory(r.runs)).catch(() => {})
+        }
+      } catch { /* ignore */ }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [isRunning])
+
+  const parseChatIds = (raw: string): number[] => {
+    return raw
+      .split(/[\s,;]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => Number(s))
+      .filter(n => Number.isInteger(n) && n > 0)
+  }
+
+  const handleStart = async () => {
+    setError(null)
+    const chat_ids = parseChatIds(chatIdsInput)
+    if (chat_ids.length === 0) {
+      setError('Укажите хотя бы один chat_id (числа через запятую или пробел)')
+      return
+    }
+    setLoading(true)
+    try {
+      await startMaxUserbotImport({ chat_ids, mode, dry_run: dryRun })
+      const s = await getMaxUserbotImportStatus()
+      setStatus(s)
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      if (typeof detail === 'object' && detail?.error) {
+        setError(detail.error)
+      } else {
+        setError(typeof detail === 'string' ? detail : 'Не удалось запустить импорт')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    try {
+      await cancelMaxUserbotImport()
+    } catch { /* ignore */ }
+  }
+
+  const progressPercent = status && status.total > 0 ? Math.round((status.processed / status.total) * 100) : 0
+  const lastRun = status?.last_run || (history.length > 0 ? history[0] : null)
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold">Импорт истории MAX (userbot)</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Подтягивает историю переписок из MAX-аккаунта клиники. Auto-discovery чатов нет —
+          укажите chat_id вручную (числа через запятую или пробел).
+        </p>
+      </div>
+      <div className="mb-4">
+        <label className="text-xs text-muted-foreground uppercase mb-1 block">Chat IDs</label>
+        <input
+          type="text"
+          value={chatIdsInput}
+          onChange={e => setChatIdsInput(e.target.value)}
+          disabled={isRunning}
+          placeholder="9770861, 12345678"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+        />
+      </div>
+      <div className="flex gap-4 mb-4 flex-wrap">
+        <div className="flex-1 min-w-[150px]">
+          <label className="text-xs text-muted-foreground uppercase mb-1 block">Режим</label>
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as 'incremental' | 'full')}
+            disabled={isRunning}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="incremental">Инкрементальный</option>
+            <option value="full">Полный</option>
+          </select>
+        </div>
+        <div className="flex-1 min-w-[150px] flex items-end">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={dryRun}
+              onChange={e => setDryRun(e.target.checked)}
+              disabled={isRunning}
+              className="rounded"
+            />
+            Тестовый прогон
+          </label>
+        </div>
+      </div>
+      <div className="mb-4 flex gap-3">
+        <button
+          onClick={handleStart}
+          disabled={isRunning || loading}
+          className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+        >
+          {loading ? 'Запускаем...' : isRunning ? 'Импорт выполняется...' : 'Запустить импорт'}
+        </button>
+        {isRunning && (
+          <button
+            onClick={handleCancel}
+            className="bg-destructive text-destructive-foreground px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+          >
+            Остановить
+          </button>
+        )}
+      </div>
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          {error}
+        </div>
+      )}
+      {isRunning && status && (
+        <div className="mb-4 p-4 rounded-lg border border-border bg-background">
+          <div className="flex justify-between mb-2">
+            <span className="text-sm text-blue-500">Импорт выполняется...</span>
+            <span className="text-sm text-muted-foreground">
+              {status.processed} / {status.total} чатов
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {status.new_messages} новых сообщений найдено
+          </div>
+        </div>
+      )}
+      {lastRun && !isRunning && (
+        <div className="border-t border-border pt-4">
+          <div className="text-xs text-muted-foreground mb-2">Последний импорт</div>
+          <div className="flex gap-4 flex-wrap text-sm text-muted-foreground">
+            <span>{lastRun.started_at ? new Date(lastRun.started_at).toLocaleString('ru-RU') : '—'}</span>
+            <span>{lastRun.processed} чатов</span>
+            <span>{lastRun.new_messages} новых сообщений</span>
+            <span className={lastRun.status === 'completed' ? 'text-green-500' : 'text-destructive'}>
+              {lastRun.status === 'completed' ? 'Успешно' : lastRun.status === 'failed' ? `Ошибка: ${lastRun.error}` : lastRun.status}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

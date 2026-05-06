@@ -800,6 +800,33 @@ async def admin_telegram_import_history(admin_user=Depends(_get_admin_user)):
     return await _proxy_to_clinic(clinic, "GET", "/admin/api/telegram/import/history")
 
 
+# ── MAX userbot import ──────────────────────────────────────────────────
+
+@app.post("/admin/api/max_userbot/import")
+async def admin_max_userbot_import_start(request: Request, admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+    return await _proxy_to_clinic(clinic, "POST", "/admin/api/max_userbot/import", body=body)
+
+
+@app.post("/admin/api/max_userbot/import/cancel")
+async def admin_max_userbot_import_cancel(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "POST", "/admin/api/max_userbot/import/cancel")
+
+
+@app.get("/admin/api/max_userbot/import/status")
+async def admin_max_userbot_import_status(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/max_userbot/import/status")
+
+
+@app.get("/admin/api/max_userbot/import/history")
+async def admin_max_userbot_import_history(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/max_userbot/import/history")
+
+
 # --- Clinic Admin Users API (used by Hub frontend) ---
 
 @app.get("/api/clinics/{clinic_id}/admins")
