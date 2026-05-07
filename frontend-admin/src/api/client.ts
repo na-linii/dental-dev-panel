@@ -208,6 +208,39 @@ export interface TelegramImportHistoryItem {
   error: string | null
 }
 
+// MAX Userbot Import (mirrors Telegram import shape; `total`/`processed` count chat_ids, not dialogs)
+export interface MaxUserbotImportStatus {
+  task_id: string | null
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled'
+  processed: number
+  total: number
+  new_messages: number
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+  last_run: {
+    task_id: string
+    status: string
+    mode: string
+    processed: number
+    new_messages: number
+    started_at: string
+    finished_at: string | null
+    error: string | null
+  } | null
+}
+
+export interface MaxUserbotImportHistoryItem {
+  task_id: string
+  status: string
+  mode: string
+  processed: number
+  new_messages: number
+  started_at: string
+  finished_at: string | null
+  error: string | null
+}
+
 // ── API Client ──
 
 const adminApi = axios.create({ baseURL: '/api', timeout: 30_000 })
@@ -336,3 +369,19 @@ export const cancelTelegramImport = async () =>
 
 export const getTelegramImportHistory = async () =>
   (await adminApi.get<{ runs: TelegramImportHistoryItem[] }>('/telegram/import/history')).data
+
+// MAX Userbot Import
+export const startMaxUserbotImport = async (params: {
+  chat_ids: number[]
+  mode: 'incremental' | 'full'
+  dry_run: boolean
+}) => (await adminApi.post<{ task_id: string; status: string }>('/max_userbot/import', params)).data
+
+export const getMaxUserbotImportStatus = async () =>
+  (await adminApi.get<MaxUserbotImportStatus>('/max_userbot/import/status')).data
+
+export const cancelMaxUserbotImport = async () =>
+  (await adminApi.post<{ status: string; task_id: string }>('/max_userbot/import/cancel')).data
+
+export const getMaxUserbotImportHistory = async () =>
+  (await adminApi.get<{ runs: MaxUserbotImportHistoryItem[] }>('/max_userbot/import/history')).data
