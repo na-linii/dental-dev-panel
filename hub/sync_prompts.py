@@ -30,20 +30,21 @@ def sync_all():
         env_path = PROMPTS_DIR / env_dir
         if not env_path.exists():
             continue
-        for path in sorted(env_path.glob("*.md")):
+        for path in sorted(env_path.rglob("*.md")):
             prompt = parse_prompt_file(path)
             name = prompt["name"]
             labels = prompt.get("labels", ["production"])
             prompt_type = prompt.get("type", "text")
 
+            rel = path.relative_to(PROMPTS_DIR)
             lf.create_prompt(
                 name=name,
                 prompt=prompt["body"],
                 type=prompt_type,
                 labels=labels,
-                commit_message=f"Sync from {env_dir}/{path.name}",
+                commit_message=f"Sync from {rel}",
             )
-            print(f"  {name} ({prompt_type}) labels={labels} [{env_dir}]")
+            print(f"  {name} ({prompt_type}) labels={labels} [{rel}]")
 
     lf.flush()
     print("Done.")
