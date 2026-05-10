@@ -244,8 +244,11 @@ function MaxUserbotImportSection() {
 
   const handleStart = async () => {
     setError(null)
-    // Empty chat_ids triggers daemon-side auto-discovery — same UX as Telegram import.
     const chat_ids = parseChatIds(chatIdsInput)
+    if (chat_ids.length === 0) {
+      setError('Укажите хотя бы один chat_id (числа через запятую или пробел)')
+      return
+    }
     setLoading(true)
     try {
       await startMaxUserbotImport({ chat_ids, mode, dry_run: dryRun })
@@ -277,23 +280,20 @@ function MaxUserbotImportSection() {
       <div className="mb-4">
         <h2 className="text-lg font-semibold">Импорт истории MAX (userbot)</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Подтягивает историю переписок из MAX-аккаунта клиники. Оставьте поле Chat IDs пустым,
-          чтобы импортировать все чаты клиники автоматически (как в Telegram-импорте).
+          Подтягивает историю переписок из MAX-аккаунта клиники. Auto-discovery чатов нет —
+          укажите chat_id вручную (числа через запятую или пробел).
         </p>
       </div>
       <div className="mb-4">
-        <label className="text-xs text-muted-foreground uppercase mb-1 block">Chat IDs (опционально)</label>
+        <label className="text-xs text-muted-foreground uppercase mb-1 block">Chat IDs</label>
         <input
           type="text"
           value={chatIdsInput}
           onChange={e => setChatIdsInput(e.target.value)}
           disabled={isRunning}
-          placeholder="пусто = все чаты; либо 9770861, 12345678"
+          placeholder="9770861, 12345678"
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          Укажите конкретные chat_id (через запятую или пробел) только для отладки одного чата.
-        </p>
       </div>
       <div className="flex gap-4 mb-4 flex-wrap">
         <div className="flex-1 min-w-[150px]">
