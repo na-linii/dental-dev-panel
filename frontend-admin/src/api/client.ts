@@ -52,6 +52,11 @@ export interface AdminPatientSummary {
   last_message: string | null
   last_message_at: string | null
   is_blocked: boolean
+  // PD-393: latest booking_confirmation_runs.status; UI uses
+  // `confirmation_status ?? last_run_status` for the reminder badge so the
+  // "Визит не подтверждён" indicator survives the 24h sweep clearing the
+  // active-cycle cache on chat_sessions.
+  last_run_status: string | null
 }
 
 /** @deprecated use AdminPatientSummary */
@@ -82,6 +87,7 @@ export interface AdminSessionInfo {
   crm_sync_error: string | null
   created_at: string | null
   updated_at: string | null
+  last_run_status: string | null  // PD-393: see AdminPatientSummary
 }
 
 export interface AdminPatientDetail {

@@ -4,7 +4,7 @@ import { RefreshCw, CalendarCheck } from 'lucide-react'
 import { useSessionsData } from '../../hooks/useAdminQueries'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { STATUS_CONFIG, CONFIRMATION_FILTERS } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONFIRMATION_FILTERS, getDisplayConfirmationStatus } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
 
 export function AdminConfirmationsPage() {
@@ -15,8 +15,11 @@ export function AdminConfirmationsPage() {
   const error = queryError ? 'Не удалось загрузить записи' : null
 
   const { sessions, counts, totalCount } = useMemo(() => {
+    // PD-393: filter on composed display status so the "Визит не подтверждён"
+    // filter still finds patients whose terminal `no_response` lives in
+    // booking_confirmation_runs after the 24h sweep cleared the session cache.
     const filtered = activeFilter
-      ? computed.withConfirmation.filter((s) => s.confirmation_status === activeFilter)
+      ? computed.withConfirmation.filter((s) => getDisplayConfirmationStatus(s) === activeFilter)
       : computed.withConfirmation
     return { sessions: filtered, counts: computed.byConfirmation, totalCount: computed.confirmationTotal }
   }, [computed, activeFilter])
@@ -84,9 +87,11 @@ export function AdminConfirmationsPage() {
             const date = s.confirmation_appointment_date ? new Date(s.confirmation_appointment_date + 'T00:00:00') : null
             const day = date ? format(date, 'd') : '\u2014'
             const month = date ? format(date, 'MMM', { locale: ru }).replace('.', '') : ''
-            const cfg = STATUS_CONFIG[s.confirmation_status || '']
+            // PD-393: composed display status (active cycle ?? last terminal run).
+            const confirmDisplay = getDisplayConfirmationStatus(s)
+            const cfg = STATUS_CONFIG[confirmDisplay || '']
             const statusColor = cfg?.badge || 'bg-gray-100 dark:bg-gray-500/15 text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-500/25'
-            const statusLabel = cfg?.label || s.confirmation_status || '\u2014'
+            const statusLabel = cfg?.label || confirmDisplay || '\u2014'
             const StatusIcon = cfg?.icon || CalendarCheck
 
             return (

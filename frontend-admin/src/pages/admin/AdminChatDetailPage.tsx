@@ -184,7 +184,14 @@ export function AdminChatDetailPage() {
   const lastSession = getLastSession(session)
   const controller = lastSession?.controller || session.controller || 'bot'
   const operatorId = lastSession?.operator_id ?? null
-  const confirmationStatus = lastSession?.confirmation_status ?? session.confirmation_status ?? null
+  // PD-393: fall back to last terminal run from booking_confirmation_runs so
+  // the "Визит не подтверждён" badge survives the 24h sweep clearing the
+  // active-cycle cache on chat_sessions.
+  const confirmationStatus =
+    lastSession?.confirmation_status
+    ?? session.confirmation_status
+    ?? lastSession?.last_run_status
+    ?? null
   const confirmationDate = lastSession?.confirmation_appointment_date ?? null
   const confirmationTime = lastSession?.confirmation_appointment_time ?? null
   const confirmationDoctor = lastSession?.confirmation_doctor_name ?? null
