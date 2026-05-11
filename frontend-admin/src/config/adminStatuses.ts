@@ -70,6 +70,25 @@ export function isAwaitingOperator(s: { controller: string; operator_id?: string
   return s.controller === 'operator' && !s.operator_id
 }
 
+/**
+ * PD-393: returns the confirmation status to display in the UI badge.
+ *
+ * `confirmation_status` is the ACTIVE-cycle cache on chat_sessions (transient:
+ * 'sent', 'awaiting_*', or a terminal during the current cycle). The 24h
+ * sweep clears it to NULL so fresh bookings the next day start cleanly.
+ * `last_run_status` is the most recent terminal outcome from
+ * `booking_confirmation_runs` — the historical "didn't respond" indicator
+ * survives the sweep through here.
+ *
+ * Active cycle wins over history: if both are set, the in-flight status is
+ * the more useful signal.
+ */
+export function getDisplayConfirmationStatus(
+  s: { confirmation_status?: string | null; last_run_status?: string | null },
+): string | null {
+  return s.confirmation_status ?? s.last_run_status ?? null
+}
+
 // ── Controller filter tags (short labels for filter buttons) ──
 
 export const CONTROLLER_FILTER_TAGS = [

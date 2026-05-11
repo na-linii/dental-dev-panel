@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search, MessageCircle, ShieldBan } from 'lucide-react'
 import type { AdminPatientSummary } from '../../api/client'
 import { useSessionsData, useAdminDashboard } from '../../hooks/useAdminQueries'
-import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
+import { STATUS_CONFIG, CONTROLLER_FILTER_TAGS, getDisplayStatus, getDisplayConfirmationStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
 import { pluralize } from '../../utils/pluralize'
 
 type ActiveTab = 'all' | 'blocked'
@@ -16,6 +16,9 @@ function getChannelPill(channel: string | null | undefined) {
 const OPERATOR_ATTENTION_STATUSES = ['awaiting_cancel', 'awaiting_reschedule']
 
 function needsOperator(s: AdminPatientSummary): boolean {
+  // PD-393: active cycle's awaiting_* matters here, not historical runs.
+  // A finalised 'no_response' from last_run_status doesn't require operator
+  // attention.
   return s.controller === 'operator' ||
     OPERATOR_ATTENTION_STATUSES.includes(s.confirmation_status ?? '')
 }
@@ -108,6 +111,9 @@ export function AdminChatsPage() {
     const time = formatActivityTime(s.last_activity_at || s.last_message_at, timezone)
     const isOperator = getDisplayStatus(s) === 'operator'
     const isBlocked = activeTab === 'blocked'
+    // PD-393: badge composes active cycle (chat_sessions.confirmation_status)
+    // and last terminal run (booking_confirmation_runs.status).
+    const confirmDisplay = getDisplayConfirmationStatus(s)
 
     return (
       <tr
@@ -140,10 +146,10 @@ export function AdminChatsPage() {
               <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
               {STATUS_CONFIG[getDisplayStatus(s)]?.label}
             </span>
-            {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-                {STATUS_CONFIG[s.confirmation_status].label}
+            {confirmDisplay && STATUS_CONFIG[confirmDisplay] && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${STATUS_CONFIG[confirmDisplay].badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[confirmDisplay].dot}`} />
+                {STATUS_CONFIG[confirmDisplay].label}
               </span>
             )}
           </div>
@@ -159,6 +165,8 @@ export function AdminChatsPage() {
     const time = formatActivityTime(s.last_activity_at || s.last_message_at, timezone)
     const isOperator = s.controller === 'operator'
     const isBlocked = activeTab === 'blocked'
+    // PD-393: see renderRow above for composition rationale.
+    const confirmDisplay = getDisplayConfirmationStatus(s)
 
     return (
       <div
@@ -202,10 +210,10 @@ export function AdminChatsPage() {
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[getDisplayStatus(s)]?.dot || ''}`} />
             {STATUS_CONFIG[getDisplayStatus(s)]?.label}
           </span>
-          {s.confirmation_status && STATUS_CONFIG[s.confirmation_status] && (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[s.confirmation_status].badge}`}>
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[s.confirmation_status].dot}`} />
-              {STATUS_CONFIG[s.confirmation_status].label}
+          {confirmDisplay && STATUS_CONFIG[confirmDisplay] && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-medium ${STATUS_CONFIG[confirmDisplay].badge}`}>
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_CONFIG[confirmDisplay].dot}`} />
+              {STATUS_CONFIG[confirmDisplay].label}
             </span>
           )}
         </div>
