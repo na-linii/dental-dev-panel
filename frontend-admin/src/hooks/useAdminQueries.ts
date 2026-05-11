@@ -6,7 +6,7 @@ import {
   getAdminActions,
 } from '../api/client'
 import type { AdminAction, AdminPatientSummary } from '../api/client'
-import { isAwaitingOperator } from '../config/adminStatuses'
+import { isAwaitingOperator, getDisplayConfirmationStatus } from '../config/adminStatuses'
 import { useMemo } from 'react'
 
 // ── Single data source: all sessions ──
@@ -36,8 +36,12 @@ export function useSessionsData() {
 
     for (const s of allSessions) {
       if (s.controller in byController) byController[s.controller as keyof typeof byController]++
-      if (s.confirmation_status) {
-        byConfirmation[s.confirmation_status] = (byConfirmation[s.confirmation_status] || 0) + 1
+      // PD-393: bucket by composed (active cycle OR last terminal run), so
+      // confirmation counters keep counting "didn't respond" patients after
+      // the 24h sweep clears the active-cycle cache.
+      const cs = getDisplayConfirmationStatus(s)
+      if (cs) {
+        byConfirmation[cs] = (byConfirmation[cs] || 0) + 1
         withConfirmation.push(s)
       }
       if (s.is_blocked) blocked.push(s)
