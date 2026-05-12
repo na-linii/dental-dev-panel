@@ -37,9 +37,11 @@ export function AdminDashboardPage() {
     (stats?.sessions?.operator ?? 0) +
     (stats?.sessions?.operator_active ?? 0) +
     (stats?.sessions?.closed ?? 0)
-  const confirmed = stats?.confirmations?.confirmed ?? 0
-  const rescheduled = stats?.confirmations?.rescheduled ?? 0
-  const cancelled = stats?.confirmations?.cancelled ?? 0
+  // PD-373: терминальные счётчики читаем из per-booking SoT (booking_confirmation_runs),
+  // а awaiting_* — из active-cycle cache в chat_sessions.confirmation_status.
+  const confirmed = stats?.bookings_by_patient_response?.confirmed ?? 0
+  const rescheduled = stats?.bookings_by_patient_response?.rescheduled ?? 0
+  const cancelled = stats?.bookings_by_patient_response?.cancelled ?? 0
   const awaitingConfirm = stats?.confirmations?.awaiting_confirm ?? 0
   const awaitingReschedule = stats?.confirmations?.awaiting_reschedule ?? 0
   const awaitingCancel = stats?.confirmations?.awaiting_cancel ?? 0
