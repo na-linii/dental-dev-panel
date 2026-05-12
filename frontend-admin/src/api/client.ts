@@ -30,7 +30,9 @@ export interface AdminDashboardStats {
   confirmations: Record<string, number>
   pending_actions: number
   total_patients: number
-  prev_month?: { total: number; confirmed: number; rescheduled: number; cancelled: number }
+  prev_month?: { total: number; confirmed: number; rescheduled: number; cancelled: number; no_response?: number }
+  // PD-373: per-booking SoT для терминальных счётчиков (источник — booking_confirmation_runs).
+  bookings_by_patient_response?: { confirmed: number; cancelled: number; rescheduled: number; no_response: number }
 }
 
 export interface AdminPatientSummary {
