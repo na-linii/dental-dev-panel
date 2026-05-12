@@ -30,7 +30,13 @@ export function AdminDashboardPage() {
     )
   }
 
-  const totalSessions = (stats?.sessions?.bot ?? 0) + (stats?.sessions?.operator ?? 0) + (stats?.sessions?.closed ?? 0)
+  // PD-373: sessions.operator теперь — только awaiting (operator_id IS NULL);
+  // активные диалоги с оператором приходят отдельно как operator_active.
+  const totalSessions =
+    (stats?.sessions?.bot ?? 0) +
+    (stats?.sessions?.operator ?? 0) +
+    (stats?.sessions?.operator_active ?? 0) +
+    (stats?.sessions?.closed ?? 0)
   const confirmed = stats?.confirmations?.confirmed ?? 0
   const rescheduled = stats?.confirmations?.rescheduled ?? 0
   const cancelled = stats?.confirmations?.cancelled ?? 0

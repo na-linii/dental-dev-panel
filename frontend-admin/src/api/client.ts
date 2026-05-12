@@ -26,7 +26,7 @@ interface PaginatedResponse<T> {
 
 export interface AdminDashboardStats {
   timezone: string
-  sessions: { bot: number; operator: number; closed: number }
+  sessions: { bot: number; operator: number; operator_active?: number; closed: number }
   confirmations: Record<string, number>
   pending_actions: number
   total_patients: number
