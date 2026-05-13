@@ -1,7 +1,7 @@
 import {
   Bell, ClipboardCheck, CircleCheck, Ban, CircleX, Timer,
   RefreshCw, MessageCircle, AlertCircle, MessageSquare,
-  LayoutDashboard, CalendarCheck, ClipboardList, Settings, BookOpen,
+  LayoutDashboard, CalendarCheck, ClipboardList, Settings, BookOpen, Phone,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -168,6 +168,7 @@ export const CHANNEL_CONFIG: Record<string, { text: string; cls: string }> = {
 export const NAV_ITEMS = [
   { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { to: '/chats', label: 'Переписка', icon: MessageCircle },
+  { to: '/calls', label: 'Звонки', icon: Phone, superadminOnly: true },
   { to: '/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
   { to: '/actions', label: 'Действия', icon: ClipboardList },
   { to: '/settings', label: 'Настройки', icon: Settings },
