@@ -5,6 +5,7 @@ import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminChatsPage } from './pages/admin/AdminChatsPage'
 import { AdminChatDetailPage } from './pages/admin/AdminChatDetailPage'
+import { AdminCallsPage } from './pages/admin/AdminCallsPage'
 import { AdminActionsPage } from './pages/admin/AdminActionsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminConfirmationsPage } from './pages/admin/AdminConfirmationsPage'
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="chats" element={<AdminChatsPage />} />
               <Route path="chats/:sessionId" element={<AdminChatDetailPage />} />
+              <Route path="calls" element={<SuperadminGuard><AdminCallsPage /></SuperadminGuard>} />
               <Route path="confirmations" element={<SuperadminGuard><AdminConfirmationsPage /></SuperadminGuard>} />
               <Route path="actions" element={<AdminActionsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />

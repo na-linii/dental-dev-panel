@@ -174,6 +174,31 @@ export interface AdminBotStatus {
   toggled_by: string | null
 }
 
+// ── Voice calls (PD-399) ──
+
+export type VoiceCallEndReason =
+  | 'in_progress'
+  | 'completed_bot'
+  | 'completed_handoff'
+  | 'dropped'
+  | 'answering_machine'
+  | 'error'
+
+export interface AdminCallSummary {
+  session_id: string
+  livekit_room: string
+  caller_phone: string | null
+  callee_did: string | null
+  started_at: string | null
+  ended_at: string | null
+  duration_ms: number | null
+  end_reason: VoiceCallEndReason | null
+  has_recording: boolean
+  patient: { id: string; name: string | null; public_id: number | null } | null
+  last_message_preview: string | null
+  last_message_at: string | null
+}
+
 export interface AdminBlocklistItem {
   id: string
   phone: string | null
@@ -325,6 +350,21 @@ export const updateSessionConfirmation = async (sessionId: string, confirmation_
 
 export const updatePatientPhone = async (sessionId: string, phone: string) =>
   (await adminApi.patch(`/sessions/${sessionId}/phone`, { phone })).data
+
+// ── Voice calls (PD-399, superadmin only) ──
+
+export const getAdminCalls = async (params?: {
+  from?: string
+  to?: string
+  end_reason?: VoiceCallEndReason[]
+  caller_phone?: string
+  has_recording?: boolean
+  limit?: number
+  offset?: number
+}): Promise<{ items: AdminCallSummary[]; total: number }> => {
+  const res = await adminApi.get<PaginatedResponse<AdminCallSummary>>('/calls', { params })
+  return { items: res.data.items, total: res.data.total }
+}
 
 // ── Actions ──
 
