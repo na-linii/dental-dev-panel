@@ -725,6 +725,13 @@ async def admin_calls(request: Request, admin_user=Depends(_get_admin_user)):
     return await _proxy_to_clinic(clinic, "GET", "/admin/api/calls", params=params)
 
 
+@app.get("/admin/api/calls/{session_id}")
+async def admin_call_detail(session_id: str, admin_user=Depends(_get_admin_user)):
+    _require_superadmin(admin_user)
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/calls/{session_id}")
+
+
 # --- Actions ---
 
 @app.get("/admin/api/actions")

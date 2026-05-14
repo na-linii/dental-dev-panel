@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { RefreshCw, Phone, FileAudio, Mic, MicOff, PhoneOff, AlertCircle, Bot, UserCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AdminCallSummary, VoiceCallEndReason } from '../../api/client'
@@ -99,11 +100,13 @@ function EndReasonBadge({ reason }: { reason: VoiceCallEndReason | null }) {
   )
 }
 
-function CallRow({ call }: { call: AdminCallSummary }) {
+function CallRow({ call, onClick }: { call: AdminCallSummary; onClick: () => void }) {
   const patient = call.patient
   const initial = (patient?.name || call.caller_phone || '?').charAt(0).toUpperCase()
   return (
-    <div className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-xl hover:border-accent/30 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-all duration-150 cursor-default">
+    <div
+      onClick={onClick}
+      className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-xl hover:border-accent/30 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-all duration-150 cursor-pointer">
       <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent text-sm font-semibold shrink-0">
         {initial}
       </div>
@@ -137,6 +140,7 @@ function CallRow({ call }: { call: AdminCallSummary }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export function AdminCallsPage() {
+  const navigate = useNavigate()
   const { data, isLoading, error, refetch } = useAdminCalls({ limit: 100 })
   const calls = data?.items ?? []
   const total = data?.total ?? 0
@@ -188,7 +192,11 @@ export function AdminCallsPage() {
       {calls.length > 0 && (
         <div className="space-y-2">
           {calls.map((call) => (
-            <CallRow key={call.session_id} call={call} />
+            <CallRow
+              key={call.session_id}
+              call={call}
+              onClick={() => navigate(`/calls/${call.session_id}`)}
+            />
           ))}
         </div>
       )}
