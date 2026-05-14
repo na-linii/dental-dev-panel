@@ -199,6 +199,59 @@ export interface AdminCallSummary {
   last_message_at: string | null
 }
 
+export interface VoiceTurnMeta {
+  raw_stt_text: string | null
+  stt_confidence: number | null
+  stt_latency_ms: number | null
+  llm_ttft_ms: number | null
+  llm_total_ms: number | null
+  tts_ttfb_ms: number | null
+  tts_total_ms: number | null
+  total_turn_ms: number | null
+  vad_interruption_count: number
+  was_barge_in: boolean
+  filler_used: string | null
+}
+
+export interface AdminCallDetail {
+  session: {
+    id: string
+    clinic_id: string
+    channel: string
+    controller: string
+    created_at: string | null
+    updated_at: string | null
+  }
+  voice: {
+    livekit_room: string
+    egress_id: string | null
+    caller_phone: string | null
+    callee_did: string | null
+    started_at: string | null
+    ended_at: string | null
+    duration_ms: number | null
+    end_reason: VoiceCallEndReason | null
+    has_recording: boolean
+    recording_format: string | null
+    recording_size_bytes: number | null
+    recording_ready_at: string | null
+  }
+  patient: {
+    id: string
+    name: string | null
+    phone: string | null
+    public_id: number | null
+    ident_patient_id: string | null
+  } | null
+  messages: Array<{
+    id: string
+    role: string
+    content: string
+    created_at: string | null
+    voice_turn_meta: VoiceTurnMeta | null
+  }>
+}
+
 export interface AdminBlocklistItem {
   id: string
   phone: string | null
@@ -365,6 +418,9 @@ export const getAdminCalls = async (params?: {
   const res = await adminApi.get<PaginatedResponse<AdminCallSummary>>('/calls', { params })
   return { items: res.data.items, total: res.data.total }
 }
+
+export const getAdminCall = async (sessionId: string): Promise<AdminCallDetail> =>
+  (await adminApi.get<AdminCallDetail>(`/calls/${sessionId}`)).data
 
 // ── Actions ──
 

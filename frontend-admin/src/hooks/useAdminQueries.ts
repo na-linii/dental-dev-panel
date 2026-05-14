@@ -5,6 +5,7 @@ import {
   getAdminSession,
   getAdminActions,
   getAdminCalls,
+  getAdminCall,
 } from '../api/client'
 import type { AdminAction, AdminPatientSummary } from '../api/client'
 import { isAwaitingOperator, getDisplayConfirmationStatus } from '../config/adminStatuses'
@@ -126,6 +127,16 @@ export function useAdminCalls(params?: { limit?: number; offset?: number }) {
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+  })
+}
+
+export function useAdminCallDetail(sessionId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'call', sessionId],
+    queryFn: () => getAdminCall(sessionId!),
+    enabled: !!sessionId,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
