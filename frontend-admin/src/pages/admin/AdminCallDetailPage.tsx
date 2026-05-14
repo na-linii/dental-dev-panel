@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Play, ChevronDown, ChevronRight, Phone, Clock, FileAudio, Info, Mic, MicOff, PhoneOff, AlertCircle, Bot, UserCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { VoiceCallEndReason, VoiceTurnMeta } from '../../api/client'
+import { getAdminCallRecordingUrl } from '../../api/client'
 import { useAdminCallDetail } from '../../hooks/useAdminQueries'
+import axios from 'axios'
 
 const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: LucideIcon; badge: string }> = {
   in_progress:       { label: 'Идёт',                icon: Mic,         badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25' },
@@ -116,15 +118,53 @@ function Bubble({ role, content, createdAt, meta }: { role: string; content: str
   )
 }
 
-function PlayerSection({ hasRecording }: { hasRecording: boolean }) {
+type PlayerState = 'idle' | 'loading' | 'ready' | 'error'
+
+function PlayerSection({ sessionId, hasRecording }: { sessionId: string; hasRecording: boolean }) {
+  const [state, setState] = useState<PlayerState>('idle')
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  if (!hasRecording) {
+    return (
+      <div className="px-4 py-3 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-sm dark:shadow-none">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center text-text-tertiary shrink-0">
+            <FileAudio className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm text-text-primary">Запись звонка</div>
+            <p className="text-xs text-text-tertiary mt-0.5">Запись для этого звонка не сохранена.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const handlePlay = async () => {
+    setState('loading')
+    setErrorMsg(null)
+    try {
+      const { url } = await getAdminCallRecordingUrl(sessionId)
+      setAudioUrl(url)
+      setState('ready')
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      if (status === 404) setErrorMsg('Запись пока недоступна')
+      else if (status === 503) setErrorMsg('Сервис записей не настроен')
+      else setErrorMsg('Не удалось загрузить запись')
+      setState('error')
+    }
+  }
+
   return (
     <div className="px-4 py-3 bg-white dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-sm dark:shadow-none">
       <div className="flex items-center gap-3">
         <button
           type="button"
-          disabled
-          title="Воспроизведение появится после подключения Object Storage с presigned URL"
-          className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 cursor-not-allowed opacity-60"
+          onClick={handlePlay}
+          disabled={state === 'loading' || state === 'ready'}
+          className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-accent/20 transition-colors"
         >
           <Play className="w-5 h-5 ml-0.5" />
         </button>
@@ -133,13 +173,23 @@ function PlayerSection({ hasRecording }: { hasRecording: boolean }) {
             <FileAudio className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
             <span>Запись звонка</span>
           </div>
-          <p className="text-xs text-text-tertiary mt-0.5">
-            {hasRecording
-              ? 'Файл загружен в Object Storage. Плеер подключим следом — нужно настроить presigned URL.'
-              : 'Запись для этого звонка не сохранена.'}
-          </p>
+          {state === 'idle' && (
+            <p className="text-xs text-text-tertiary mt-0.5">Нажмите кнопку для воспроизведения</p>
+          )}
+          {state === 'loading' && (
+            <p className="text-xs text-text-tertiary mt-0.5">Загружаем ссылку...</p>
+          )}
+          {state === 'ready' && (
+            <p className="text-xs text-text-tertiary mt-0.5">Ссылка действительна 15 минут</p>
+          )}
+          {state === 'error' && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{errorMsg}</p>
+          )}
         </div>
       </div>
+      {state === 'ready' && audioUrl && (
+        <audio src={audioUrl} controls autoPlay className="mt-3 w-full" />
+      )}
     </div>
   )
 }
@@ -204,7 +254,7 @@ export function AdminCallDetailPage() {
       </div>
 
       {/* Player */}
-      <PlayerSection hasRecording={voice.has_recording} />
+      <PlayerSection sessionId={data.session.id} hasRecording={voice.has_recording} />
 
       {/* Transcript */}
       <div className="space-y-4">

@@ -422,6 +422,14 @@ export const getAdminCalls = async (params?: {
 export const getAdminCall = async (sessionId: string): Promise<AdminCallDetail> =>
   (await adminApi.get<AdminCallDetail>(`/calls/${sessionId}`)).data
 
+export interface AdminCallRecordingUrl {
+  url: string
+  expires_at: string
+}
+
+export const getAdminCallRecordingUrl = async (sessionId: string): Promise<AdminCallRecordingUrl> =>
+  (await adminApi.get<AdminCallRecordingUrl>(`/calls/${sessionId}/recording-url`)).data
+
 // ── Actions ──
 
 export const getAdminActions = async (params?: { status?: string }) => {
