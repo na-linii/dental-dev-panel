@@ -24,10 +24,10 @@ def parse_prompt_file(path: Path) -> dict:
 
 
 def sync_all():
-    """Upload all prompts to Langfuse from dev/, prod/ and voice/ subdirs."""
+    """Upload all prompts to Langfuse from prompts/{text,voice}/{dev,prod}/."""
     lf = Langfuse()
-    for env_dir in ["dev", "prod", "voice"]:
-        env_path = PROMPTS_DIR / env_dir
+    for sub in ["text/dev", "text/prod", "voice/dev", "voice/prod"]:
+        env_path = PROMPTS_DIR / sub
         if not env_path.exists():
             continue
         for path in sorted(env_path.glob("*.md")):
@@ -41,9 +41,9 @@ def sync_all():
                 prompt=prompt["body"],
                 type=prompt_type,
                 labels=labels,
-                commit_message=f"Sync from {env_dir}/{path.name}",
+                commit_message=f"Sync from {sub}/{path.name}",
             )
-            print(f"  {name} ({prompt_type}) labels={labels} [{env_dir}]")
+            print(f"  {name} ({prompt_type}) labels={labels} [{sub}]")
 
     lf.flush()
     print("Done.")
