@@ -105,7 +105,7 @@ PostgreSQL schema `hub` (в langfuse-postgres):
 
 ## Prompts
 
-5 промптов в `prompts/dev/*.md` и `prompts/prod/*.md` (YAML frontmatter + Markdown body):
+5 промптов в `prompts/{text,voice}/{dev,prod}/*.md` (YAML frontmatter + Markdown body):
 - **dental-router** — классификация интентов (4 интента: booking/faq/confirm/social)
 - **dental-booking** — запись на приём (slot_number system)
 - **dental-faq** — FAQ (Tier 1 YAML + Tier 2 pgvector)
@@ -113,7 +113,15 @@ PostgreSQL schema `hub` (в langfuse-postgres):
 - **dental-social** — социальные сообщения (opt-in per clinic)
 
 Sync: `hub/sync_prompts.py` — загрузка в Langfuse при старте hub-api (lifespan event).
-Labels: `production` (prod) / `dev` (dev) — управляется через `LANGFUSE_PROMPT_LABEL`.
+Labels are driven by frontmatter `labels:` field (NOT by folder path):
+- `prompts/text/dev/*.md` → `[dev]`
+- `prompts/text/prod/*.md` → `[eval, production]`
+- `prompts/voice/dev/*.md` → `[voice_dev]`
+- `prompts/voice/prod/*.md` → `[voice, voice_prod]` (legacy `voice` kept until clinic cutover complete)
+
+dental-core consumers pick labels by channel:
+- text channels (telegram/whatsapp/max) → env `LANGFUSE_PROMPT_LABEL` (default `production`)
+- voice channel → env `LANGFUSE_VOICE_LABEL` (default `voice`; prod 8081 uses `voice_prod`, dev 8091/8093 use `voice_dev`)
 
 ## Repos
 
