@@ -82,7 +82,7 @@ function TurnMetaDropdown({ meta }: { meta: VoiceTurnMeta }) {
         className="flex items-center gap-1 text-xs text-text-tertiary hover:text-accent transition-colors"
       >
         {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-        Метрики бота
+        Тайминги
       </button>
       {open && (
         <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] rounded-lg text-xs">
