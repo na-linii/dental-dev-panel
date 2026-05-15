@@ -120,7 +120,7 @@ function CallRow({ call, onClick }: { call: AdminCallSummary; onClick: () => voi
           )}
         </div>
         {call.last_message_preview && (
-          <p className="text-xs text-text-tertiary truncate mt-0.5">{call.last_message_preview}</p>
+          <p className="text-xs text-text-tertiary truncate mt-0.5">{call.last_message_preview.replace(/\+/g, '')}</p>
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
