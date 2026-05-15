@@ -53,10 +53,16 @@ function formatMs(ms: number | null): string {
   return `${(ms / 1000).toFixed(2)} с`
 }
 
+// Voice prompts inject "+" before stressed vowels for TTS pronunciation
+// (e.g. "Эл+айнер"). Strip them for human-readable display.
+function stripStress(s: string | null | undefined): string {
+  return (s ?? '').replace(/\+/g, '')
+}
+
 function TurnMetaDropdown({ meta }: { meta: VoiceTurnMeta }) {
   const [open, setOpen] = useState(false)
   const items: Array<[string, string | number | boolean | null]> = [
-    ['Распознано (raw STT)', meta.raw_stt_text],
+    ['Распознано (raw STT)', stripStress(meta.raw_stt_text)],
     ['ASR уверенность', meta.stt_confidence != null ? `${(meta.stt_confidence * 100).toFixed(0)}%` : null],
     ['STT латенси', formatMs(meta.stt_latency_ms)],
     ['LLM время до первого токена', formatMs(meta.llm_ttft_ms)],
@@ -108,7 +114,7 @@ function Bubble({ role, content, createdAt, meta }: { role: string; content: str
         <span className="font-medium text-text-secondary">{label}</span>
         <span>{formatTimeOnly(createdAt)}</span>
       </div>
-      <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm ${bubble}`}>{content}</div>
+      <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm ${bubble}`}>{stripStress(content)}</div>
       {meta && (
         <div className="w-full max-w-[80%]">
           <TurnMetaDropdown meta={meta} />
