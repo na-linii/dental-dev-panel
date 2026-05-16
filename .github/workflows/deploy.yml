@@ -70,3 +70,54 @@ jobs:
             docker compose up -d hub-api nginx
             sleep 5
             curl -sf http://localhost:8880/ > /dev/null && echo "Hub healthy" || echo "Hub unhealthy"
+
+  # === Notify dental-core to run voice eval on prompt changes ===
+  # Filter by paths: prompts/voice/{prod,dev}/** → dispatches separate event types.
+  # Receiver: dental-core/.github/workflows/eval-voice-smoke.yml (repository_dispatch).
+  # Requires secret DENTAL_CORE_DISPATCH_PAT (fine-grained PAT, Actions:write on na-linii/dental-core).
+  notify-voice-eval:
+    name: Notify voice eval (cross-repo)
+    needs: deploy
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.event.before }}
+          ref: ${{ github.sha }}
+          filters: |
+            voice_prod:
+              - 'prompts/voice/prod/**'
+            voice_dev:
+              - 'prompts/voice/dev/**'
+
+      - name: Wait for Langfuse sync to settle (~30s)
+        if: steps.filter.outputs.voice_prod == 'true' || steps.filter.outputs.voice_dev == 'true'
+        run: sleep 30
+
+      - name: Dispatch — voice prod prompts changed
+        if: steps.filter.outputs.voice_prod == 'true'
+        env:
+          PAT: ${{ secrets.DENTAL_CORE_DISPATCH_PAT }}
+        run: |
+          curl -sS -X POST -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PAT" \
+            https://api.github.com/repos/na-linii/dental-core/dispatches \
+            -d '{"event_type":"voice-prompts-prod-changed","client_payload":{"sha":"${{ github.sha }}","label":"voice"}}'
+          echo "Dispatched voice-prompts-prod-changed (sha=${{ github.sha }})"
+
+      - name: Dispatch — voice dev prompts changed
+        if: steps.filter.outputs.voice_dev == 'true'
+        env:
+          PAT: ${{ secrets.DENTAL_CORE_DISPATCH_PAT }}
+        run: |
+          curl -sS -X POST -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PAT" \
+            https://api.github.com/repos/na-linii/dental-core/dispatches \
+            -d '{"event_type":"voice-prompts-dev-changed","client_payload":{"sha":"${{ github.sha }}","label":"voice_dev"}}'
+          echo "Dispatched voice-prompts-dev-changed (sha=${{ github.sha }})"
