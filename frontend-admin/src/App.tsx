@@ -45,8 +45,8 @@ export default function App() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="chats" element={<AdminChatsPage />} />
               <Route path="chats/:sessionId" element={<AdminChatDetailPage />} />
-              <Route path="calls" element={<SuperadminGuard><AdminCallsPage /></SuperadminGuard>} />
-              <Route path="calls/:sessionId" element={<SuperadminGuard><AdminCallDetailPage /></SuperadminGuard>} />
+              <Route path="calls" element={<AdminCallsPage />} />
+              <Route path="calls/:sessionId" element={<AdminCallDetailPage />} />
               <Route path="confirmations" element={<SuperadminGuard><AdminConfirmationsPage /></SuperadminGuard>} />
               <Route path="actions" element={<AdminActionsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
