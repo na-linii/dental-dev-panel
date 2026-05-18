@@ -133,6 +133,9 @@ export const ACTION_TYPES: Record<string, { label: string; relatedStatus?: strin
   update_booking_status: { label: 'Обновить статус' },
   book_appointment:   { label: 'Новая запись' },
   register_patient:   { label: 'Регистрация пациента' },
+  // PD-414: voice patient asked for operator; bot promised but cannot transfer mid-call.
+  // Admin should call the patient back. data jsonb carries caller_phone + livekit_room.
+  voice_handoff:      { label: 'Звонок: перезвонить пациенту', relatedStatus: 'operator' },
 }
 
 // ── Dashboard stat labels ──
