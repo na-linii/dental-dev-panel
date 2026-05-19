@@ -4,6 +4,69 @@ import { Room, RoomEvent, Track } from 'livekit-client'
 import type { RemoteTrack, RemoteTrackPublication, RemoteParticipant } from 'livekit-client'
 import { createDemoVoiceRoom, type AdminUser, type DemoPatientKey } from '../api/client'
 
+// 5-bar live equalizer driven by LiveKit participant.audioLevel.
+// One color while you speak (emerald), another while the agent speaks (sky).
+function CallEqualizer({ room }: { room: Room | null }) {
+  const [localLevel, setLocalLevel] = useState(0)
+  const [remoteLevel, setRemoteLevel] = useState(0)
+
+  useEffect(() => {
+    if (!room) return
+    let alive = true
+    const tick = () => {
+      if (!alive) return
+      let local = 0
+      const localPub = room.localParticipant.getTrackPublication(Track.Source.Microphone)
+      if (localPub && !localPub.isMuted) local = room.localParticipant.audioLevel ?? 0
+      let remote = 0
+      for (const p of room.remoteParticipants.values()) {
+        if ((p.audioLevel ?? 0) > remote) remote = p.audioLevel ?? 0
+      }
+      setLocalLevel(local)
+      setRemoteLevel(remote)
+    }
+    const id = window.setInterval(tick, 60)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
+  }, [room])
+
+  const youSpeaking = localLevel > remoteLevel && localLevel > 0.02
+  const agentSpeaking = remoteLevel > 0.02 && !youSpeaking
+  const peak = Math.max(localLevel, remoteLevel)
+
+  const bars = [0, 1, 2, 3, 4]
+  const heights = bars.map((i) => {
+    const offset = Math.abs(i - 2) * 0.18
+    const noisy = Math.max(0, peak - offset)
+    const h = Math.min(1, noisy * 3.2 + 0.08)
+    return Math.max(0.08, h)
+  })
+
+  const baseColor = youSpeaking
+    ? 'bg-emerald-500'
+    : agentSpeaking
+      ? 'bg-sky-400'
+      : 'bg-gray-300 dark:bg-white/15'
+  const label = youSpeaking ? 'Вы говорите' : agentSpeaking ? 'Агент говорит' : 'Тишина'
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="flex gap-1 items-end h-10">
+        {heights.map((h, i) => (
+          <div
+            key={i}
+            className={`w-1.5 rounded-full transition-all duration-75 ${baseColor}`}
+            style={{ height: `${Math.round(h * 100)}%` }}
+          />
+        ))}
+      </div>
+      <span className="text-[11px] text-text-tertiary tabular-nums">{label}</span>
+    </div>
+  )
+}
+
 const OPERATOR_ALLOWLIST = new Set(['aleksey', 'ekaterina', 'konstantin'])
 const DEMO_CLINIC_ID = 'starsmile_demo'
 
@@ -41,7 +104,7 @@ export function DemoVoiceCallButton({ user }: DemoVoiceCallButtonProps) {
 function DemoVoiceModal({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<CallState>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [roomName, setRoomName] = useState<string | null>(null)
+  const [, setRoomName] = useState<string | null>(null)
   const [patientLabel, setPatientLabel] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
   const [startedAt, setStartedAt] = useState<number | null>(null)
@@ -210,7 +273,9 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
                 <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">В разговоре</span>
               </div>
               <p className="mt-3 text-base font-medium text-text-primary">{patientLabel}</p>
-              <p className="text-xs text-text-tertiary mt-1">{roomName}</p>
+              <div className="mt-3">
+                <CallEqualizer room={roomRef.current} />
+              </div>
               <p className="text-2xl tabular-nums mt-3 text-text-primary">{mm}:{ss}</p>
             </div>
             <div className="flex items-center justify-center gap-3">
