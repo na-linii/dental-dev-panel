@@ -4,78 +4,164 @@ import { Room, RoomEvent, Track } from 'livekit-client'
 import type { RemoteTrack, RemoteTrackPublication, RemoteParticipant } from 'livekit-client'
 import { createDemoVoiceRoom, type AdminUser, type DemoPatientKey } from '../api/client'
 
-// 5-bar live equalizer driven by LiveKit participant.audioLevel.
-// One color while you speak (emerald), another while the agent speaks (sky).
+// 5-bar live equalizer driven by WebAudio AnalyserNode on both mic and agent
+// audio tracks. participant.audioLevel in livekit-client v2 doesn't update for
+// remote participants reliably, so we tap MediaStreamTrack ourselves.
+// Animates via requestAnimationFrame + refs (no React state per-frame).
 function CallEqualizer({ room }: { room: Room | null }) {
-  const [localLevel, setLocalLevel] = useState(0)
-  const [remoteLevel, setRemoteLevel] = useState(0)
+  const barRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null])
+  const labelRef = useRef<HTMLSpanElement | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!room) return
-    let alive = true
-    const tick = () => {
-      if (!alive) return
-      let local = 0
-      const localPub = room.localParticipant.getTrackPublication(Track.Source.Microphone)
-      if (localPub && !localPub.isMuted) local = room.localParticipant.audioLevel ?? 0
-      let remote = 0
-      for (const p of room.remoteParticipants.values()) {
-        if ((p.audioLevel ?? 0) > remote) remote = p.audioLevel ?? 0
-      }
-      setLocalLevel(local)
-      setRemoteLevel(remote)
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    if (!AC) return
+    const ctx = new AC()
+    let cancelled = false
+
+    type AnalyserPair = {
+      analyser: AnalyserNode
+      buffer: Uint8Array<ArrayBuffer>
+      stream: MediaStream
+      source: MediaStreamAudioSourceNode
     }
-    const id = window.setInterval(tick, 60)
+    const localPair = { current: null as AnalyserPair | null }
+    const remotePair = { current: null as AnalyserPair | null }
+
+    function makeAnalyser(track: MediaStreamTrack): AnalyserPair {
+      const stream = new MediaStream([track])
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 64
+      analyser.smoothingTimeConstant = 0.6
+      source.connect(analyser)
+      return {
+        analyser,
+        buffer: new Uint8Array(analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>,
+        stream,
+        source,
+      }
+    }
+
+    function attachLocal() {
+      const pub = room!.localParticipant.getTrackPublication(Track.Source.Microphone)
+      const track = pub?.track?.mediaStreamTrack
+      if (track && !localPair.current) localPair.current = makeAnalyser(track)
+    }
+
+    function attachRemote(track: RemoteTrack) {
+      if (track.kind !== Track.Kind.Audio) return
+      const mst = track.mediaStreamTrack
+      if (mst && !remotePair.current) remotePair.current = makeAnalyser(mst)
+    }
+
+    // pick up tracks that exist NOW
+    attachLocal()
+    for (const p of room.remoteParticipants.values()) {
+      for (const pub of p.audioTrackPublications.values()) {
+        if (pub.track) attachRemote(pub.track as RemoteTrack)
+      }
+    }
+
+    const onSubscribed = (track: RemoteTrack) => attachRemote(track)
+    const onLocalPublished = () => attachLocal()
+    room.on(RoomEvent.TrackSubscribed, onSubscribed)
+    room.on(RoomEvent.LocalTrackPublished, onLocalPublished)
+
+    function rmsFromFreqData(buf: Uint8Array<ArrayBuffer>): number {
+      let sum = 0
+      for (let i = 0; i < buf.length; i++) sum += (buf[i] / 255) ** 2
+      return Math.sqrt(sum / buf.length)
+    }
+
+    function bandAverage(buf: Uint8Array<ArrayBuffer>, idx: number, total = 5): number {
+      const chunk = Math.max(1, Math.floor(buf.length / total))
+      const start = idx * chunk
+      const end = Math.min(buf.length, start + chunk)
+      let sum = 0
+      for (let i = start; i < end; i++) sum += buf[i]
+      return sum / (end - start) / 255
+    }
+
+    let frame = 0
+    function loop() {
+      if (cancelled) return
+      frame = requestAnimationFrame(loop)
+      let localRms = 0
+      let remoteRms = 0
+      if (localPair.current) {
+        localPair.current.analyser.getByteFrequencyData(localPair.current.buffer)
+        localRms = rmsFromFreqData(localPair.current.buffer)
+      }
+      if (remotePair.current) {
+        remotePair.current.analyser.getByteFrequencyData(remotePair.current.buffer)
+        remoteRms = rmsFromFreqData(remotePair.current.buffer)
+      }
+      const youSpeaking = localRms > 0.04 && localRms >= remoteRms * 0.9
+      const agentSpeaking = remoteRms > 0.04 && !youSpeaking
+      const active = youSpeaking ? localPair.current : agentSpeaking ? remotePair.current : null
+      const palette = youSpeaking
+        ? '#10b981' // emerald-500
+        : agentSpeaking
+          ? '#38bdf8' // sky-400
+          : 'rgba(120,120,130,0.35)'
+      for (let i = 0; i < 5; i++) {
+        const bar = barRefs.current[i]
+        if (!bar) continue
+        const v = active ? bandAverage(active.buffer, i) : 0
+        const noise = active ? 0 : 0.05 + Math.sin(performance.now() / 350 + i) * 0.02
+        const h = Math.min(1, Math.max(0.08, v * 1.4 + noise))
+        bar.style.height = `${Math.round(h * 100)}%`
+        bar.style.background = palette
+      }
+      if (labelRef.current) {
+        labelRef.current.textContent = youSpeaking
+          ? 'Вы говорите'
+          : agentSpeaking
+            ? 'Агент говорит'
+            : 'Тишина'
+      }
+    }
+    loop()
+
     return () => {
-      alive = false
-      window.clearInterval(id)
+      cancelled = true
+      cancelAnimationFrame(frame)
+      room.off(RoomEvent.TrackSubscribed, onSubscribed)
+      room.off(RoomEvent.LocalTrackPublished, onLocalPublished)
+      void ctx.close()
     }
   }, [room])
 
-  const youSpeaking = localLevel > remoteLevel && localLevel > 0.02
-  const agentSpeaking = remoteLevel > 0.02 && !youSpeaking
-  const peak = Math.max(localLevel, remoteLevel)
-
-  const bars = [0, 1, 2, 3, 4]
-  const heights = bars.map((i) => {
-    const offset = Math.abs(i - 2) * 0.18
-    const noisy = Math.max(0, peak - offset)
-    const h = Math.min(1, noisy * 3.2 + 0.08)
-    return Math.max(0.08, h)
-  })
-
-  const baseColor = youSpeaking
-    ? 'bg-emerald-500'
-    : agentSpeaking
-      ? 'bg-sky-400'
-      : 'bg-gray-300 dark:bg-white/15'
-  const label = youSpeaking ? 'Вы говорите' : agentSpeaking ? 'Агент говорит' : 'Тишина'
-
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div ref={wrapRef} className="flex flex-col items-center gap-1.5">
       <div className="flex gap-1 items-end h-10">
-        {heights.map((h, i) => (
+        {[0, 1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className={`w-1.5 rounded-full transition-all duration-75 ${baseColor}`}
-            style={{ height: `${Math.round(h * 100)}%` }}
+            ref={(el) => {
+              barRefs.current[i] = el
+            }}
+            className="w-1.5 rounded-full"
+            style={{ height: '8%', background: 'rgba(120,120,130,0.35)' }}
           />
         ))}
       </div>
-      <span className="text-[11px] text-text-tertiary tabular-nums">{label}</span>
+      <span ref={labelRef} className="text-[11px] text-text-tertiary tabular-nums">
+        Тишина
+      </span>
     </div>
   )
 }
 
-const OPERATOR_ALLOWLIST = new Set(['aleksey', 'ekaterina', 'konstantin'])
 const DEMO_CLINIC_ID = 'starsmile_demo'
 
+// Everyone inside the demo clinic gets the button regardless of role.
+// The backend repeats the same check (and additionally honours the
+// DEMO_VOICE_ENABLED kill switch on hub-api).
 export function isDemoVoiceAllowed(user: AdminUser | null): boolean {
-  if (!user) return false
-  if (user.clinic_id !== DEMO_CLINIC_ID) return false
-  if (user.role === 'superadmin') return true
-  const clean = (user.username || '').toLowerCase().replace(/-demo$/, '')
-  return OPERATOR_ALLOWLIST.has(clean)
+  return Boolean(user) && user!.clinic_id === DEMO_CLINIC_ID
 }
 
 type CallState = 'idle' | 'connecting' | 'in_call' | 'error'
