@@ -745,24 +745,20 @@ LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
 
 DEMO_VOICE_ALLOWED_CLINIC = "starsmile_demo"
-DEMO_VOICE_OPERATOR_ALLOWLIST = frozenset(
-    name.strip().lower()
-    for name in os.environ.get("DEMO_VOICE_OPERATORS", "aleksey,ekaterina,konstantin").split(",")
-    if name.strip()
-)
+
+
+def _demo_voice_enabled() -> bool:
+    """Kill switch — set DEMO_VOICE_ENABLED=false on hub-api to disable the
+    button + endpoint instantly (no redeploy)."""
+    return os.environ.get("DEMO_VOICE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _require_demo_voice(admin_user: dict) -> None:
-    """Allow only demo-clinic superadmins and whitelisted demo operators."""
+    """Open to every role inside the demo clinic, but only the demo clinic."""
+    if not _demo_voice_enabled():
+        raise HTTPException(503, "Demo voice cabinet is temporarily disabled")
     if admin_user.get("clinic_id") != DEMO_VOICE_ALLOWED_CLINIC:
         raise HTTPException(403, "Demo voice cabinet is only available for the demo clinic")
-    if admin_user.get("role") == "superadmin":
-        return
-    username = (admin_user.get("username") or "").lower()
-    clean = username[:-5] if username.endswith("-demo") else username
-    if clean in DEMO_VOICE_OPERATOR_ALLOWLIST:
-        return
-    raise HTTPException(403, "Voice calls are not enabled for this account")
 
 
 def _mint_livekit_token(identity: str, room: str, ttl_seconds: int = 900) -> str:
