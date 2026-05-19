@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, User, UserPlus, Loader2, X } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, User, UserPlus, Loader2, Trash2, X } from 'lucide-react'
 import { Room, RoomEvent, Track } from 'livekit-client'
 import type { RemoteTrack, RemoteTrackPublication, RemoteParticipant } from 'livekit-client'
-import { createDemoVoiceRoom, type AdminUser, type DemoPatientKey } from '../api/client'
+import {
+  clearDemoState,
+  createDemoVoiceRoom,
+  getDemoPatients,
+  type AdminUser,
+  type DemoPatient,
+} from '../api/client'
 
 // 5-bar live equalizer driven by WebAudio AnalyserNode on both mic and agent
 // audio tracks. participant.audioLevel in livekit-client v2 doesn't update for
@@ -12,6 +18,11 @@ function CallEqualizer({ room }: { room: Room | null }) {
   const barRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null])
   const labelRef = useRef<HTMLSpanElement | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  // Hysteresis state shared across animation frames.
+  const active = useRef<'local' | 'remote' | null>(null)
+  const candidate = useRef<'local' | 'remote' | null>(null)
+  const lastSwitchAt = useRef(0)
+  const lastActiveAt = useRef(0)
 
   useEffect(() => {
     if (!room) return
@@ -98,9 +109,43 @@ function CallEqualizer({ room }: { room: Room | null }) {
         remotePair.current.analyser.getByteFrequencyData(remotePair.current.buffer)
         remoteRms = rmsFromFreqData(remotePair.current.buffer)
       }
-      const youSpeaking = localRms > 0.04 && localRms >= remoteRms * 0.9
-      const agentSpeaking = remoteRms > 0.04 && !youSpeaking
-      const active = youSpeaking ? localPair.current : agentSpeaking ? remotePair.current : null
+      // Hysteresis: don't flip the active speaker on every frame. Only switch
+      // to a new speaker after they've been clearly louder for >= 350ms; and
+      // hold the previous active speaker for at least 500ms after they go
+      // silent so a half-second pause doesn't trigger "Тишина" mid-sentence.
+      const now = performance.now()
+      if (localRms > remoteRms * 1.4 && localRms > 0.05) {
+        candidate.current = 'local'
+        if (lastSwitchAt.current === 0) lastSwitchAt.current = now
+        if (active.current !== 'local' && now - lastSwitchAt.current > 350) {
+          active.current = 'local'
+          lastActiveAt.current = now
+        }
+      } else if (remoteRms > localRms * 1.2 && remoteRms > 0.05) {
+        candidate.current = 'remote'
+        if (lastSwitchAt.current === 0) lastSwitchAt.current = now
+        if (active.current !== 'remote' && now - lastSwitchAt.current > 350) {
+          active.current = 'remote'
+          lastActiveAt.current = now
+        }
+      } else {
+        // Both quiet — keep current active speaker, but go to 'idle' after 500ms.
+        lastSwitchAt.current = 0
+        if (active.current && now - lastActiveAt.current > 500) {
+          active.current = null
+        }
+      }
+      // Update lastActive while the current speaker is still loud-ish.
+      if (active.current === 'local' && localRms > 0.04) lastActiveAt.current = now
+      if (active.current === 'remote' && remoteRms > 0.04) lastActiveAt.current = now
+
+      const youSpeaking = active.current === 'local'
+      const agentSpeaking = active.current === 'remote'
+      const activePair = youSpeaking
+        ? localPair.current
+        : agentSpeaking
+          ? remotePair.current
+          : null
       const palette = youSpeaking
         ? '#10b981' // emerald-500
         : agentSpeaking
@@ -109,8 +154,8 @@ function CallEqualizer({ room }: { room: Room | null }) {
       for (let i = 0; i < 5; i++) {
         const bar = barRefs.current[i]
         if (!bar) continue
-        const v = active ? bandAverage(active.buffer, i) : 0
-        const noise = active ? 0 : 0.05 + Math.sin(performance.now() / 350 + i) * 0.02
+        const v = activePair ? bandAverage(activePair.buffer, i) : 0
+        const noise = activePair ? 0 : 0.05 + Math.sin(performance.now() / 350 + i) * 0.02
         const h = Math.min(1, Math.max(0.08, v * 1.4 + noise))
         bar.style.height = `${Math.round(h * 100)}%`
         bar.style.background = palette
@@ -195,6 +240,39 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
   const [muted, setMuted] = useState(false)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [tick, setTick] = useState(0)
+  const [patients, setPatients] = useState<DemoPatient[]>([])
+  const [clearing, setClearing] = useState(false)
+  const [clearResult, setClearResult] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    getDemoPatients()
+      .then((p) => {
+        if (alive) setPatients(p)
+      })
+      .catch(() => {
+        if (alive) setPatients([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function handleClear() {
+    if (!window.confirm('Удалить ВСЕ звонки, переписку и сессии демо-клиники? Mock-пациенты останутся.')) return
+    setClearing(true)
+    setClearResult(null)
+    try {
+      const res = await clearDemoState()
+      const total = Object.values(res.deleted).reduce((a, b) => a + b, 0)
+      setClearResult(`Удалено записей: ${total} (${Object.entries(res.deleted).map(([k, v]) => `${k}=${v}`).join(', ')})`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setClearResult(`Ошибка: ${msg}`)
+    } finally {
+      setClearing(false)
+    }
+  }
 
   const roomRef = useRef<Room | null>(null)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
@@ -220,15 +298,15 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
     }
   }, [])
 
-  async function startCall(choice: 'new' | DemoPatientKey, label: string) {
+  async function startCall(choice: 'new' | 'existing', patientKey: string | null, label: string) {
     setErrorMsg(null)
     setPatientLabel(label)
     setState('connecting')
     try {
       const body =
-        choice === 'new'
+        choice === 'new' || !patientKey
           ? { patient_choice: 'new' as const }
-          : { patient_choice: 'existing' as const, patient_key: choice }
+          : { patient_choice: 'existing' as const, patient_key: patientKey }
       const res = await createDemoVoiceRoom(body)
       if (!res.livekit_url) throw new Error('Сервис не настроен (нет LIVEKIT_URL).')
       setRoomName(res.room)
@@ -319,9 +397,9 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-text-tertiary mb-4">
               Звонок откроется через ваш браузер (WebRTC). Агент использует те же моки, что и текстовое демо.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
               <button
-                onClick={() => startCall('new', 'Новый пациент')}
+                onClick={() => startCall('new', null, 'Новый пациент')}
                 className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-white/[0.04] hover:bg-gray-100 dark:hover:bg-white/[0.08] border border-gray-200 dark:border-white/10 rounded-xl text-left transition-all"
               >
                 <UserPlus className="w-5 h-5 text-text-tertiary" />
@@ -330,16 +408,35 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
                   <div className="text-xs text-text-tertiary">Без истории, агент попросит представиться</div>
                 </div>
               </button>
+              {patients.map((p) => (
+                <button
+                  key={p.key}
+                  onClick={() => startCall('existing', p.key, p.name)}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-white/[0.04] hover:bg-gray-100 dark:hover:bg-white/[0.08] border border-gray-200 dark:border-white/10 rounded-xl text-left transition-all"
+                >
+                  <User className="w-5 h-5 text-text-tertiary shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-text-primary truncate">{p.name}</div>
+                    <div className="text-xs text-text-tertiary truncate">
+                      +{p.phone.slice(0, 1)} {p.phone.slice(1, 4)} {p.phone.slice(4, 7)}-{p.phone.slice(7, 9)}-{p.phone.slice(9)}
+                      {p.note ? ` · ${p.note}` : ''}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-white/10 space-y-2">
               <button
-                onClick={() => startCall('ivan', 'Иван Иванович')}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-white/[0.04] hover:bg-gray-100 dark:hover:bg-white/[0.08] border border-gray-200 dark:border-white/10 rounded-xl text-left transition-all"
+                onClick={handleClear}
+                disabled={clearing}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
               >
-                <User className="w-5 h-5 text-text-tertiary" />
-                <div>
-                  <div className="text-sm font-medium text-text-primary">Иван Иванович (с историей)</div>
-                  <div className="text-xs text-text-tertiary">+7 900 111-11-11 · постоянный пациент</div>
-                </div>
+                <Trash2 className="w-3.5 h-3.5" />
+                {clearing ? 'Очищаю…' : 'Очистить демо-данные (звонки + переписку)'}
               </button>
+              {clearResult && (
+                <div className="text-[11px] text-text-tertiary text-center">{clearResult}</div>
+              )}
             </div>
           </>
         )}
