@@ -432,7 +432,14 @@ export const getAdminCallRecordingUrl = async (sessionId: string): Promise<Admin
 
 // ── Demo voice cabinet (browser → voice-agent → starsmile_demo) ──
 
-export type DemoPatientKey = 'ivan' | 'maria' | 'novikova'
+export type DemoPatientKey = string
+
+export interface DemoPatient {
+  key: DemoPatientKey
+  name: string
+  phone: string
+  note: string
+}
 
 export interface CreateVoiceRoomResponse {
   room: string
@@ -442,10 +449,16 @@ export interface CreateVoiceRoomResponse {
   patient_choice: 'new' | 'existing'
 }
 
+export const getDemoPatients = async (): Promise<DemoPatient[]> =>
+  (await adminApi.get<{ patients: DemoPatient[] }>('/voice-rooms/demo-patients')).data.patients
+
 export const createDemoVoiceRoom = async (
   body: { patient_choice: 'new' } | { patient_choice: 'existing'; patient_key: DemoPatientKey },
 ): Promise<CreateVoiceRoomResponse> =>
   (await adminApi.post<CreateVoiceRoomResponse>('/voice-rooms/create', body)).data
+
+export const clearDemoState = async (): Promise<{ ok: boolean; deleted: Record<string, number> }> =>
+  (await adminApi.post<{ ok: boolean; deleted: Record<string, number> }>('/voice-rooms/clear')).data
 
 // ── Actions ──
 

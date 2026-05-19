@@ -789,10 +789,38 @@ def _mint_livekit_token(identity: str, room: str, ttl_seconds: int = 900) -> str
 # Phone numbers MUST match — identity.py resolves caller_phone -> mock CRM
 # patient -> user_id, which makes text+voice history merge.
 DEMO_PATIENTS = {
-    "ivan": {"phone": "79001111111", "name": "Тестов Иван Иванович"},
-    "maria": {"phone": "79002222222", "name": "Тестова Мария Петровна"},
-    "novikova": {"phone": "79003333333", "name": "Новикова Елена Сергеевна"},
+    "ivan":          {"phone": "79001111111", "name": "Тестов Иван Иванович",       "note": "взрослый, с историей"},
+    "maria":         {"phone": "79002222222", "name": "Тестова Мария Петровна",     "note": "взрослая, постоянная"},
+    "novikova":      {"phone": "79003333333", "name": "Новикова Елена Сергеевна",    "note": "новая запись недавно"},
+    "petr":          {"phone": "79005550000", "name": "Третьелицов Пётр Олегович",   "note": "записывает третье лицо"},
+    "maxim_minor":   {"phone": "79998887768", "name": "Тестов Максим (несовершеннолетний)", "note": "age-policy сценарий"},
+    "maxim_primary": {"phone": "79998887767", "name": "Тестов Максим (родитель)",    "note": "первичный профиль"},
 }
+
+
+@app.get("/admin/api/voice-rooms/demo-patients")
+async def admin_voice_rooms_demo_patients(admin_user=Depends(_get_admin_user)):
+    """List demo patients shown in the call modal. Single source of truth — UI
+    renders whatever this endpoint returns, so adding a patient only needs
+    DEMO_PATIENTS change."""
+    _require_demo_voice(admin_user)
+    return {
+        "patients": [
+            {"key": k, "name": v["name"], "phone": v["phone"], "note": v.get("note", "")}
+            for k, v in DEMO_PATIENTS.items()
+        ]
+    }
+
+
+@app.post("/admin/api/voice-rooms/clear")
+async def admin_voice_rooms_clear(admin_user=Depends(_get_admin_user)):
+    """Wipe all demo conversational state (voice + text) so the next call
+    starts from a clean slate. Hits dental-core demo backend which truncates
+    chat_messages, chat_sessions, voice_calls, voice_turn_meta for the demo
+    clinic (and only the demo clinic — guarded by clinic_id=starsmile_demo)."""
+    _require_demo_voice(admin_user)
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "POST", "/admin/api/demo/clear")
 
 
 @app.post("/admin/api/voice-rooms/create")
