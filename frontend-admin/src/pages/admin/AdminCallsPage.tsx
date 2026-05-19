@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, Phone, FileAudio, Mic, MicOff, PhoneOff, AlertCircle, Bot, UserCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { AdminCallSummary, VoiceCallEndReason } from '../../api/client'
+import type { AdminCallSummary, AdminUser, VoiceCallEndReason } from '../../api/client'
 import { useAdminCalls } from '../../hooks/useAdminQueries'
+import { DemoVoiceCallButton } from '../../components/DemoVoiceCallButton'
 
 // ── End reason display config ──────────────────────────────────────────────
 
@@ -145,6 +147,15 @@ export function AdminCallsPage() {
   const calls = data?.items ?? []
   const total = data?.total ?? 0
 
+  const currentUser = useMemo<AdminUser | null>(() => {
+    try {
+      const raw = localStorage.getItem('admin_user')
+      return raw ? (JSON.parse(raw) as AdminUser) : null
+    } catch {
+      return null
+    }
+  }, [])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -155,13 +166,16 @@ export function AdminCallsPage() {
             Голосовые звонки клиники — транскрипты, записи и статусы
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-2 px-4 py-2 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/20 transition-all duration-200"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Обновить
-        </button>
+        <div className="flex items-center gap-2">
+          <DemoVoiceCallButton user={currentUser} />
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-2 px-4 py-2 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl text-sm text-text-secondary hover:text-text-primary hover:border-accent/20 transition-all duration-200"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Обновить
+          </button>
+        </div>
       </div>
 
       {/* Error */}

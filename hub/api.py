@@ -739,6 +739,104 @@ async def admin_call_recording_url(session_id: str, admin_user=Depends(_get_admi
     return await _proxy_to_clinic(clinic, "GET", f"/admin/api/calls/{session_id}/recording-url")
 
 
+# --- Voice Rooms (demo cabinet, in-browser WebRTC call to dental-core agent) ---
+#
+# Creates a LiveKit room + JWT for the admin user. The voice-agent worker on
+# voice-vm picks up the room (prefix `voicedemo-`) and bridges it to the demo
+# dental-core backend (port 8084, clinic_id=starsmile_demo). Patient identity
+# is conveyed via `caller_phone` so the demo unified-history works (text and
+# voice merge by phone via identity.py _find_by_phone).
+
+LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")
+LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
+LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
+
+DEMO_VOICE_ALLOWED_CLINIC = "starsmile_demo"
+DEMO_VOICE_OPERATOR_ALLOWLIST = frozenset(
+    name.strip().lower()
+    for name in os.environ.get("DEMO_VOICE_OPERATORS", "aleksey,ekaterina,konstantin").split(",")
+    if name.strip()
+)
+
+
+def _require_demo_voice(admin_user: dict) -> None:
+    """Allow only demo-clinic superadmins and whitelisted demo operators."""
+    if admin_user.get("clinic_id") != DEMO_VOICE_ALLOWED_CLINIC:
+        raise HTTPException(403, "Demo voice cabinet is only available for the demo clinic")
+    if admin_user.get("role") == "superadmin":
+        return
+    username = (admin_user.get("username") or "").lower()
+    clean = username[:-5] if username.endswith("-demo") else username
+    if clean in DEMO_VOICE_OPERATOR_ALLOWLIST:
+        return
+    raise HTTPException(403, "Voice calls are not enabled for this account")
+
+
+def _mint_livekit_token(identity: str, room: str, ttl_seconds: int = 900) -> str:
+    """Mint a LiveKit access token (HS256). Mirrors livekit-server-sdk format."""
+    import jwt as _jwt
+    if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+        raise HTTPException(503, "Voice service is not configured (LiveKit keys missing)")
+    now = int(_time.time())
+    payload = {
+        "iss": LIVEKIT_API_KEY,
+        "sub": identity,
+        "nbf": now,
+        "iat": now,
+        "exp": now + ttl_seconds,
+        "name": identity,
+        "video": {
+            "room": room,
+            "roomJoin": True,
+            "canPublish": True,
+            "canSubscribe": True,
+            "canPublishData": True,
+        },
+    }
+    return _jwt.encode(payload, LIVEKIT_API_SECRET, algorithm="HS256")
+
+
+# Demo patients live in dental-core fixture crm/fixtures/starsmile_eval.yaml.
+# Phone numbers MUST match — identity.py resolves caller_phone -> mock CRM
+# patient -> user_id, which makes text+voice history merge.
+DEMO_PATIENTS = {
+    "ivan": {"phone": "79001111111", "name": "Тестов Иван Иванович"},
+    "maria": {"phone": "79002222222", "name": "Тестова Мария Петровна"},
+    "novikova": {"phone": "79003333333", "name": "Новикова Елена Сергеевна"},
+}
+
+
+@app.post("/admin/api/voice-rooms/create")
+async def admin_voice_rooms_create(request: Request, admin_user=Depends(_get_admin_user)):
+    _require_demo_voice(admin_user)
+    body = await request.json()
+    patient_choice = body.get("patient_choice", "new")
+    patient_key = body.get("patient_key", "")
+
+    caller_phone = None
+    if patient_choice == "existing":
+        patient = DEMO_PATIENTS.get(patient_key)
+        if not patient:
+            raise HTTPException(400, f"Unknown demo patient: {patient_key}")
+        caller_phone = patient["phone"]
+
+    # Room name encodes caller phone so the voice-agent worker can extract it
+    # without needing participant metadata plumbing. Format:
+    #   voicedemo-{phone-or-new}-{token}
+    phone_segment = caller_phone if caller_phone else "new"
+    room = f"voicedemo-{phone_segment}-{secrets.token_hex(4)}"
+    identity = f"admin-{admin_user.get('username', 'demo')}-{secrets.token_hex(3)}"
+    token = _mint_livekit_token(identity=identity, room=room)
+
+    return {
+        "room": room,
+        "token": token,
+        "livekit_url": LIVEKIT_URL,
+        "caller_phone": caller_phone,
+        "patient_choice": patient_choice,
+    }
+
+
 # --- Actions ---
 
 @app.get("/admin/api/actions")
