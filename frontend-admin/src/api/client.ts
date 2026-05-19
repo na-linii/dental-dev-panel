@@ -430,6 +430,23 @@ export interface AdminCallRecordingUrl {
 export const getAdminCallRecordingUrl = async (sessionId: string): Promise<AdminCallRecordingUrl> =>
   (await adminApi.get<AdminCallRecordingUrl>(`/calls/${sessionId}/recording-url`)).data
 
+// ── Demo voice cabinet (browser → voice-agent → starsmile_demo) ──
+
+export type DemoPatientKey = 'ivan' | 'maria' | 'novikova'
+
+export interface CreateVoiceRoomResponse {
+  room: string
+  token: string
+  livekit_url: string
+  caller_phone: string | null
+  patient_choice: 'new' | 'existing'
+}
+
+export const createDemoVoiceRoom = async (
+  body: { patient_choice: 'new' } | { patient_choice: 'existing'; patient_key: DemoPatientKey },
+): Promise<CreateVoiceRoomResponse> =>
+  (await adminApi.post<CreateVoiceRoomResponse>('/voice-rooms/create', body)).data
+
 // ── Actions ──
 
 export const getAdminActions = async (params?: { status?: string }) => {
