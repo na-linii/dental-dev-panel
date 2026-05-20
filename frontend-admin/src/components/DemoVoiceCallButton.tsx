@@ -243,6 +243,7 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
   const [patients, setPatients] = useState<DemoPatient[]>([])
   const [clearing, setClearing] = useState(false)
   const [clearResult, setClearResult] = useState<string | null>(null)
+  const [audioBlocked, setAudioBlocked] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -330,16 +331,36 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
           if (audioElRef.current?.parentElement) audioElRef.current.replaceWith(el)
           else document.body.appendChild(el)
           audioElRef.current = el
+          el.play().catch(() => {
+            /* autoplay blocked — surfaced via AudioPlaybackStatusChanged */
+          })
+          console.info('[demo-voice] agent audio track subscribed, canPlaybackAudio=', room.canPlaybackAudio)
         }
+      })
+      // Chrome blocks autoplay of remote audio when play() runs outside a user
+      // gesture (the TrackSubscribed handler is async). LiveKit raises this
+      // event when playback is blocked; recover via room.startAudio() from a
+      // click. Without this the agent's voice is silently never heard.
+      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+        setAudioBlocked(!room.canPlaybackAudio)
       })
       room.on(RoomEvent.Disconnected, () => {
         setState('idle')
         setRoomName(null)
         setStartedAt(null)
+        setAudioBlocked(false)
       })
 
       await room.connect(res.livekit_url, res.token)
       await room.localParticipant.setMicrophoneEnabled(true)
+      // Best-effort: unblock audio while the originating click may still count
+      // as a user gesture. If too late, the "включить звук" button appears.
+      try {
+        await room.startAudio()
+      } catch {
+        /* startAudio needs a fresh gesture — handled by the in-call button */
+      }
+      setAudioBlocked(!room.canPlaybackAudio)
       setStartedAt(Date.now())
       setState('in_call')
     } catch (err) {
@@ -371,6 +392,19 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
     setRoomName(null)
     setPatientLabel(null)
     setMuted(false)
+    setAudioBlocked(false)
+  }
+
+  async function unblockAudio() {
+    const room = roomRef.current
+    if (!room) return
+    try {
+      await room.startAudio()
+      await audioElRef.current?.play()
+    } catch {
+      /* ignore — user can tap again */
+    }
+    setAudioBlocked(!room.canPlaybackAudio)
   }
 
   async function closeModal() {
@@ -450,6 +484,14 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
 
         {state === 'in_call' && (
           <div className="py-4 space-y-4">
+            {audioBlocked && (
+              <button
+                onClick={unblockAudio}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-sm animate-pulse"
+              >
+                🔊 Нажмите, чтобы включить звук агента
+              </button>
+            )}
             <div className="text-center">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/25 rounded-full">
                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
