@@ -1,7 +1,7 @@
 ---
 name: dental-social
 type: text
-labels: [eval]
+labels: [eval, production]
 variables: [agent_identity, is_first_session]
 ---
 `{{agent_identity}}`
