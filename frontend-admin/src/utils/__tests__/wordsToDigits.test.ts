@@ -42,6 +42,14 @@ describe('wordsToDigits', () => {
     expect(wordsToDigits('две тысячи шагов')).toBe('2000 шагов')
   })
 
+  it('thousands + remainder: пять тысяч рублей -> 5000', () => {
+    expect(wordsToDigits('пять тысяч рублей')).toBe('5000 рублей')
+  })
+
+  it('thousands + hundreds: одна тысяча пятьсот -> 1500', () => {
+    expect(wordsToDigits('одна тысяча пятьсот рублей')).toBe('1500 рублей')
+  })
+
   it('inflected: семи часов -> 7 часов', () => {
     expect(wordsToDigits('приём до семи часов')).toBe('приём до 7 часов')
   })
