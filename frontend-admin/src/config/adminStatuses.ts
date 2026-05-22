@@ -171,7 +171,7 @@ export const CHANNEL_CONFIG: Record<string, { text: string; cls: string }> = {
 export const NAV_ITEMS = [
   { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { to: '/chats', label: 'Переписка', icon: MessageCircle },
-  { to: '/calls', label: 'Звонки', icon: Phone },
+  { to: '/calls', label: 'Звонки', icon: Phone, requiresVoice: true },
   { to: '/confirmations', label: 'Подтверждения', icon: CalendarCheck, superadminOnly: true },
   { to: '/actions', label: 'Действия', icon: ClipboardList },
   { to: '/settings', label: 'Настройки', icon: Settings },
