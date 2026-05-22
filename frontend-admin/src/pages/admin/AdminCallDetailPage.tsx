@@ -6,7 +6,6 @@ import type { VoiceCallEndReason, VoiceTurnMeta } from '../../api/client'
 import { getAdminCallRecordingUrl } from '../../api/client'
 import { useAdminCallDetail } from '../../hooks/useAdminQueries'
 import axios from 'axios'
-import { wordsToDigits } from '../../utils/wordsToDigits'
 
 const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: LucideIcon; badge: string }> = {
   in_progress:       { label: 'Идёт',                icon: Mic,         badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25' },
@@ -63,7 +62,7 @@ function stripStress(s: string | null | undefined): string {
 function TurnMetaDropdown({ meta }: { meta: VoiceTurnMeta }) {
   const [open, setOpen] = useState(false)
   const items: Array<[string, string | number | boolean | null]> = [
-    ['Распознано (raw STT)', wordsToDigits(stripStress(meta.raw_stt_text))],
+    ['Распознано (raw STT)', stripStress(meta.raw_stt_text)],
     ['ASR уверенность', meta.stt_confidence != null ? `${(meta.stt_confidence * 100).toFixed(0)}%` : null],
     ['STT латенси', formatMs(meta.stt_latency_ms)],
     ['LLM время до первого токена', formatMs(meta.llm_ttft_ms)],
@@ -115,7 +114,7 @@ function Bubble({ role, content, createdAt, meta }: { role: string; content: str
         <span className="font-medium text-text-secondary">{label}</span>
         <span>{formatTimeOnly(createdAt)}</span>
       </div>
-      <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm ${bubble}`}>{wordsToDigits(stripStress(content))}</div>
+      <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm ${bubble}`}>{stripStress(content)}</div>
       {meta && (
         <div className="w-full max-w-[80%]">
           <TurnMetaDropdown meta={meta} />
