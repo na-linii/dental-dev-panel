@@ -5,13 +5,14 @@ import { LogOut, Menu, Sun, Moon } from 'lucide-react'
 function NaLiniiLogo({ className = 'w-8 h-8' }: { className?: string }) {
   return <img src="/logo.svg" alt="НаЛинии" className={className} />
 }
-import { adminMe } from '../api/client'
+import { adminMe, getAdminClinicSettings } from '../api/client'
 import type { AdminUser } from '../api/client'
 import { useTheme } from '../contexts/ThemeContext'
 import { NAV_ITEMS } from '../config/adminStatuses'
 
 export function AdminLayout() {
   const [user, setUser] = useState<AdminUser | null>(null)
+  const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
@@ -31,6 +32,10 @@ export function AdminLayout() {
       localStorage.removeItem('admin_user')
       navigate('/login', { replace: true })
     })
+    // Tab visibility — hide voice-only tabs for clinics without a voice channel.
+    getAdminClinicSettings()
+      .then((s) => setVoiceEnabled(s.voice_enabled))
+      .catch(() => {})
   }, [navigate])
 
   const handleLogout = () => {
@@ -83,7 +88,11 @@ export function AdminLayout() {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.filter((item) => !('superadminOnly' in item && item.superadminOnly) || user.role === 'superadmin').map((item) => (
+          {NAV_ITEMS.filter((item) => {
+            if ('superadminOnly' in item && item.superadminOnly && user.role !== 'superadmin') return false
+            if ('requiresVoice' in item && item.requiresVoice && !voiceEnabled) return false
+            return true
+          }).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

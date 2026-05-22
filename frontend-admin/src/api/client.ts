@@ -479,6 +479,19 @@ export const getAdminBookings = async (params?: { patient_id?: string; date_from
 
 // ── Settings ──
 
+export interface AdminClinicSettings {
+  clinic_id: string
+  name: string
+  pricing_mode: string
+  advance_days: number
+  confirmation_enabled: boolean
+  crm_adapter: string
+  voice_enabled: boolean
+}
+
+export const getAdminClinicSettings = async () =>
+  (await adminApi.get<AdminClinicSettings>('/settings/clinic')).data
+
 export const getAdminBotStatus = async () =>
   (await adminApi.get<AdminBotStatus>('/bot/status')).data
 
