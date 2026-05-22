@@ -8,8 +8,9 @@ import { parseString } from '@alordash/parse-word-to-number'
  *   2. preprotectTime      "ноль ноль" -> "нольноль"    (before library)
  *   3. parseString                                       (library)
  *   4. reattachPunctuation "10 ,"      -> "10,"
- *   5. formatTimes         "16 нольноль" -> "16:00"
- *   6. formatPrices        "300 рублей"  -> "300₽"      (explicit user request)
+ *   5. combineThousands    "8 тысяч"   -> "8000"   (safety net)
+ *   6. formatTimes         "16 нольноль" -> "16:00"
+ *   7. formatPrices        "300 рублей"  -> "300₽"      (explicit user request)
  *
  * Vocabulary extended via patches/@alordash+parse-word-to-number+3.0.7.patch
  * Applied ONLY on UI render — DB and TTS output are never modified.
@@ -29,6 +30,16 @@ function reattachPunctuation(s: string): string {
 // use a regex literal (not new RegExp) so \d stays as digit metachar.
 function preprotectTime(s: string): string {
   return s.replace(/ноль ноль/gi, 'нольноль')
+}
+
+// ── Thousands combiner ──────────────────────────────────────────────────────
+// Safety net: if library left "8 тысяч" or "5 тысяч 200" unconverted,
+// combine them here. Also handles тысяча/тысячи/тысячу forms.
+function combineThousands(s: string): string {
+  return s.replace(
+    /(\d+)\s+тысяч(?:а|и|у)?(?:\s+(\d+))?/g,
+    (_m, k, n) => String(parseInt(k, 10) * 1000 + (n ? parseInt(n, 10) : 0)),
+  )
 }
 
 // ── Time formatting ──────────────────────────────────────────────────────────
@@ -52,6 +63,7 @@ export function wordsToDigits(text: string): string {
   s = preprotectTime(s)    // must be before parseString
   s = parseString(s, 0)
   s = reattachPunctuation(s)
+  s = combineThousands(s)
   s = formatTimes(s)
   s = formatPrices(s)
   return s
