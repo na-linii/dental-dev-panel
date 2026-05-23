@@ -585,7 +585,7 @@ function BookingCard({ booking }: { booking: AdminBooking }) {
           {runs[runs.length - 1]?.status === 'confirmed' ? '✓ пациент подтвердил' :
            runs[runs.length - 1]?.status === 'cancelled' ? '✗ пациент отменил' :
            runs[runs.length - 1]?.status === 'sent' ? '⏳ ждём ответа' :
-           runs[runs.length - 1]?.status === 'no_response' ? '— нет ответа' :
+           runs[runs.length - 1]?.status === 'silent_timeout' ? '— нет ответа' :
            '— нажмите для деталей'}
           {' — нажмите для деталей'}
         </div>
