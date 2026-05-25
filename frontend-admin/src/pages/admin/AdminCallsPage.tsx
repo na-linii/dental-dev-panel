@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { AdminCallSummary, AdminUser, VoiceCallEndReason } from '../../api/client'
 import { useAdminCalls } from '../../hooks/useAdminQueries'
 import { DemoVoiceCallButton } from '../../components/DemoVoiceCallButton'
+import { formatDuration, formatDateTime, formatPhone } from '../../utils/format'
 
 // ── End reason display config ──────────────────────────────────────────────
 
@@ -52,40 +53,6 @@ const END_REASON_CONFIG: Record<VoiceCallEndReason, EndReasonConfig> = {
     badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25',
     dot: 'bg-red-500 dark:bg-red-400',
   },
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatDuration(ms: number | null): string {
-  if (ms == null) return '—'
-  const seconds = Math.round(ms / 1000)
-  const mm = Math.floor(seconds / 60)
-  const ss = seconds % 60
-  return `${mm}:${ss.toString().padStart(2, '0')}`
-}
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString('ru', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
-}
-
-function formatPhone(phone: string | null): string {
-  if (!phone) return 'Без номера'
-  // crude E.164 prettify: +7 (916) 123-45-67
-  if (/^\+7\d{10}$/.test(phone)) {
-    return `+7 (${phone.slice(2, 5)}) ${phone.slice(5, 8)}-${phone.slice(8, 10)}-${phone.slice(10)}`
-  }
-  return phone
 }
 
 // ── Components ─────────────────────────────────────────────────────────────

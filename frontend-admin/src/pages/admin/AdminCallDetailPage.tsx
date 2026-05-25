@@ -7,6 +7,7 @@ import { getAdminCallRecordingUrl } from '../../api/client'
 import { useAdminCallDetail } from '../../hooks/useAdminQueries'
 import axios from 'axios'
 import { wordsToDigits } from '../../utils/wordsToDigits'
+import { formatDuration, formatDateTime, formatPhone } from '../../utils/format'
 
 const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: LucideIcon; badge: string }> = {
   in_progress:       { label: 'Идёт',                icon: Mic,         badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25' },
@@ -17,35 +18,11 @@ const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: Lucide
   error:             { label: 'Ошибка',               icon: AlertCircle, badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25' },
 }
 
-function formatDuration(ms: number | null): string {
-  if (ms == null) return '—'
-  const s = Math.round(ms / 1000)
-  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
-}
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('ru', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    })
-  } catch { return iso }
-}
-
 function formatTimeOnly(iso: string | null): string {
   if (!iso) return '—'
   try {
     return new Date(iso).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   } catch { return iso }
-}
-
-function formatPhone(phone: string | null): string {
-  if (!phone) return '—'
-  if (/^\+7\d{10}$/.test(phone)) {
-    return `+7 (${phone.slice(2, 5)}) ${phone.slice(5, 8)}-${phone.slice(8, 10)}-${phone.slice(10)}`
-  }
-  return phone
 }
 
 function formatMs(ms: number | null): string {
