@@ -837,11 +837,15 @@ async def admin_voice_rooms_create(request: Request, admin_user=Depends(_get_adm
             raise HTTPException(400, f"Unknown demo patient: {patient_key}")
         caller_phone = patient["phone"]
 
-    # Room name encodes caller phone so the voice-agent worker can extract it
-    # without needing participant metadata plumbing. Format:
-    #   voicedemo-{phone-or-new}-{token}
+    # Room name encodes caller phone AND the TTS stack/voice so the voice-agent
+    # worker can extract them without participant metadata plumbing. Format:
+    #   voicedemo-{phone-or-new}-elevenlabs-kate-sid_{token}
+    #
+    # PD-449: stack+voice slugs let detect_stack_voice_speed pick Kate over the
+    # Cartesia DEFAULT_STACK. The `sid_` sentinel marks end of override-section
+    # (consistent with prodsip/demov3 room formats).
     phone_segment = caller_phone if caller_phone else "new"
-    room = f"voicedemo-{phone_segment}-{secrets.token_hex(4)}"
+    room = f"voicedemo-{phone_segment}-elevenlabs-kate-sid_{secrets.token_hex(4)}"
     identity = f"admin-{admin_user.get('username', 'demo')}-{secrets.token_hex(3)}"
     token = _mint_livekit_token(identity=identity, room=room)
 
