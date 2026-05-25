@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Power, ShieldAlert, AlertTriangle, RefreshCw, Clock, ShieldBan, Plus, Trash2, Phone, Send, Loader2 } from 'lucide-react'
 import { pluralize } from '../../utils/pluralize'
+import { TOAST_DURATION_MS } from '../../utils/constants'
 import {
   getAdminBotStatus, toggleAdminBot,
   getAdminBlocklist, addAdminBlocklistEntry, removeAdminBlocklistEntry,
@@ -568,7 +569,7 @@ function BlocklistSection() {
       if (digits.length < 10 || digits.length > 15) {
         setError('Введите корректный номер телефона (от 10 до 15 цифр)')
         setInputError(true)
-        setTimeout(() => { setError(null); setInputError(false) }, 4000)
+        setTimeout(() => { setError(null); setInputError(false) }, TOAST_DURATION_MS)
         return
       }
     }
@@ -576,7 +577,7 @@ function BlocklistSection() {
       if (!/^\d+$/.test(trimmed)) {
         setError('Telegram ID должен состоять только из цифр')
         setInputError(true)
-        setTimeout(() => { setError(null); setInputError(false) }, 4000)
+        setTimeout(() => { setError(null); setInputError(false) }, TOAST_DURATION_MS)
         return
       }
     }
@@ -595,7 +596,7 @@ function BlocklistSection() {
       setShowAdd(false)
     } catch {
       setError('Не удалось добавить в чёрный список')
-      setTimeout(() => setError(null), 4000)
+      setTimeout(() => setError(null), TOAST_DURATION_MS)
     } finally {
       setSaving(false)
     }
@@ -607,7 +608,7 @@ function BlocklistSection() {
       setItems((prev) => prev.filter((i) => i.id !== id))
     } catch {
       setError('Не удалось удалить из чёрного списка')
-      setTimeout(() => setError(null), 4000)
+      setTimeout(() => setError(null), TOAST_DURATION_MS)
     }
   }
 
