@@ -7,7 +7,7 @@ import { getAdminCallRecordingUrl } from '../../api/client'
 import { useAdminCallDetail } from '../../hooks/useAdminQueries'
 import axios from 'axios'
 import { wordsToDigits } from '../../utils/wordsToDigits'
-import { formatDuration, formatDateTime, formatPhone } from '../../utils/format'
+import { formatDuration, formatDateTime, formatPhone, stripStress } from '../../utils/format'
 
 const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: LucideIcon; badge: string }> = {
   in_progress:       { label: 'Идёт',                icon: Mic,         badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25' },
@@ -29,12 +29,6 @@ function formatMs(ms: number | null): string {
   if (ms == null) return '—'
   if (ms < 1000) return `${ms} мс`
   return `${(ms / 1000).toFixed(2)} с`
-}
-
-// Voice prompts inject "+" before stressed vowels for TTS pronunciation
-// (e.g. "Эл+айнер"). Strip them for human-readable display.
-function stripStress(s: string | null | undefined): string {
-  return (s ?? '').replace(/\+/g, '')
 }
 
 function TurnMetaDropdown({ meta }: { meta: VoiceTurnMeta }) {

@@ -29,3 +29,9 @@ export function formatPhone(phone: string | null): string {
   }
   return phone
 }
+
+// Voice prompts inject "+" before stressed vowels for TTS pronunciation
+// (e.g. "Эл+айнер"). Strip them for human-readable display.
+export function stripStress(s: string | null | undefined): string {
+  return (s ?? '').replace(/\+/g, '')
+}

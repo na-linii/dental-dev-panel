@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDuration, formatDateTime, formatPhone } from '../format'
+import { formatDuration, formatDateTime, formatPhone, stripStress } from '../format'
 
 describe('formatDuration', () => {
   it('returns "—" for null or undefined', () => {
@@ -84,5 +84,30 @@ describe('formatPhone', () => {
 
     // Not E.164 (not starting with +7)
     expect(formatPhone('+89161234567')).toBe('+89161234567')
+  })
+})
+
+describe('stripStress', () => {
+  it('removes "+" before stressed vowels', () => {
+    expect(stripStress('Эл+айнер')).toBe('Элайнер')
+    expect(stripStress('за+пись')).toBe('запись')
+  })
+
+  it('returns empty string for null or undefined', () => {
+    expect(stripStress(null)).toBe('')
+    expect(stripStress(undefined)).toBe('')
+  })
+
+  it('text without stress markers remains unchanged', () => {
+    expect(stripStress('запись')).toBe('запись')
+    expect(stripStress('Элайнер')).toBe('Элайнер')
+  })
+
+  it('handles empty string', () => {
+    expect(stripStress('')).toBe('')
+  })
+
+  it('removes multiple stress markers', () => {
+    expect(stripStress('при+ме+р')).toBe('пример')
   })
 })
