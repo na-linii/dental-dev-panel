@@ -203,3 +203,27 @@ async def update_clinic_deploy(clinic_id: str, deploy_status: str, deploy_log: s
         await conn.execute(
             "UPDATE hub.clinics SET deploy_status = $1, deploy_log = $2, updated_at = NOW() WHERE id = $3",
             deploy_status, deploy_log, clinic_id)
+
+
+async def update_confirmation_schedule(clinic_id: str, schedule_hours: list[int]):
+    """Update clinic's confirmation reminder schedule in config."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Get current config
+        row = await conn.fetchrow("SELECT config FROM hub.clinics WHERE id = $1", clinic_id)
+        if not row:
+            raise ValueError(f"Clinic {clinic_id} not found")
+
+        current_config = row["config"] or {}
+        if isinstance(current_config, str):
+            current_config = json.loads(current_config)
+
+        # Update confirmation.schedule_hours
+        if "confirmation" not in current_config:
+            current_config["confirmation"] = {}
+        current_config["confirmation"]["schedule_hours"] = schedule_hours
+
+        # Save back
+        await conn.execute(
+            "UPDATE hub.clinics SET config = $1::jsonb, updated_at = NOW() WHERE id = $2",
+            json.dumps(current_config), clinic_id)

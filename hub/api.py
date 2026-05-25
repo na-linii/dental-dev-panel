@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from hub.auth import verify_github_token
-from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy
+from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy, update_confirmation_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -333,6 +333,42 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
     except Exception as e:
         logger.error("proxy_chat failed for %s: %s", clinic_id, e)
         raise HTTPException(502, "Failed to connect to clinic agent")
+
+
+@app.put("/api/clinics/{clinic_id}/confirmation-schedule")
+async def update_confirmation_schedule_endpoint(clinic_id: str, body: dict, user=Depends(verify_github_token)):
+    """Update confirmation reminder schedule for a clinic."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, "Clinic not found")
+
+    schedule_hours = body.get("schedule_hours")
+    if not isinstance(schedule_hours, list) or not all(isinstance(h, int) for h in schedule_hours):
+        raise HTTPException(400, "schedule_hours must be a list of integers")
+    if len(schedule_hours) == 0:
+        raise HTTPException(400, "schedule_hours must have at least one hour")
+    if any(h < 0 or h > 23 for h in schedule_hours):
+        raise HTTPException(400, "All hours must be between 0 and 23")
+
+    try:
+        # Save to hub database
+        await update_confirmation_schedule(clinic_id, schedule_hours)
+
+        # Also notify the running agent to update its runtime config
+        if not _validate_server_host(clinic['server_host']):
+            logger.warning("Cannot notify agent: invalid server_host")
+        else:
+            url = f"http://{clinic['server_host']}:{clinic['server_port']}/confirmation-schedule"
+            try:
+                await _http_client.put(url, json={"schedule_hours": schedule_hours}, timeout=5)
+                logger.info("Notified agent %s of schedule update: %s", clinic_id, schedule_hours)
+            except Exception as e:
+                logger.warning("Failed to notify agent %s of schedule update: %s", clinic_id, e)
+
+        return {"ok": True}
+    except Exception as e:
+        logger.error("Failed to update confirmation schedule for %s: %s", clinic_id, e)
+        raise HTTPException(500, "Failed to update confirmation schedule")
 
 
 # --- Traces (Langfuse-powered) ---

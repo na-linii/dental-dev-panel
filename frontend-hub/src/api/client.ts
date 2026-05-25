@@ -63,6 +63,9 @@ export const clinicsApi = {
 
   deleteAdmin: (clinicId: string, adminId: number) =>
     api.delete(`/clinics/${clinicId}/admins/${adminId}`),
+
+  updateConfirmationSchedule: (id: string, schedule_hours: number[]) =>
+    api.put<{ ok: boolean }>(`/clinics/${id}/confirmation-schedule`, { schedule_hours }).then((r) => r.data),
 }
 
 export const tracesApi = {
