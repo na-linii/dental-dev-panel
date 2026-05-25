@@ -3,11 +3,12 @@ import { useState } from 'react'
 interface ReminderScheduleEditorProps {
   times: number[] // e.g. [11, 17]
   onSave: (times: number[]) => Promise<void>
+  primaryTime?: number // protected primary reminder (default 11)
   isLoading?: boolean
   error?: string | null
 }
 
-export function ReminderScheduleEditor({ times, onSave, isLoading = false, error = null }: ReminderScheduleEditorProps) {
+export function ReminderScheduleEditor({ times, onSave, primaryTime = 11, isLoading = false, error = null }: ReminderScheduleEditorProps) {
   const [editTimes, setEditTimes] = useState<number[]>(times || [11, 17])
   const [newTimeInput, setNewTimeInput] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -31,9 +32,9 @@ export function ReminderScheduleEditor({ times, onSave, isLoading = false, error
   }
 
   const handleRemoveTime = (hour: number) => {
-    // Only allow removing the last (most recently added) time
-    if (editTimes[editTimes.length - 1] !== hour) {
-      setSaveError('Can only remove the most recently added time')
+    // Cannot delete primary reminder time
+    if (hour === primaryTime) {
+      setSaveError(`Cannot delete primary reminder time (${String(primaryTime).padStart(2, '0')}:00)`)
       return
     }
     const newTimes = editTimes.filter(h => h !== hour)
@@ -77,7 +78,7 @@ export function ReminderScheduleEditor({ times, onSave, isLoading = false, error
       <div>
         <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-2">Reminder Schedule</h4>
         <p className="text-[10px] text-[#64748b] mb-3">
-          Current reminder times (MSK). Delete only the last added time, then the primary time.
+          Current reminder times (MSK). Primary time ({String(primaryTime).padStart(2, '0')}:00) cannot be deleted.
         </p>
 
         {/* Current times display */}
@@ -93,18 +94,17 @@ export function ReminderScheduleEditor({ times, onSave, isLoading = false, error
                 <span className="text-sm font-semibold text-white">
                   {String(hour).padStart(2, '0')}:00
                 </span>
-                {idx === editTimes.length - 1 && editTimes.length > 1 && (
+                {hour === primaryTime ? (
+                  <span className="text-[10px] text-[#fbbf24] ml-1">(primary)</span>
+                ) : editTimes.length > 1 ? (
                   <button
                     onClick={() => handleRemoveTime(hour)}
                     className="text-[#f87171] hover:text-[#fca5a5] cursor-pointer text-sm font-bold ml-1"
-                    title="Remove (only latest can be removed)"
+                    title="Remove"
                   >
                     ✕
                   </button>
-                )}
-                {editTimes.length === 1 && (
-                  <span className="text-[10px] text-[#64748b] ml-1">(primary)</span>
-                )}
+                ) : null}
               </div>
             ))
           )}
