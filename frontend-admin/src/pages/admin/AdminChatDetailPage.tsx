@@ -10,6 +10,7 @@ import { ru } from 'date-fns/locale'
 import { STATUS_CONFIG, CONTROLLER_LABELS, CONTROLLER_COLORS, RUN_STATUS_CONFIG, getDisplayStatus, CHANNEL_CONFIG } from '../../config/adminStatuses'
 import type { BookingConfirmationRun } from '../../api/client'
 import { useInvalidateSessions } from '../../hooks/useAdminQueries'
+import { TOAST_DURATION_MS } from '../../utils/constants'
 
 // PD-378: 4 варианта в дропдауне. operator_active бэкендом маппится в БД на
 // controller='operator' + operator_id=<админ> (взять чат на себя без отправки сообщения).
@@ -49,7 +50,7 @@ export function AdminChatDetailPage() {
 
   const showError = (msg: string) => {
     setError(msg)
-    setTimeout(() => setError(null), 4000)
+    setTimeout(() => setError(null), TOAST_DURATION_MS)
   }
 
   // Scroll to bottom on new messages
