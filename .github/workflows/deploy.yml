@@ -25,6 +25,11 @@ jobs:
         run: |
           cd frontend-admin
           npm ci
+          # Run unit tests before the build — these are the gate against
+          # regressions like PD-417's `__dirname is not defined` that blanked
+          # the /calls/:sessionId page in prod on 2026-05-25. A failing test
+          # here must block the deploy, not just be noise after the fact.
+          npm test
           npm run build
 
       - name: Deploy repo to server
