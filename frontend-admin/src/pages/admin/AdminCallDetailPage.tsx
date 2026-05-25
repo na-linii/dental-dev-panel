@@ -7,6 +7,7 @@ import { getAdminCallRecordingUrl } from '../../api/client'
 import { useAdminCallDetail } from '../../hooks/useAdminQueries'
 import axios from 'axios'
 import { wordsToDigits } from '../../utils/wordsToDigits'
+import { formatDuration } from '../../utils/format'
 
 const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: LucideIcon; badge: string }> = {
   in_progress:       { label: 'Идёт',                icon: Mic,         badge: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/25' },
@@ -15,12 +16,6 @@ const END_REASON_LABEL: Record<VoiceCallEndReason, { label: string; icon: Lucide
   dropped:           { label: 'Бросил трубку',        icon: PhoneOff,    badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25' },
   answering_machine: { label: 'Автоответчик',         icon: MicOff,      badge: 'bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-500/25' },
   error:             { label: 'Ошибка',               icon: AlertCircle, badge: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/25' },
-}
-
-function formatDuration(ms: number | null): string {
-  if (ms == null) return '—'
-  const s = Math.round(ms / 1000)
-  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
 function formatDateTime(iso: string | null): string {
