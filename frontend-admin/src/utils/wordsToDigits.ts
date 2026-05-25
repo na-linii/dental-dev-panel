@@ -59,12 +59,22 @@ function formatPrices(s: string): string {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 export function wordsToDigits(text: string): string {
-  let s = detachPunctuation(text)
-  s = preprotectTime(s)    // must be before parseString
-  s = parseString(s, 0)
-  s = reattachPunctuation(s)
-  s = combineThousands(s)
-  s = formatTimes(s)
-  s = formatPrices(s)
-  return s
+  // `parseString` from @alordash/parse-word-to-number reads its dictionary
+  // via `fs.readdirSync(__dirname + '/expressions/')` in loader.js. That call
+  // throws `ReferenceError: __dirname is not defined` in the browser bundle,
+  // which crashes the entire React tree (PD-417 v2 regression that breaks
+  // /calls/:sessionId). Until the loader is patched to inline the CSV, catch
+  // the failure and fall back to the raw transcript so the page still renders.
+  try {
+    let s = detachPunctuation(text)
+    s = preprotectTime(s)    // must be before parseString
+    s = parseString(s, 0)
+    s = reattachPunctuation(s)
+    s = combineThousands(s)
+    s = formatTimes(s)
+    s = formatPrices(s)
+    return s
+  } catch {
+    return text
+  }
 }
