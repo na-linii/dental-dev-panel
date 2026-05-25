@@ -276,7 +276,12 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
   }
 
   const roomRef = useRef<Room | null>(null)
-  const audioElRef = useRef<HTMLAudioElement | null>(null)
+  // One <audio> element per subscribed track sid. The agent publishes both
+  // `roomio_audio` (session TTS) and `background_audio` (preroll WAV) in
+  // voicedemo mode; a single shared ref with replaceWith() orphaned the
+  // session-TTS element and Chrome stopped playing its audio (equalizer
+  // animated, voice was silent) — see PD-449.
+  const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
 
   // Duration ticker
   useEffect(() => {
@@ -323,18 +328,27 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
       })
       roomRef.current = room
 
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, _p: RemoteParticipant) => {
+      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, _p: RemoteParticipant) => {
         if (track.kind === Track.Kind.Audio) {
           const el = track.attach() as HTMLAudioElement
           el.autoplay = true
           el.style.display = 'none'
-          if (audioElRef.current?.parentElement) audioElRef.current.replaceWith(el)
-          else document.body.appendChild(el)
-          audioElRef.current = el
+          document.body.appendChild(el)
+          audioElsRef.current.set(pub.trackSid, el)
           el.play().catch(() => {
             /* autoplay blocked — surfaced via AudioPlaybackStatusChanged */
           })
-          console.info('[demo-voice] agent audio track subscribed, canPlaybackAudio=', room.canPlaybackAudio)
+          console.info('[demo-voice] agent audio track subscribed', { sid: pub.trackSid, name: pub.trackName, canPlaybackAudio: room.canPlaybackAudio })
+        }
+      })
+      room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, _p: RemoteParticipant) => {
+        if (track.kind === Track.Kind.Audio) {
+          const el = audioElsRef.current.get(pub.trackSid)
+          if (el) {
+            track.detach(el)
+            el.remove()
+            audioElsRef.current.delete(pub.trackSid)
+          }
         }
       })
       // Chrome blocks autoplay of remote audio when play() runs outside a user
@@ -383,10 +397,8 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
   async function hangUp() {
     await roomRef.current?.disconnect()
     roomRef.current = null
-    if (audioElRef.current) {
-      audioElRef.current.remove()
-      audioElRef.current = null
-    }
+    for (const el of audioElsRef.current.values()) el.remove()
+    audioElsRef.current.clear()
     setState('idle')
     setStartedAt(null)
     setRoomName(null)
@@ -400,7 +412,7 @@ function DemoVoiceModal({ onClose }: { onClose: () => void }) {
     if (!room) return
     try {
       await room.startAudio()
-      await audioElRef.current?.play()
+      for (const el of audioElsRef.current.values()) await el.play()
     } catch {
       /* ignore — user can tap again */
     }
