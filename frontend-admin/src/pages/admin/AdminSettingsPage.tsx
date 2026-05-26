@@ -385,22 +385,26 @@ function MaxUserbotImportSection() {
 // ── Confirmation Schedule ──
 
 function ConfirmationScheduleSection() {
-  const [hours, setHours] = useState<number[]>([])
+  const [times, setTimes] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [newHour, setNewHour] = useState(9)
+  const [newMinute, setNewMinute] = useState(0)
+
+  const formatTime = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 
   useEffect(() => {
     getConfirmationSchedule()
-      .then((data) => setHours(data.schedule_hours ?? []))
+      .then((data) => setTimes(data.schedule_times ?? []))
       .catch(() => setError('Не удалось загрузить расписание'))
       .finally(() => setLoading(false))
   }, [])
 
   const handleAdd = async () => {
-    if (hours.includes(newHour)) {
+    const newTime = formatTime(newHour, newMinute)
+    if (times.includes(newTime)) {
       setError('Это время уже добавлено')
       setTimeout(() => setError(null), TOAST_DURATION_MS)
       return
@@ -408,9 +412,9 @@ function ConfirmationScheduleSection() {
     setSaving(true)
     setError(null)
     try {
-      const updated = [...hours, newHour].sort((a, b) => a - b)
+      const updated = [...times, newTime].sort()
       const res = await updateConfirmationSchedule(updated)
-      setHours(res.schedule_hours)
+      setTimes(res.schedule_times)
       setShowAdd(false)
     } catch {
       setError('Не удалось сохранить')
@@ -420,18 +424,17 @@ function ConfirmationScheduleSection() {
     }
   }
 
-  const handleRemove = async (hour: number) => {
-    if (hours.length <= 1) return
-    // Can only remove the last added (highest index) first
-    const lastHour = hours[hours.length - 1]
-    if (hour !== lastHour) return
+  const handleRemove = async (time: string) => {
+    if (times.length <= 1) return
+    const lastTime = times[times.length - 1]
+    if (time !== lastTime) return
 
     setSaving(true)
     setError(null)
     try {
-      const updated = hours.filter((h) => h !== hour)
+      const updated = times.filter((t) => t !== time)
       const res = await updateConfirmationSchedule(updated)
-      setHours(res.schedule_hours)
+      setTimes(res.schedule_times)
     } catch {
       setError('Не удалось сохранить')
       setTimeout(() => setError(null), TOAST_DURATION_MS)
@@ -440,10 +443,9 @@ function ConfirmationScheduleSection() {
     }
   }
 
-  const formatHour = (h: number) => `${String(h).padStart(2, '0')}:00`
+  const canRemove = (idx: number) => times.length > 1 && idx === times.length - 1
 
-  // Only the last item is removable (and only if there are 2+ items)
-  const canRemove = (idx: number) => hours.length > 1 && idx === hours.length - 1
+  const selectClass = "bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums"
 
   return (
     <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-2xl overflow-hidden">
@@ -483,22 +485,24 @@ function ConfirmationScheduleSection() {
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <label className="text-xs text-muted-foreground uppercase mb-1 block">Время отправки</label>
-              <select
-                value={newHour}
-                onChange={(e) => setNewHour(Number(e.target.value))}
-                className="w-full bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200"
-              >
-                {Array.from({ length: 24 }, (_, i) => i).map((h) => (
-                  <option key={h} value={h} disabled={hours.includes(h)}>
-                    {formatHour(h)}{hours.includes(h) ? ' (уже добавлено)' : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select value={newHour} onChange={(e) => setNewHour(Number(e.target.value))} className={selectClass + " w-20"}>
+                  {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                    <option key={h} value={h}>{String(h).padStart(2, '0')}</option>
+                  ))}
+                </select>
+                <span className="text-lg font-semibold text-text-primary">:</span>
+                <select value={newMinute} onChange={(e) => setNewMinute(Number(e.target.value))} className={selectClass + " w-20"}>
+                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
+                    <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex flex-col gap-2 pt-5">
               <button
                 onClick={handleAdd}
-                disabled={saving || hours.includes(newHour)}
+                disabled={saving || times.includes(formatTime(newHour, newMinute))}
                 className="flex items-center gap-1.5 px-3.5 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/90 transition-all duration-200 disabled:opacity-30"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
@@ -520,18 +524,18 @@ function ConfirmationScheduleSection() {
         <div className="px-5 py-8 flex justify-center">
           <Loader2 className="w-5 h-5 animate-spin text-text-tertiary" />
         </div>
-      ) : hours.length === 0 ? (
+      ) : times.length === 0 ? (
         <div className="px-5 py-8 text-center">
           <p className="text-text-muted text-sm">Расписание не настроено</p>
         </div>
       ) : (
         <div className="divide-y divide-border-light dark:divide-white/[0.04]">
-          {hours.map((hour, idx) => (
-            <div key={hour} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 group">
+          {times.map((time, idx) => (
+            <div key={time} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 group">
               <div className="flex items-center gap-3">
                 <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-text-primary tabular-nums">{formatHour(hour)}</p>
+                  <p className="text-sm font-medium text-text-primary tabular-nums">{time}</p>
                   <p className="text-xs text-text-muted">
                     {idx === 0 ? 'Первичное напоминание' : `Повторное напоминание #${idx}`}
                   </p>
@@ -539,7 +543,7 @@ function ConfirmationScheduleSection() {
               </div>
               {canRemove(idx) && (
                 <button
-                  onClick={() => handleRemove(hour)}
+                  onClick={() => handleRemove(time)}
                   disabled={saving}
                   className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-tertiary hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200 flex-shrink-0 disabled:opacity-30"
                 >
@@ -551,9 +555,9 @@ function ConfirmationScheduleSection() {
         </div>
       )}
 
-      {hours.length > 0 && (
+      {times.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2.5 border-t border-border-light dark:border-white/[0.04]">
-          {hours.length} {pluralize(hours.length, 'напоминание', 'напоминания', 'напоминаний')} в день
+          {times.length} {pluralize(times.length, 'напоминание', 'напоминания', 'напоминаний')} в день
         </div>
       )}
     </div>

@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from hub.auth import verify_github_token
-from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy, update_confirmation_schedule
+from hub.db import init_db, get_pool, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy, update_confirmation_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -944,49 +944,96 @@ async def admin_clinic_settings(admin_user=Depends(_get_admin_user)):
 
 # --- Confirmation schedule ---
 
+def _parse_schedule_time(t: str) -> tuple[int, int]:
+    """Parse 'HH:MM' string, return (hour, minute). Raises ValueError on bad format."""
+    parts = t.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"Bad time format: {t}")
+    h, m = int(parts[0]), int(parts[1])
+    if not (0 <= h <= 23 and 0 <= m <= 59):
+        raise ValueError(f"Time out of range: {t}")
+    return h, m
+
+
 @app.get("/admin/api/confirmation-schedule")
 async def admin_get_confirmation_schedule(admin_user=Depends(_get_admin_user)):
-    """Get confirmation reminder schedule_hours for admin's clinic."""
+    """Get confirmation reminder schedule for admin's clinic.
+
+    Returns schedule_times (list of "HH:MM" strings).
+    Legacy schedule_hours (int[]) are converted to "HH:00" if schedule_times is absent.
+    """
     clinic = await _get_clinic_for_admin(admin_user)
     clinic_id = clinic["id"]
 
-    # Read fresh from DB (bypass _get_clinic_for_admin cache which may be stale)
     fresh_clinic = await get_clinic(clinic_id)
     config = fresh_clinic.get("config") or {} if fresh_clinic else {}
     if isinstance(config, str):
         import json as _json
         config = _json.loads(config)
-    schedule_hours = (config.get("confirmation") or {}).get("schedule_hours")
-    return {"schedule_hours": schedule_hours or []}
+
+    confirmation = config.get("confirmation") or {}
+    schedule_times = confirmation.get("schedule_times")
+    if not schedule_times:
+        # Backward compat: convert legacy schedule_hours → "HH:00"
+        schedule_hours = confirmation.get("schedule_hours")
+        if schedule_hours:
+            schedule_times = [f"{h:02d}:00" for h in schedule_hours]
+    return {"schedule_times": schedule_times or []}
 
 
 @app.put("/admin/api/confirmation-schedule")
 async def admin_update_confirmation_schedule(request: Request, admin_user=Depends(_get_admin_user)):
-    """Update confirmation reminder schedule_hours for admin's clinic."""
+    """Update confirmation reminder schedule for admin's clinic.
+
+    Accepts schedule_times (list of "HH:MM" strings).
+    Also derives schedule_hours (int[]) for backward-compat with the running agent.
+    """
     clinic = await _get_clinic_for_admin(admin_user)
     body = await request.json()
 
-    schedule_hours = body.get("schedule_hours")
-    if not isinstance(schedule_hours, list) or not all(isinstance(h, int) for h in schedule_hours):
-        raise HTTPException(400, "schedule_hours must be a list of integers")
-    if len(schedule_hours) == 0:
-        raise HTTPException(400, "schedule_hours must have at least one hour")
-    if any(h < 0 or h > 23 for h in schedule_hours):
-        raise HTTPException(400, "All hours must be between 0 and 23")
+    schedule_times = body.get("schedule_times")
+    if not isinstance(schedule_times, list) or not all(isinstance(t, str) for t in schedule_times):
+        raise HTTPException(400, "schedule_times must be a list of 'HH:MM' strings")
+    if len(schedule_times) == 0:
+        raise HTTPException(400, "schedule_times must have at least one entry")
+
+    try:
+        parsed = [_parse_schedule_time(t) for t in schedule_times]
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    # Sort by time
+    sorted_times = sorted(schedule_times, key=lambda t: _parse_schedule_time(t))
+    # Derive integer hours for agent backward-compat
+    sorted_hours = sorted(set(h for h, _ in parsed))
 
     clinic_id = clinic["id"]
     try:
-        await update_confirmation_schedule(clinic_id, sorted(schedule_hours))
+        # Save schedule_times to hub config (also updates schedule_hours for compat)
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT config FROM hub.clinics WHERE id = $1", clinic_id)
+            current_config = {}
+            if row and row["config"]:
+                c = row["config"]
+                current_config = json.loads(c) if isinstance(c, str) else c
+            if "confirmation" not in current_config:
+                current_config["confirmation"] = {}
+            current_config["confirmation"]["schedule_times"] = sorted_times
+            current_config["confirmation"]["schedule_hours"] = sorted_hours
+            await conn.execute(
+                "UPDATE hub.clinics SET config = $1::jsonb, updated_at = NOW() WHERE id = $2",
+                json.dumps(current_config), clinic_id)
 
-        # Notify the running agent to update its runtime config
+        # Notify the running agent (uses schedule_hours for compat)
         if _validate_server_host(clinic['server_host']):
             url = f"http://{clinic['server_host']}:{clinic['server_port']}/confirmation-schedule"
             try:
-                await _http_client.put(url, json={"schedule_hours": sorted(schedule_hours)}, timeout=5)
+                await _http_client.put(url, json={"schedule_hours": sorted_hours}, timeout=5)
             except Exception as e:
                 logger.warning("Failed to notify agent %s of schedule update: %s", clinic_id, e)
 
-        return {"ok": True, "schedule_hours": sorted(schedule_hours)}
+        return {"ok": True, "schedule_times": sorted_times}
     except Exception as e:
         logger.error("Failed to update confirmation schedule for %s: %s", clinic_id, e)
         raise HTTPException(500, "Failed to update confirmation schedule")

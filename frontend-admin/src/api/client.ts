@@ -495,10 +495,10 @@ export const getAdminClinicSettings = async () =>
 // ── Confirmation schedule ──
 
 export const getConfirmationSchedule = async () =>
-  (await adminApi.get<{ schedule_hours: number[] }>('/confirmation-schedule')).data
+  (await adminApi.get<{ schedule_times: string[] }>('/confirmation-schedule')).data
 
-export const updateConfirmationSchedule = async (schedule_hours: number[]) =>
-  (await adminApi.put<{ ok: boolean; schedule_hours: number[] }>('/confirmation-schedule', { schedule_hours })).data
+export const updateConfirmationSchedule = async (schedule_times: string[]) =>
+  (await adminApi.put<{ ok: boolean; schedule_times: string[] }>('/confirmation-schedule', { schedule_times })).data
 
 export const getAdminBotStatus = async () =>
   (await adminApi.get<AdminBotStatus>('/bot/status')).data
