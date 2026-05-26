@@ -443,7 +443,7 @@ function ConfirmationScheduleSection() {
 
   const canRemove = (_idx: number) => times.length > 1
 
-  const selectClass = "bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums"
+  const selectClass = "bg-surface-secondary dark:bg-white/15 border border-border dark:border-white/20 rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums dark:[color-scheme:dark]"
 
   return (
     <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-2xl overflow-hidden">
