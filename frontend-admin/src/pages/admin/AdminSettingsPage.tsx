@@ -443,7 +443,9 @@ function ConfirmationScheduleSection() {
 
   const canRemove = (_idx: number) => times.length > 1
 
-  const selectClass = "bg-surface-secondary dark:bg-white/15 border border-border dark:border-white/20 rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums dark:[color-scheme:dark]"
+  const isDark = document.documentElement.classList.contains('dark')
+  const selectClass = "bg-surface-secondary dark:bg-white/15 border border-border dark:border-white/20 rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums"
+  const optionStyle = isDark ? { backgroundColor: '#1e1e2e', color: '#fff' } : undefined
 
   return (
     <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-2xl overflow-hidden">
@@ -486,13 +488,13 @@ function ConfirmationScheduleSection() {
               <div className="flex items-center gap-2">
                 <select value={newHour} onChange={(e) => setNewHour(Number(e.target.value))} className={selectClass + " w-20"}>
                   {Array.from({ length: 24 }, (_, i) => i).map((h) => (
-                    <option key={h} value={h}>{String(h).padStart(2, '0')}</option>
+                    <option key={h} value={h} style={optionStyle}>{String(h).padStart(2, '0')}</option>
                   ))}
                 </select>
                 <span className="text-lg font-semibold text-text-primary">:</span>
                 <select value={newMinute} onChange={(e) => setNewMinute(Number(e.target.value))} className={selectClass + " w-20"}>
                   {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
-                    <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+                    <option key={m} value={m} style={optionStyle}>{String(m).padStart(2, '0')}</option>
                   ))}
                 </select>
               </div>
