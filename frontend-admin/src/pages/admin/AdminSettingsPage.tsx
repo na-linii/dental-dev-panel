@@ -426,8 +426,6 @@ function ConfirmationScheduleSection() {
 
   const handleRemove = async (time: string) => {
     if (times.length <= 1) return
-    const lastTime = times[times.length - 1]
-    if (time !== lastTime) return
 
     setSaving(true)
     setError(null)
@@ -443,7 +441,7 @@ function ConfirmationScheduleSection() {
     }
   }
 
-  const canRemove = (idx: number) => times.length > 1 && idx === times.length - 1
+  const canRemove = (_idx: number) => times.length > 1
 
   const selectClass = "bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums"
 
