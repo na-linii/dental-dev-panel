@@ -3,6 +3,13 @@ name: dental-social
 type: text
 labels: [dev]
 variables: [agent_identity, is_first_session]
+config:
+  channel: text
+  streaming_ready: false
+  recommended_tts: null
+  recommended_llm: gpt-4o
+  filler_bank_required: null
+  notes: Text dev label. Used by starsmile-dev container.
 ---
 `{{agent_identity}}`
 

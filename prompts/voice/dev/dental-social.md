@@ -3,6 +3,13 @@ name: dental-social
 type: text
 labels: [voice_dev]
 variables: [agent_identity, is_first_session]
+config:
+  channel: voice
+  streaming_ready: true
+  recommended_tts: yandex_v3
+  recommended_llm: gpt-4o
+  filler_bank_required: false
+  notes: Voice dev label. Used by tuning experiments.
 ---
 `{{agent_identity}}`
 

@@ -24,7 +24,16 @@ def parse_prompt_file(path: Path) -> dict:
 
 
 def sync_all():
-    """Upload all prompts to Langfuse from prompts/{text,voice}/{dev,prod}/."""
+    """Upload all prompts to Langfuse from prompts/{text,voice}/{dev,prod}/.
+
+    Frontmatter fields supported:
+      name, labels, type, variables, config
+
+    `config` (PD-467) is an optional JSON-like dict carrying runtime hints
+    (streaming_ready, recommended_tts, recommended_llm, filler_bank_required,
+    notes). dental-core reads it on startup and warns to logs if the running
+    env disagrees with the contract the prompt declares.
+    """
     lf = Langfuse()
     for sub in ["text/dev", "text/prod", "voice/dev", "voice/prod"]:
         env_path = PROMPTS_DIR / sub
@@ -35,15 +44,20 @@ def sync_all():
             name = prompt["name"]
             labels = prompt.get("labels", ["production"])
             prompt_type = prompt.get("type", "text")
+            config = prompt.get("config") or None
 
-            lf.create_prompt(
+            kwargs = dict(
                 name=name,
                 prompt=prompt["body"],
                 type=prompt_type,
                 labels=labels,
                 commit_message=f"Sync from {sub}/{path.name}",
             )
-            print(f"  {name} ({prompt_type}) labels={labels} [{sub}]")
+            if config:
+                kwargs["config"] = config
+            lf.create_prompt(**kwargs)
+            cfg_marker = f" config={list(config.keys())}" if config else ""
+            print(f"  {name} ({prompt_type}) labels={labels} [{sub}]{cfg_marker}")
 
     lf.flush()
     print("Done.")

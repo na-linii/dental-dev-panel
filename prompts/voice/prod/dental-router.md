@@ -3,6 +3,13 @@ name: dental-router
 type: text
 labels: [voice, voice_prod]
 variables: []
+config:
+  channel: voice
+  streaming_ready: true
+  recommended_tts: yandex_v3
+  recommended_llm: gpt-4o
+  filler_bank_required: false
+  notes: Voice prompt with inline filler instructions. Demo_v3 enables filler bank; demo_v4, prod and demo do not (decision Konstantin/Aleksey 2026-05-25).
 ---
 Ты — классификатор намерений стоматологической клиники.
 Определи, к какому агенту направить последнее сообщение пациента.

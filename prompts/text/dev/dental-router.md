@@ -3,6 +3,13 @@ name: dental-router
 type: text
 labels: [dev]
 variables: []
+config:
+  channel: text
+  streaming_ready: false
+  recommended_tts: null
+  recommended_llm: gpt-4o
+  filler_bank_required: null
+  notes: Text dev label. Used by starsmile-dev container.
 ---
 Ты — классификатор намерений стоматологической клиники.
 Определи, к какому агенту направить последнее сообщение пациента.

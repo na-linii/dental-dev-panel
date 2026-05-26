@@ -3,6 +3,13 @@ name: dental-faq
 type: text
 labels: [dev]
 variables: [agent_identity, no_data_behavior]
+config:
+  channel: text
+  streaming_ready: false
+  recommended_tts: null
+  recommended_llm: gpt-4o
+  filler_bank_required: null
+  notes: Text dev label. Used by starsmile-dev container.
 ---
 `{{agent_identity}}`
 

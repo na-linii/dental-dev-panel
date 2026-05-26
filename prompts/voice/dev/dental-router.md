@@ -3,6 +3,13 @@ name: dental-router
 type: text
 labels: [voice_dev]
 variables: []
+config:
+  channel: voice
+  streaming_ready: true
+  recommended_tts: yandex_v3
+  recommended_llm: gpt-4o
+  filler_bank_required: false
+  notes: Voice dev label. Used by tuning experiments.
 ---
 Ты — классификатор намерений стоматологической клиники.
 Определи, к какому агенту направить последнее сообщение пациента.
