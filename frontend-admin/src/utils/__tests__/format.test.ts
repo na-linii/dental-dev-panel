@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDuration, formatDateTime, formatPhone } from '../format'
+import { formatDuration, formatDateTime, formatPhone, stripStress } from '../format'
 
 describe('formatDuration', () => {
   it('returns "—" for null or undefined', () => {
@@ -84,5 +84,18 @@ describe('formatPhone', () => {
 
     // Not E.164 (not starting with +7)
     expect(formatPhone('+89161234567')).toBe('+89161234567')
+  })
+})
+
+describe('stripStress', () => {
+  it('убирает знак + перед ударной гласной', () => {
+    expect(stripStress('Эл+айнер')).toBe('Элайнер')
+  })
+  it('текст без + не меняется', () => {
+    expect(stripStress('Элайнер')).toBe('Элайнер')
+  })
+  it('null и undefined возвращают пустую строку', () => {
+    expect(stripStress(null)).toBe('')
+    expect(stripStress(undefined)).toBe('')
   })
 })
