@@ -705,6 +705,40 @@ async def admin_update_phone(session_id: str, request: Request, admin_user=Depen
     return await _proxy_to_clinic(clinic, "PATCH", f"/admin/api/sessions/{session_id}/phone", body=body)
 
 
+# --- Calls (PD-399, superadmin only) ---
+#
+# Voice calls are sourced from chat_sessions+voice_calls in dental-core. This
+# layer adds defence-in-depth: dental-core also enforces role='superadmin' via
+# require_role, but we fail fast here so non-superadmins don't even reach the
+# clinic. See docs/specs/2026-05-13-voice-admin-contract.md in dental-core.
+
+def _require_superadmin(admin_user: dict) -> None:
+    if admin_user.get("role") != "superadmin":
+        raise HTTPException(403, "Superadmin only")
+
+
+@app.get("/admin/api/calls")
+async def admin_calls(request: Request, admin_user=Depends(_get_admin_user)):
+    _require_superadmin(admin_user)
+    clinic = await _get_clinic_for_admin(admin_user)
+    params = dict(request.query_params)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/calls", params=params)
+
+
+@app.get("/admin/api/calls/{session_id}")
+async def admin_call_detail(session_id: str, admin_user=Depends(_get_admin_user)):
+    _require_superadmin(admin_user)
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/calls/{session_id}")
+
+
+@app.get("/admin/api/calls/{session_id}/recording-url")
+async def admin_call_recording_url(session_id: str, admin_user=Depends(_get_admin_user)):
+    _require_superadmin(admin_user)
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", f"/admin/api/calls/{session_id}/recording-url")
+
+
 # --- Actions ---
 
 @app.get("/admin/api/actions")

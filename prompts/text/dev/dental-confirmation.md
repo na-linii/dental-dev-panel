@@ -1,8 +1,15 @@
 ---
 name: dental-confirmation
 type: text
-labels: [eval, production]
+labels: [dev]
 variables: [agent_identity, appointment_date, appointment_time, doctor_name, clinic_name]
+config:
+  channel: text
+  streaming_ready: false
+  recommended_tts: null
+  recommended_llm: gpt-4o
+  filler_bank_required: null
+  notes: Text dev label. Used by starsmile-dev container.
 ---
 `{{agent_identity}}`
 

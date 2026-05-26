@@ -1,8 +1,15 @@
 ---
 name: dental-router
 type: text
-labels: [dev]
+labels: [eval]
 variables: []
+config:
+  channel: text
+  streaming_ready: false
+  recommended_tts: null
+  recommended_llm: gpt-4o
+  filler_bank_required: null
+  notes: Text prompt. No TTS, no streaming optimisations.
 ---
 Ты — классификатор намерений стоматологической клиники.
 Определи, к какому агенту направить последнее сообщение пациента.

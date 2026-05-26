@@ -4,6 +4,8 @@ import {
   getAdminSessions,
   getAdminSession,
   getAdminActions,
+  getAdminCalls,
+  getAdminCall,
 } from '../api/client'
 import type { AdminAction, AdminPatientSummary } from '../api/client'
 import { isAwaitingOperator, getDisplayConfirmationStatus } from '../config/adminStatuses'
@@ -113,6 +115,28 @@ export function useAdminActions(params?: { status?: string }) {
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+  })
+}
+
+// ── Voice calls (PD-399) ──
+
+export function useAdminCalls(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ['admin', 'calls', params],
+    queryFn: () => getAdminCalls(params),
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useAdminCallDetail(sessionId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'call', sessionId],
+    queryFn: () => getAdminCall(sessionId!),
+    enabled: !!sessionId,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 

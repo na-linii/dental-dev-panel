@@ -174,6 +174,84 @@ export interface AdminBotStatus {
   toggled_by: string | null
 }
 
+// ── Voice calls (PD-399) ──
+
+export type VoiceCallEndReason =
+  | 'in_progress'
+  | 'completed_bot'
+  | 'completed_handoff'
+  | 'dropped'
+  | 'answering_machine'
+  | 'error'
+
+export interface AdminCallSummary {
+  session_id: string
+  livekit_room: string
+  caller_phone: string | null
+  callee_did: string | null
+  started_at: string | null
+  ended_at: string | null
+  duration_ms: number | null
+  end_reason: VoiceCallEndReason | null
+  has_recording: boolean
+  patient: { id: string; name: string | null; public_id: number | null } | null
+  last_message_preview: string | null
+  last_message_at: string | null
+}
+
+export interface VoiceTurnMeta {
+  raw_stt_text: string | null
+  stt_confidence: number | null
+  stt_latency_ms: number | null
+  llm_ttft_ms: number | null
+  llm_total_ms: number | null
+  tts_ttfb_ms: number | null
+  tts_total_ms: number | null
+  total_turn_ms: number | null
+  vad_interruption_count: number
+  was_barge_in: boolean
+  filler_used: string | null
+}
+
+export interface AdminCallDetail {
+  session: {
+    id: string
+    clinic_id: string
+    channel: string
+    controller: string
+    created_at: string | null
+    updated_at: string | null
+  }
+  voice: {
+    livekit_room: string
+    egress_id: string | null
+    caller_phone: string | null
+    callee_did: string | null
+    started_at: string | null
+    ended_at: string | null
+    duration_ms: number | null
+    end_reason: VoiceCallEndReason | null
+    has_recording: boolean
+    recording_format: string | null
+    recording_size_bytes: number | null
+    recording_ready_at: string | null
+  }
+  patient: {
+    id: string
+    name: string | null
+    phone: string | null
+    public_id: number | null
+    ident_patient_id: string | null
+  } | null
+  messages: Array<{
+    id: string
+    role: string
+    content: string
+    created_at: string | null
+    voice_turn_meta: VoiceTurnMeta | null
+  }>
+}
+
 export interface AdminBlocklistItem {
   id: string
   phone: string | null
@@ -325,6 +403,32 @@ export const updateSessionConfirmation = async (sessionId: string, confirmation_
 
 export const updatePatientPhone = async (sessionId: string, phone: string) =>
   (await adminApi.patch(`/sessions/${sessionId}/phone`, { phone })).data
+
+// ── Voice calls (PD-399, superadmin only) ──
+
+export const getAdminCalls = async (params?: {
+  from?: string
+  to?: string
+  end_reason?: VoiceCallEndReason[]
+  caller_phone?: string
+  has_recording?: boolean
+  limit?: number
+  offset?: number
+}): Promise<{ items: AdminCallSummary[]; total: number }> => {
+  const res = await adminApi.get<PaginatedResponse<AdminCallSummary>>('/calls', { params })
+  return { items: res.data.items, total: res.data.total }
+}
+
+export const getAdminCall = async (sessionId: string): Promise<AdminCallDetail> =>
+  (await adminApi.get<AdminCallDetail>(`/calls/${sessionId}`)).data
+
+export interface AdminCallRecordingUrl {
+  url: string
+  expires_at: string
+}
+
+export const getAdminCallRecordingUrl = async (sessionId: string): Promise<AdminCallRecordingUrl> =>
+  (await adminApi.get<AdminCallRecordingUrl>(`/calls/${sessionId}/recording-url`)).data
 
 // ── Actions ──
 
