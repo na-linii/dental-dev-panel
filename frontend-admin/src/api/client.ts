@@ -492,21 +492,13 @@ export interface AdminClinicSettings {
 export const getAdminClinicSettings = async () =>
   (await adminApi.get<AdminClinicSettings>('/settings/clinic')).data
 
-// ── Confirmation schedule (PD-468) ──
-
-export interface ConfirmationSchedule {
-  enabled: boolean
-  schedule_hours: number[]
-}
+// ── Confirmation schedule ──
 
 export const getConfirmationSchedule = async () =>
-  (await adminApi.get<ConfirmationSchedule>('/settings/confirmation-schedule')).data
+  (await adminApi.get<{ schedule_times: string[] }>('/confirmation-schedule')).data
 
-export const updateConfirmationSchedule = async (schedule_hours: number[]) =>
-  (await adminApi.put<{ success: boolean; schedule_hours: number[] }>(
-    '/settings/confirmation-schedule',
-    { schedule_hours },
-  )).data
+export const updateConfirmationSchedule = async (schedule_times: string[]) =>
+  (await adminApi.put<{ ok: boolean; schedule_times: string[] }>('/confirmation-schedule', { schedule_times })).data
 
 export const getAdminBotStatus = async () =>
   (await adminApi.get<AdminBotStatus>('/bot/status')).data
