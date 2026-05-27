@@ -19,6 +19,15 @@ jobs:
           token: ${{ secrets.VAULT_REPO_PAT }}
           path: vault
 
+      - name: Debug event payload
+        run: |
+          echo "=== Commit count ==="
+          jq '.commits | length' "$GITHUB_EVENT_PATH"
+          echo "=== First commit keys ==="
+          jq '.commits[0] | keys' "$GITHUB_EVENT_PATH"
+          echo "=== First commit added/modified/removed ==="
+          jq '{added: .commits[0].added, modified: .commits[0].modified, removed: .commits[0].removed}' "$GITHUB_EVENT_PATH"
+
       - name: Generate changelog entries
         run: |
           REPO_NAME="${{ github.event.repository.name }}"
