@@ -13,6 +13,9 @@ services:
       - hub-api
       - langfuse-web
     restart: unless-stopped
+    mem_limit: 128m
+    mem_reservation: 32m
+    cpus: 0.25
 
   # === Hub API ===
   hub-api:
@@ -41,6 +44,9 @@ services:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
       interval: 30s
       timeout: 5s
+    mem_limit: 512m
+    mem_reservation: 96m
+    cpus: 0.5
 
   # === Langfuse (shared for all clinics) ===
   langfuse-web:
@@ -75,6 +81,9 @@ services:
       LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: langfuse
       LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: langfuse-minio-pass
       LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+    mem_limit: 1500m
+    mem_reservation: 384m
+    cpus: 1.0
 
   langfuse-worker:
     image: langfuse/langfuse-worker:3
@@ -87,6 +96,9 @@ services:
         condition: service_started
     environment:
       <<: *langfuse-env
+    mem_limit: 1500m
+    mem_reservation: 384m
+    cpus: 1.0
 
   langfuse-postgres:
     image: postgres:17
@@ -100,6 +112,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    mem_limit: 512m
+    mem_reservation: 96m
+    cpus: 0.5
 
   langfuse-clickhouse:
     image: clickhouse/clickhouse-server:24.3
@@ -111,9 +126,15 @@ services:
       CLICKHOUSE_PASSWORD: langfuse-ch-pass
     ulimits:
       nofile: { soft: 262144, hard: 262144 }
+    mem_limit: 4g
+    mem_reservation: 1g
+    cpus: 2.0
 
   langfuse-redis:
     image: redis:7-alpine
+    mem_limit: 256m
+    mem_reservation: 32m
+    cpus: 0.5
 
   langfuse-minio:
     image: minio/minio
@@ -122,6 +143,9 @@ services:
     environment:
       MINIO_ROOT_USER: langfuse
       MINIO_ROOT_PASSWORD: langfuse-minio-pass
+    mem_limit: 1g
+    mem_reservation: 256m
+    cpus: 0.5
 
   langfuse-minio-init:
     image: minio/mc
@@ -146,6 +170,9 @@ services:
     depends_on:
       nginx:
         condition: service_started
+    mem_limit: 128m
+    mem_reservation: 32m
+    cpus: 0.25
 
 volumes:
   langfuse_postgres_data:
