@@ -3,6 +3,13 @@ name: dental-booking
 type: text
 labels: [eval, production]
 variables: [agent_identity, booking_rules, service_catalog]
+config:
+  channel: text
+  streaming_ready: false
+  recommended_tts: null
+  recommended_llm: gpt-4o
+  filler_bank_required: null
+  notes: Text prompt. No TTS, no streaming optimisations.
 ---
 `{{agent_identity}}`
 
