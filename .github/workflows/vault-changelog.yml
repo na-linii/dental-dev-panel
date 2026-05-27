@@ -84,8 +84,8 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changelog changes to commit"
           else
-            git pull --rebase origin main
             REPO_NAME="${{ github.event.repository.name }}"
             git commit -m "changelog(${REPO_NAME}): $(date -u +%Y-%m-%d)"
+            git pull --rebase origin main
             git push
           fi
