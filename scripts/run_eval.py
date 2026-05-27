@@ -417,7 +417,7 @@ def call_agent(*, item, **kwargs) -> str:
         message = item.get("input", "")
 
     thread_id = f"eval-{meta.get('id', 'x')}-{int(time.time())}"
-    clinic_id = meta.get("clinic_id", "zubatka")
+    clinic_id = meta.get("clinic_id", "starsmile")
 
     channel = meta.get("channel", "tg_bot")
 
@@ -510,7 +510,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="LLM-as-Judge eval for dental agent")
     parser.add_argument("--host", default="158.160.240.47:8080", help="Agent host:port")
-    parser.add_argument("--clinic", default="zubatka", help="Clinic ID")
+    parser.add_argument("--clinic", default="starsmile", help="Clinic ID")
     parser.add_argument("--name", default=None, help="Experiment name")
     parser.add_argument("--seed-only", action="store_true", help="Only seed dataset, don't run eval")
     parser.add_argument("--reseed", action="store_true", help="Re-seed: add missing items to existing dataset")
