@@ -35,6 +35,10 @@ services:
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
       DEMO_VOICE_ENABLED: ${DEMO_VOICE_ENABLED:-true}
+      # PD-472: 'prod' makes sync_prompts.py read prompts/{text,voice}/*.md
+      # and assign labels production / voice_prod. Override in host .env to
+      # 'dev' (or unset for legacy mode) when needed.
+      PROMPT_SYNC_ENV: ${PROMPT_SYNC_ENV:-prod}
     depends_on:
       langfuse-web:
         condition: service_started

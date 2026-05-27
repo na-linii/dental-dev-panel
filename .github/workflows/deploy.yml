@@ -77,7 +77,8 @@ jobs:
             curl -sf http://localhost:8880/ > /dev/null && echo "Hub healthy" || echo "Hub unhealthy"
 
   # === Notify dental-core to run voice eval on prompt changes ===
-  # Filter by paths: prompts/voice/{prod,dev}/** → dispatches separate event types.
+  # Filter by paths: prompts/voice/*.md (PD-472) or prompts/voice/{prod,dev}/**
+  # (legacy, kept until cleanup PR). Dispatches separate event types per env.
   # Receiver: dental-core/.github/workflows/eval-voice-smoke.yml (repository_dispatch).
   # Requires secret DENTAL_CORE_DISPATCH_PAT (fine-grained PAT, Actions:write on na-linii/dental-core).
   notify-voice-eval:
@@ -97,6 +98,7 @@ jobs:
           ref: ${{ github.sha }}
           filters: |
             voice_prod:
+              - 'prompts/voice/*.md'
               - 'prompts/voice/prod/**'
             voice_dev:
               - 'prompts/voice/dev/**'
