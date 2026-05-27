@@ -354,13 +354,20 @@ async def update_confirmation_schedule_endpoint(clinic_id: str, body: dict, user
         # Save to hub database
         await update_confirmation_schedule(clinic_id, schedule_hours)
 
-        # Also notify the running agent to update its runtime config
+        # Also notify the running agent to update its runtime config.
+        # Uses the new PD-468 admin endpoint that mutates app.state.confirmation_config
+        # so the running scheduler sees the change on its next tick.
         if not _validate_server_host(clinic['server_host']):
             logger.warning("Cannot notify agent: invalid server_host")
         else:
-            url = f"http://{clinic['server_host']}:{clinic['server_port']}/confirmation-schedule"
+            url = f"http://{clinic['server_host']}:{clinic['server_port']}/admin/api/settings/confirmation-schedule"
             try:
-                await _http_client.put(url, json={"schedule_hours": schedule_hours}, timeout=5)
+                await _http_client.put(
+                    url,
+                    json={"schedule_hours": schedule_hours},
+                    headers={"X-Hub-Secret": HUB_SERVICE_SECRET},
+                    timeout=5,
+                )
                 logger.info("Notified agent %s of schedule update: %s", clinic_id, schedule_hours)
             except Exception as e:
                 logger.warning("Failed to notify agent %s of schedule update: %s", clinic_id, e)
