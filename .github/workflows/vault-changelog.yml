@@ -61,15 +61,11 @@ jobs:
               echo ""
               echo "### Изменённые файлы"
 
-              echo "$commit" | jq -r '.added[]?' | while read -r f; do
-                [ -n "$f" ] && echo "- \`${f}\` (A)"
-              done
-              echo "$commit" | jq -r '.modified[]?' | while read -r f; do
-                [ -n "$f" ] && echo "- \`${f}\` (M)"
-              done
-              echo "$commit" | jq -r '.removed[]?' | while read -r f; do
-                [ -n "$f" ] && echo "- \`${f}\` (D)"
-              done
+              echo "$commit" | jq -r '
+                (.added[]? | "- `\(.)` (A)"),
+                (.modified[]? | "- `\(.)` (M)"),
+                (.removed[]? | "- `\(.)` (D)")
+              '
             } > "$FILEPATH"
 
             echo "Created: ${FILEPATH}"
