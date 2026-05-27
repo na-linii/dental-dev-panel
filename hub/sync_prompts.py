@@ -25,8 +25,8 @@ from langfuse import Langfuse
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
 BRANCH_LABELS = {
-    ("text", "prod"): ["production"],
-    ("text", "dev"): ["dev"],
+    ("text", "prod"): ["text_prod"],
+    ("text", "dev"): ["text_dev"],
     ("voice", "prod"): ["voice_prod"],
     ("voice", "dev"): ["voice_dev"],
 }
