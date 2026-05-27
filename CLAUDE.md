@@ -116,16 +116,16 @@ Layout: **10 файлов** = 5 промптов × 2 канала (text/voice).
 
 Sync: `hub/sync_prompts.py` — загрузка в Langfuse при старте hub-api (lifespan event).
 Labels определяются `PROMPT_SYNC_ENV` env (PD-472), **не** frontmatter:
-- `PROMPT_SYNC_ENV=prod` (default в `docker-compose.yml`) → text → `[production]`, voice → `[voice_prod]`
-- `PROMPT_SYNC_ENV=dev` (для dev-ветки деплоя) → text → `[dev]`, voice → `[voice_dev]`
+- `PROMPT_SYNC_ENV=prod` (default в `docker-compose.yml`) → text → `[text_prod]`, voice → `[voice_prod]`
+- `PROMPT_SYNC_ENV=dev` (для dev-ветки деплоя) → text → `[text_dev]`, voice → `[voice_dev]`
 
-То есть **git branch = environment**: push в `main` → prod labels, push в `dev` → dev labels. Drift между «параллельными» dev/prod файлами физически невозможен.
+То есть **git branch = environment**: push в `main` → prod labels, push в `dev` → dev labels. Drift между «параллельными» dev/prod файлами физически невозможен. Naming унифицирован по схеме `<channel>_<env>` (PD-473).
 
 dental-core consumers pick labels by channel:
-- text channels (telegram/whatsapp/max) → env `LANGFUSE_PROMPT_LABEL` (default `production`)
-- voice channel → env `LANGFUSE_VOICE_LABEL` (default `voice`; prod 8081 uses `voice_prod`, dev 8091/8093 use `voice_dev`)
+- text channels (telegram/whatsapp/max) → env `LANGFUSE_PROMPT_LABEL` (default `text_prod`)
+- voice channel → env `LANGFUSE_VOICE_LABEL` (default `voice_prod`)
 
-Legacy `voice` label (alias of voice_prod) kept untouched in Langfuse — 12 eval-контейнеры читают через него. Будет удалён после миграции eval-контейнеров (отдельная сессия).
+Legacy `voice` label — удалён в PD-473 (eval-контейнеры читают frozen-версии до отдельной миграции).
 
 ## Repos
 
