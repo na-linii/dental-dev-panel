@@ -3,6 +3,13 @@ name: dental-booking
 type: text
 labels: [voice, voice_prod]
 variables: [agent_identity, booking_rules, service_catalog]
+config:
+  channel: voice
+  streaming_ready: true
+  recommended_tts: yandex_v3
+  recommended_llm: gpt-4o
+  filler_bank_required: false
+  notes: Voice prompt. Demo_v3 has filler bank, demo_v4 / prod / demo do not (decision Konstantin/Aleksey 2026-05-25).
 ---
 `{{agent_identity}}`
 

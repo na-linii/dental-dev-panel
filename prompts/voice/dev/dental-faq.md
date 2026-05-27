@@ -3,6 +3,13 @@ name: dental-faq
 type: text
 labels: [voice_dev]
 variables: [agent_identity, no_data_behavior]
+config:
+  channel: voice
+  streaming_ready: true
+  recommended_tts: yandex_v3
+  recommended_llm: gpt-4o
+  filler_bank_required: false
+  notes: Voice dev label for tuning experiments.
 ---
 `{{agent_identity}}`
 

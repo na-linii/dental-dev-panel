@@ -656,7 +656,7 @@ export function ClinicCreatePage() {
                 type="text"
                 value={form.clinic_id}
                 onChange={(e) => handleClinicIdChange(e.target.value)}
-                placeholder="zubatka"
+                placeholder="clinic_id"
                 className={INPUT_MONO}
               />
               <p className="text-[10px] text-[#475569] mt-1">Auto-generated from name. Edit to override.</p>
