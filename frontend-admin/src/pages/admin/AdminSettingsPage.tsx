@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Power, ShieldAlert, AlertTriangle, RefreshCw, Clock, ShieldBan, Plus, Trash2, Phone, Send, Loader2 } from 'lucide-react'
+import { Power, ShieldAlert, AlertTriangle, RefreshCw, Clock, ShieldBan, Plus, Trash2, Phone, Send, Loader2, Bell } from 'lucide-react'
 import { pluralize } from '../../utils/pluralize'
 import { TOAST_DURATION_MS } from '../../utils/constants'
 import {
@@ -7,6 +7,7 @@ import {
   getAdminBlocklist, addAdminBlocklistEntry, removeAdminBlocklistEntry,
   startTelegramImport, cancelTelegramImport, getTelegramImportStatus, getTelegramImportHistory,
   startMaxUserbotImport, cancelMaxUserbotImport, getMaxUserbotImportStatus, getMaxUserbotImportHistory,
+  getConfirmationSchedule, updateConfirmationSchedule,
 } from '../../api/client'
 import type {
   AdminBotStatus, AdminBlocklistItem,
@@ -190,6 +191,7 @@ export function AdminSettingsPage() {
       </div>
 
       {isSuperadmin && <RedButtonSection />}
+      <ConfirmationScheduleSection />
       <BlocklistSection />
 
       {/* Telegram Import (superadmin only) */}
@@ -376,6 +378,169 @@ function MaxUserbotImportSection() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Confirmation Schedule (PD-468) ──
+
+function ConfirmationScheduleSection() {
+  const [hours, setHours] = useState<number[]>([])
+  const [enabled, setEnabled] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [newHour, setNewHour] = useState<number>(9)
+
+  const fetchSchedule = useCallback(async () => {
+    try {
+      setError(null)
+      const data = await getConfirmationSchedule()
+      setEnabled(data.enabled)
+      setHours(data.schedule_hours)
+    } catch {
+      setError('Не удалось загрузить расписание')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchSchedule() }, [fetchSchedule])
+
+  const showError = (msg: string) => {
+    setError(msg)
+    setTimeout(() => setError(null), TOAST_DURATION_MS)
+  }
+
+  const persistHours = async (next: number[]): Promise<boolean> => {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await updateConfirmationSchedule(next)
+      setHours(res.schedule_hours)
+      return true
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      showError(typeof detail === 'string' ? detail : 'Не удалось сохранить')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleAdd = async () => {
+    if (newHour < 0 || newHour > 23) {
+      showError('Час должен быть от 0 до 23')
+      return
+    }
+    if (hours.includes(newHour)) {
+      showError(`${String(newHour).padStart(2, '0')}:00 уже добавлен`)
+      return
+    }
+    await persistHours([...hours, newHour].sort((a, b) => a - b))
+  }
+
+  const handleRemove = async (hour: number) => {
+    if (hours.length <= 1) {
+      showError('Должен остаться хотя бы один час')
+      return
+    }
+    await persistHours(hours.filter(h => h !== hour))
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-2xl p-8 text-center">
+        <RefreshCw className="w-5 h-5 text-text-tertiary animate-spin mx-auto mb-2" />
+        <p className="text-text-tertiary text-sm">Загрузка...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] shadow-sm dark:shadow-none rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 md:p-5 border-b border-border-light dark:border-white/[0.04]">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <Bell className="w-[18px] h-[18px]" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-primary">Время напоминаний</p>
+            <p className="text-xs text-text-tertiary">Часы рассылки напоминаний о визитах (МСК)</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mx-4 mt-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 mt-0.5 shrink-0" />
+          <p className="text-sm text-amber-700 dark:text-amber-300 flex-1">{error}</p>
+        </div>
+      )}
+
+      <div className="p-4 md:p-5 space-y-4">
+        {!enabled ? (
+          <div className="flex items-start gap-2 p-3 bg-surface-secondary dark:bg-white/[0.02] rounded-xl">
+            <ShieldAlert className="w-4 h-4 text-text-tertiary mt-0.5 shrink-0" />
+            <p className="text-sm text-text-tertiary">
+              Расписание подтверждений отключено в конфигурации клиники. Включите его в YAML-конфиге и перезапустите агент, чтобы редактировать расписание здесь.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Current hours badges */}
+            <div className="flex flex-wrap gap-2">
+              {hours.length === 0 ? (
+                <p className="text-sm text-text-tertiary">Часы не настроены</p>
+              ) : (
+                hours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="inline-flex items-center gap-2 bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl pl-3 pr-1.5 py-1.5 tabular-nums"
+                  >
+                    <span className="text-sm font-medium text-text-primary">
+                      {String(hour).padStart(2, '0')}:00
+                    </span>
+                    <button
+                      onClick={() => handleRemove(hour)}
+                      disabled={saving || hours.length <= 1}
+                      title={hours.length <= 1 ? 'Должен остаться хотя бы один час' : 'Удалить'}
+                      className="w-6 h-6 flex items-center justify-center rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add new hour */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border-light dark:border-white/[0.04]">
+              <span className="text-xs text-text-tertiary">Добавить:</span>
+              <select
+                value={newHour}
+                onChange={(e) => setNewHour(Number(e.target.value))}
+                disabled={saving}
+                className="bg-surface-secondary dark:bg-white/[0.04] border border-border dark:border-white/[0.08] rounded-xl px-3 py-2 text-sm text-text-primary tabular-nums focus:outline-none focus:border-accent/40 transition-all duration-200"
+              >
+                {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                  <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                ))}
+              </select>
+              <button
+                onClick={handleAdd}
+                disabled={saving || hours.includes(newHour)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-accent-soft text-accent border border-accent/20 rounded-xl text-xs font-medium hover:bg-accent/15 dark:hover:bg-accent/15 hover:border-accent/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Добавить
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -942,6 +942,12 @@ async def admin_clinic_settings(admin_user=Depends(_get_admin_user)):
     return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/clinic")
 
 
+@app.get("/admin/api/settings/confirmation-schedule")
+async def admin_get_confirmation_schedule(admin_user=Depends(_get_admin_user)):
+    clinic = await _get_clinic_for_admin(admin_user)
+    return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/confirmation-schedule")
+
+
 @app.put("/admin/api/settings/confirmation-schedule")
 async def admin_update_confirmation_schedule(request: Request, admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
