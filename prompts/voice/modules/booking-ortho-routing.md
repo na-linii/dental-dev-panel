@@ -1,6 +1,6 @@
 ---
 name: booking-ortho-routing
-type: voice
+type: text
 variables: []
 config:
   channel: voice

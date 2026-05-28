@@ -1,6 +1,6 @@
 ---
 name: faq-no-data
-type: voice
+type: text
 variables: []
 config:
   channel: voice
