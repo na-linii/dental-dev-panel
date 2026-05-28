@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { clinicsApi } from '../api/client'
 import { ConfigSection, SECTION_COLORS } from '../components/ConfigSection'
 import { ConfigField } from '../components/ConfigField'
@@ -14,6 +14,7 @@ function get(obj: any, path: string): any {
 
 export function ClinicConfigTab() {
   const { clinicId } = useParams<{ clinicId: string }>()
+  const queryClient = useQueryClient()
   const [botDisabled, setBotDisabled] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
@@ -236,13 +237,14 @@ export function ClinicConfigTab() {
 
         <div className="mt-4">
           <ReminderScheduleEditor
-            times={
+            hours={
               Array.isArray(confirmation.schedule_hours)
                 ? confirmation.schedule_hours
                 : (cfg.confirmation_schedule_hours || [11, 17])
             }
-            onSave={async (times) => {
-              await clinicsApi.updateConfirmationSchedule(clinicId!, times)
+            onSave={async (hours) => {
+              await clinicsApi.updateConfirmationSchedule(clinicId!, hours)
+              await queryClient.invalidateQueries({ queryKey: ['config', clinicId] })
             }}
             isLoading={isLoading}
           />

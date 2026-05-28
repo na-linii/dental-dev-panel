@@ -1,60 +1,60 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ReminderScheduleEditorProps {
-  times: number[] // e.g. [11, 17]
-  onSave: (times: number[]) => Promise<void>
+  hours: number[]
+  onSave: (hours: number[]) => Promise<void>
   isLoading?: boolean
   error?: string | null
 }
 
-export function ReminderScheduleEditor({ times, onSave, isLoading = false, error = null }: ReminderScheduleEditorProps) {
-  const [editTimes, setEditTimes] = useState<number[]>(times || [11, 17])
-  const [newTimeInput, setNewTimeInput] = useState('')
+const sortHours = (xs: number[]) => [...xs].sort((a, b) => a - b)
+
+export function ReminderScheduleEditor({ hours, onSave, isLoading = false, error = null }: ReminderScheduleEditorProps) {
+  const [editHours, setEditHours] = useState<number[]>(sortHours(hours || [11, 17]))
+  const [newHourInput, setNewHourInput] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(error)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
-  const handleAddTime = () => {
-    const hour = parseInt(newTimeInput, 10)
+  // Sync local state when parent's `hours` prop changes (e.g. after invalidateQueries refetch).
+  useEffect(() => {
+    setEditHours(sortHours(hours || [11, 17]))
+  }, [hours])
+
+  const handleAddHour = () => {
+    const hour = parseInt(newHourInput, 10)
     if (isNaN(hour) || hour < 0 || hour > 23) {
       setSaveError('Hour must be between 0 and 23')
       return
     }
-    if (editTimes.includes(hour)) {
+    if (editHours.includes(hour)) {
       setSaveError('This hour already exists')
       return
     }
-    const sorted = [...editTimes, hour].sort((a, b) => a - b)
-    setEditTimes(sorted)
-    setNewTimeInput('')
+    setEditHours(sortHours([...editHours, hour]))
+    setNewHourInput('')
     setSaveError(null)
   }
 
-  const handleRemoveTime = (hour: number) => {
-    // Only allow removing the last (most recently added) time
-    if (editTimes[editTimes.length - 1] !== hour) {
-      setSaveError('Can only remove the most recently added time')
+  const handleRemoveHour = (hour: number) => {
+    if (editHours.length <= 1) {
+      setSaveError('Must keep at least one reminder hour')
       return
     }
-    const newTimes = editTimes.filter(h => h !== hour)
-    if (newTimes.length === 0) {
-      setSaveError('Must keep at least one reminder time')
-      return
-    }
-    setEditTimes(newTimes)
+    setEditHours(editHours.filter((h) => h !== hour))
     setSaveError(null)
   }
 
   const handleSave = async () => {
-    if (editTimes.length === 0) {
-      setSaveError('Must have at least one reminder time')
+    if (editHours.length === 0) {
+      setSaveError('Must have at least one reminder hour')
       return
     }
     setIsSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
     try {
-      await onSave(editTimes)
+      await onSave(editHours)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (e) {
@@ -65,27 +65,28 @@ export function ReminderScheduleEditor({ times, onSave, isLoading = false, error
   }
 
   const handleCancel = () => {
-    setEditTimes(times || [11, 17])
-    setNewTimeInput('')
+    setEditHours(sortHours(hours || [11, 17]))
+    setNewHourInput('')
     setSaveError(null)
   }
 
-  const isModified = JSON.stringify(editTimes.sort()) !== JSON.stringify((times || [11, 17]).sort())
+  const isModified =
+    JSON.stringify(sortHours(editHours)) !== JSON.stringify(sortHours(hours || [11, 17]))
 
   return (
     <div className="bg-[#0a0a1a] rounded-lg p-4 space-y-4 border border-[#1e293b]">
       <div>
         <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-2">Reminder Schedule</h4>
         <p className="text-[10px] text-[#64748b] mb-3">
-          Current reminder times (MSK). Delete only the last added time, then the primary time.
+          Reminder hours (MSK). At least one hour is required.
         </p>
 
-        {/* Current times display */}
+        {/* Current hours display */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {editTimes.length === 0 ? (
-            <span className="text-xs text-[#64748b]">No times configured</span>
+          {editHours.length === 0 ? (
+            <span className="text-xs text-[#64748b]">No hours configured</span>
           ) : (
-            editTimes.map((hour, idx) => (
+            editHours.map((hour) => (
               <div
                 key={hour}
                 className="flex items-center gap-2 bg-[#111127] border border-[#1e293b] rounded-lg px-3 py-1.5"
@@ -93,38 +94,35 @@ export function ReminderScheduleEditor({ times, onSave, isLoading = false, error
                 <span className="text-sm font-semibold text-white">
                   {String(hour).padStart(2, '0')}:00
                 </span>
-                {idx === editTimes.length - 1 && editTimes.length > 1 && (
+                {editHours.length > 1 && (
                   <button
-                    onClick={() => handleRemoveTime(hour)}
+                    onClick={() => handleRemoveHour(hour)}
                     className="text-[#f87171] hover:text-[#fca5a5] cursor-pointer text-sm font-bold ml-1"
-                    title="Remove (only latest can be removed)"
+                    title="Remove"
                   >
                     ✕
                   </button>
-                )}
-                {editTimes.length === 1 && (
-                  <span className="text-[10px] text-[#64748b] ml-1">(primary)</span>
                 )}
               </div>
             ))
           )}
         </div>
 
-        {/* Add new time */}
+        {/* Add new hour */}
         <div className="flex items-center gap-2 mb-3">
           <input
             type="number"
             min="0"
             max="23"
-            value={newTimeInput}
-            onChange={(e) => setNewTimeInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddTime()}
+            value={newHourInput}
+            onChange={(e) => setNewHourInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddHour()}
             placeholder="Hour (0-23)"
             className="bg-[#111127] border border-[#1e293b] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#7dd3fc] w-20"
           />
           <button
-            onClick={handleAddTime}
-            disabled={!newTimeInput || isLoading || isSaving}
+            onClick={handleAddHour}
+            disabled={!newHourInput || isLoading || isSaving}
             className="px-3 py-1.5 bg-[#1e293b] hover:bg-[#2a3f5f] text-white text-xs font-semibold rounded cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             +

@@ -385,63 +385,72 @@ function MaxUserbotImportSection() {
 // ── Confirmation Schedule ──
 
 function ConfirmationScheduleSection() {
-  const [times, setTimes] = useState<string[]>([])
+  const [hours, setHours] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [newHour, setNewHour] = useState(9)
-  const [newMinute, setNewMinute] = useState(0)
 
-  const formatTime = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const formatHour = (h: number) => `${String(h).padStart(2, '0')}:00`
 
   useEffect(() => {
     getConfirmationSchedule()
-      .then((data) => setTimes(data.schedule_times ?? []))
+      .then((data) => setHours(data.schedule_hours ?? []))
       .catch(() => setError('Не удалось загрузить расписание'))
       .finally(() => setLoading(false))
   }, [])
 
+  const showError = (msg: string) => {
+    setError(msg)
+    setTimeout(() => setError(null), TOAST_DURATION_MS)
+  }
+
+  const handleSaveErr = (e: unknown) => {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    if (status === 409) {
+      showError('Подтверждения отключены в YAML-конфиге клиники')
+    } else {
+      showError('Не удалось сохранить')
+    }
+  }
+
   const handleAdd = async () => {
-    const newTime = formatTime(newHour, newMinute)
-    if (times.includes(newTime)) {
-      setError('Это время уже добавлено')
-      setTimeout(() => setError(null), TOAST_DURATION_MS)
+    if (hours.includes(newHour)) {
+      showError('Этот час уже добавлен')
       return
     }
     setSaving(true)
     setError(null)
     try {
-      const updated = [...times, newTime].sort()
+      const updated = [...hours, newHour].sort((a, b) => a - b)
       const res = await updateConfirmationSchedule(updated)
-      setTimes(res.schedule_times)
+      setHours(res.schedule_hours)
       setShowAdd(false)
-    } catch {
-      setError('Не удалось сохранить')
-      setTimeout(() => setError(null), TOAST_DURATION_MS)
+    } catch (e) {
+      handleSaveErr(e)
     } finally {
       setSaving(false)
     }
   }
 
-  const handleRemove = async (time: string) => {
-    if (times.length <= 1) return
+  const handleRemove = async (hour: number) => {
+    if (hours.length <= 1) return
 
     setSaving(true)
     setError(null)
     try {
-      const updated = times.filter((t) => t !== time)
+      const updated = hours.filter((h) => h !== hour)
       const res = await updateConfirmationSchedule(updated)
-      setTimes(res.schedule_times)
-    } catch {
-      setError('Не удалось сохранить')
-      setTimeout(() => setError(null), TOAST_DURATION_MS)
+      setHours(res.schedule_hours)
+    } catch (e) {
+      handleSaveErr(e)
     } finally {
       setSaving(false)
     }
   }
 
-  const canRemove = (_idx: number) => times.length > 1
+  const canRemove = () => hours.length > 1
 
   const isDark = document.documentElement.classList.contains('dark')
   const selectClass = "bg-surface-secondary dark:bg-white/15 border border-border dark:border-white/20 rounded-xl px-3 py-2.5 text-sm text-text-primary dark:text-white focus:outline-none focus:border-accent/40 transition-all duration-200 tabular-nums"
@@ -484,17 +493,11 @@ function ConfirmationScheduleSection() {
         <div className="p-4 border-b border-border-light dark:border-white/[0.04] bg-surface-secondary dark:bg-white/[0.01]">
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <label className="text-xs text-muted-foreground uppercase mb-1 block">Время отправки</label>
+              <label className="text-xs text-muted-foreground uppercase mb-1 block">Час отправки</label>
               <div className="flex items-center gap-2">
-                <select value={newHour} onChange={(e) => setNewHour(Number(e.target.value))} className={selectClass + " w-20"}>
+                <select value={newHour} onChange={(e) => setNewHour(Number(e.target.value))} className={selectClass + " w-24"}>
                   {Array.from({ length: 24 }, (_, i) => i).map((h) => (
-                    <option key={h} value={h} style={optionStyle}>{String(h).padStart(2, '0')}</option>
-                  ))}
-                </select>
-                <span className="text-lg font-semibold text-text-primary">:</span>
-                <select value={newMinute} onChange={(e) => setNewMinute(Number(e.target.value))} className={selectClass + " w-20"}>
-                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
-                    <option key={m} value={m} style={optionStyle}>{String(m).padStart(2, '0')}</option>
+                    <option key={h} value={h} style={optionStyle}>{String(h).padStart(2, '0')}:00</option>
                   ))}
                 </select>
               </div>
@@ -502,7 +505,7 @@ function ConfirmationScheduleSection() {
             <div className="flex flex-col gap-2 pt-5">
               <button
                 onClick={handleAdd}
-                disabled={saving || times.includes(formatTime(newHour, newMinute))}
+                disabled={saving || hours.includes(newHour)}
                 className="flex items-center gap-1.5 px-3.5 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/90 transition-all duration-200 disabled:opacity-30"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
@@ -524,26 +527,26 @@ function ConfirmationScheduleSection() {
         <div className="px-5 py-8 flex justify-center">
           <Loader2 className="w-5 h-5 animate-spin text-text-tertiary" />
         </div>
-      ) : times.length === 0 ? (
+      ) : hours.length === 0 ? (
         <div className="px-5 py-8 text-center">
           <p className="text-text-muted text-sm">Расписание не настроено</p>
         </div>
       ) : (
         <div className="divide-y divide-border-light dark:divide-white/[0.04]">
-          {times.map((time, idx) => (
-            <div key={time} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 group">
+          {hours.map((hour, idx) => (
+            <div key={hour} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors duration-150 group">
               <div className="flex items-center gap-3">
                 <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-text-primary tabular-nums">{time}</p>
+                  <p className="text-sm font-medium text-text-primary tabular-nums">{formatHour(hour)}</p>
                   <p className="text-xs text-text-muted">
                     {idx === 0 ? 'Первичное напоминание' : `Повторное напоминание #${idx}`}
                   </p>
                 </div>
               </div>
-              {canRemove(idx) && (
+              {canRemove() && (
                 <button
-                  onClick={() => handleRemove(time)}
+                  onClick={() => handleRemove(hour)}
                   disabled={saving}
                   className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-tertiary hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200 flex-shrink-0 disabled:opacity-30"
                 >
@@ -555,9 +558,9 @@ function ConfirmationScheduleSection() {
         </div>
       )}
 
-      {times.length > 0 && (
+      {hours.length > 0 && (
         <div className="text-center text-xs text-text-muted py-2.5 border-t border-border-light dark:border-white/[0.04]">
-          {times.length} {pluralize(times.length, 'напоминание', 'напоминания', 'напоминаний')} в день
+          {hours.length} {pluralize(hours.length, 'напоминание', 'напоминания', 'напоминаний')} в день
         </div>
       )}
     </div>
