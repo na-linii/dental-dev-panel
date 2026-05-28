@@ -111,5 +111,5 @@ jobs:
           curl -sS -X POST -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $PAT" \
             https://api.github.com/repos/na-linii/dental-core/dispatches \
-            -d '{"event_type":"voice-prompts-prod-changed","client_payload":{"sha":"${{ github.sha }}","label":"voice"}}'
+            -d '{"event_type":"voice-prompts-prod-changed","client_payload":{"sha":"${{ github.sha }}","label":"voice_prod"}}'
           echo "Dispatched voice-prompts-prod-changed (sha=${{ github.sha }})"
