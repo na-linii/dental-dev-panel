@@ -90,6 +90,25 @@ def sync_all():
                 f"[{channel}/{path.name}]{cfg_marker}"
             )
 
+        modules_dir = channel_dir / "modules"
+        if modules_dir.exists():
+            for path in sorted(modules_dir.glob("*.md")):
+                prompt = parse_prompt_file(path)
+                name = prompt["name"]
+                prompt_type = prompt.get("type", "text")
+                config = prompt.get("config") or None
+                kwargs = dict(
+                    name=name,
+                    prompt=prompt["body"],
+                    type=prompt_type,
+                    labels=labels,
+                    commit_message=f"Sync from {channel}/modules/{path.name}",
+                )
+                if config:
+                    kwargs["config"] = config
+                lf.create_prompt(**kwargs)
+                print(f"  [module] {name} ({prompt_type}) labels={labels} [{channel}/modules/{path.name}]")
+
     lf.flush()
     print("Done.")
 
