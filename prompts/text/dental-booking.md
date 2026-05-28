@@ -1,7 +1,7 @@
 ---
 name: dental-booking
 type: text
-variables: [agent_identity, booking_rules, service_catalog]
+variables: [agent_identity, booking_rules, service_catalog, booking_decision_rules]
 config:
   channel: text
   streaming_ready: false
@@ -233,6 +233,8 @@ config:
 ## Каталог услуг
 
 {{service_catalog}}
+
+{{booking_decision_rules}}
 
 ## Правила клиники
 
