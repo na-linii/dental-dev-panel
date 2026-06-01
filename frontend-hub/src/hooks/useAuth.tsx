@@ -1,8 +1,19 @@
-import { useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { clinicsApi } from '../api/client'
 import type { User } from '../types'
 
-export function useAuth() {
+interface AuthContextValue {
+  user: User | null
+  loading: boolean
+  login: (token: string) => Promise<void>
+  logout: () => void
+  isAuthenticated: boolean
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -40,7 +51,23 @@ export function useAuth() {
   const logout = useCallback(() => {
     localStorage.clear()
     setUser(null)
+    // Full reload returns to a clean Login screen and drops any in-memory cache.
+    window.location.href = '/'
   }, [])
 
-  return { user, loading, login, logout, isAuthenticated: !!user }
+  const value: AuthContextValue = {
+    user,
+    loading,
+    login,
+    logout,
+    isAuthenticated: !!user,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
 }

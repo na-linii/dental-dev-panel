@@ -1,7 +1,6 @@
 ---
 name: dental-faq
 type: text
-labels: [voice_dev]
 variables: [agent_identity, no_data_behavior]
 config:
   channel: voice
@@ -9,7 +8,7 @@ config:
   recommended_tts: yandex_v3
   recommended_llm: gpt-4o
   filler_bank_required: false
-  notes: Voice dev label for tuning experiments.
+  notes: Voice prompt. Demo_v3 has filler bank, demo_v4 / prod / demo do not (decision Konstantin/Aleksey 2026-05-25).
 ---
 `{{agent_identity}}`
 

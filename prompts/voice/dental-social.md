@@ -1,7 +1,6 @@
 ---
 name: dental-social
 type: text
-labels: [voice, voice_prod]
 variables: [agent_identity, is_first_session]
 config:
   channel: voice

@@ -1,7 +1,6 @@
 ---
 name: dental-social
 type: text
-labels: [dev]
 variables: [agent_identity, is_first_session]
 config:
   channel: text
@@ -9,7 +8,7 @@ config:
   recommended_tts: null
   recommended_llm: gpt-4o
   filler_bank_required: null
-  notes: Text dev label.
+  notes: Text prompt. No TTS, no streaming optimisations.
 ---
 `{{agent_identity}}`
 

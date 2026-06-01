@@ -27,7 +27,7 @@ export function ClinicsPage() {
           <ClinicCard
             key={c.id}
             clinic={c}
-            onClick={() => navigate(`/clinic/${c.clinic_id}`)}
+            onClick={() => navigate(`/clinic/${c.id}`)}
           />
         ))}
 
