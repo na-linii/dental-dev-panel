@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from hub.auth import verify_github_token
-from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy
+from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy, update_confirmation_schedule
 from hub.traces_query import build_traces_params
 
 logger = logging.getLogger(__name__)
@@ -334,6 +334,65 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
     except Exception as e:
         logger.error("proxy_chat failed for %s: %s", clinic_id, e)
         raise HTTPException(502, "Failed to connect to clinic agent")
+
+
+@app.put("/api/clinics/{clinic_id}/confirmation-schedule")
+async def update_confirmation_schedule_endpoint(clinic_id: str, body: dict, user=Depends(verify_github_token)):
+    """Update confirmation reminder schedule for a clinic."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404, "Clinic not found")
+
+    schedule_hours = body.get("schedule_hours")
+    if not isinstance(schedule_hours, list) or not all(isinstance(h, int) for h in schedule_hours):
+        raise HTTPException(400, "schedule_hours must be a list of integers")
+    if len(schedule_hours) == 0:
+        raise HTTPException(400, "schedule_hours must have at least one hour")
+    if any(h < 0 or h > 23 for h in schedule_hours):
+        raise HTTPException(400, "All hours must be between 0 and 23")
+
+    try:
+        # Save to hub database
+        await update_confirmation_schedule(clinic_id, schedule_hours)
+
+        # Also notify the running agent to update its runtime config.
+        # Uses the new PD-468 admin endpoint that mutates app.state.confirmation_config
+        # so the running scheduler sees the change on its next tick.
+        agent_synced = False
+        if not _validate_server_host(clinic['server_host']):
+            logger.warning("Cannot notify agent %s: invalid server_host", clinic_id)
+        else:
+            url = f"http://{clinic['server_host']}:{clinic['server_port']}/admin/api/settings/confirmation-schedule"
+            try:
+                resp = await _http_client.put(
+                    url,
+                    json={"schedule_hours": schedule_hours},
+                    headers={"X-Hub-Secret": HUB_SERVICE_SECRET},
+                    timeout=5,
+                )
+            except Exception as e:
+                # httpx raises only on network/timeout — agent 4xx/5xx checked below.
+                logger.warning("Failed to reach agent %s for schedule update: %s", clinic_id, e)
+            else:
+                # Variant A: hub DB is source of truth, agent sync is best-effort.
+                # Only 409 (scheduler disabled in YAML) is surfaced to the operator;
+                # any other non-2xx leaves agent_synced=False and returns 200 — the
+                # schedule is saved and will apply on the next agent restart/tick.
+                if resp.status_code == 409:
+                    raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
+                agent_synced = resp.is_success
+                if not agent_synced:
+                    logger.warning(
+                        "Agent %s rejected schedule update: HTTP %s",
+                        clinic_id, resp.status_code,
+                    )
+
+        return {"ok": True, "agent_synced": agent_synced}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to update confirmation schedule for %s: %s", clinic_id, e)
+        raise HTTPException(500, "Failed to update confirmation schedule")
 
 
 # --- Traces (Langfuse-powered) ---
@@ -908,6 +967,96 @@ async def admin_bot_toggle(request: Request, admin_user=Depends(_get_admin_user)
 async def admin_clinic_settings(admin_user=Depends(_get_admin_user)):
     clinic = await _get_clinic_for_admin(admin_user)
     return await _proxy_to_clinic(clinic, "GET", "/admin/api/settings/clinic")
+
+
+# --- Confirmation schedule ---
+
+@app.get("/admin/api/confirmation-schedule")
+async def admin_get_confirmation_schedule(admin_user=Depends(_get_admin_user)):
+    """Get confirmation reminder schedule (hours only) for admin's clinic."""
+    clinic = await _get_clinic_for_admin(admin_user)
+    clinic_id = clinic["id"]
+
+    fresh_clinic = await get_clinic(clinic_id)
+    config = fresh_clinic.get("config") or {} if fresh_clinic else {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    confirmation = config.get("confirmation") or {}
+    schedule_hours = confirmation.get("schedule_hours") or []
+    return {"schedule_hours": schedule_hours}
+
+
+@app.put("/admin/api/confirmation-schedule")
+async def admin_update_confirmation_schedule(request: Request, admin_user=Depends(_get_admin_user)):
+    """Update confirmation reminder schedule (hours only) for admin's clinic."""
+    clinic = await _get_clinic_for_admin(admin_user)
+    body = await request.json()
+
+    schedule_hours = body.get("schedule_hours")
+    if not isinstance(schedule_hours, list) or not all(isinstance(h, int) for h in schedule_hours):
+        raise HTTPException(400, "schedule_hours must be a list of integers")
+    if len(schedule_hours) == 0:
+        raise HTTPException(400, "schedule_hours must have at least one hour")
+    if any(h < 0 or h > 23 for h in schedule_hours):
+        raise HTTPException(400, "All hours must be between 0 and 23")
+
+    sorted_hours = sorted(set(schedule_hours))
+
+    clinic_id = clinic["id"]
+    try:
+        from hub.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT config FROM hub.clinics WHERE id = $1", clinic_id)
+            current_config = {}
+            if row and row["config"]:
+                c = row["config"]
+                current_config = json.loads(c) if isinstance(c, str) else c
+            if "confirmation" not in current_config:
+                current_config["confirmation"] = {}
+            current_config["confirmation"]["schedule_hours"] = sorted_hours
+            # Drop legacy field if present
+            current_config["confirmation"].pop("schedule_times", None)
+            await conn.execute(
+                "UPDATE hub.clinics SET config = $1::jsonb, updated_at = NOW() WHERE id = $2",
+                json.dumps(current_config), clinic_id)
+
+        agent_synced = False
+        if _validate_server_host(clinic['server_host']):
+            url = f"http://{clinic['server_host']}:{clinic['server_port']}/admin/api/settings/confirmation-schedule"
+            try:
+                resp = await _http_client.put(
+                    url,
+                    json={"schedule_hours": sorted_hours},
+                    headers={"X-Hub-Secret": HUB_SERVICE_SECRET},
+                    timeout=5,
+                )
+            except Exception as e:
+                # httpx raises only on network/timeout — agent 4xx/5xx checked below.
+                logger.warning("Failed to reach agent %s for schedule update: %s", clinic_id, e)
+            else:
+                # Variant A: hub DB is source of truth, agent sync is best-effort.
+                # Only 409 (scheduler disabled in YAML) is surfaced to the operator;
+                # any other non-2xx leaves agent_synced=False and returns 200 — the
+                # schedule is saved and will apply on the next agent restart/tick.
+                if resp.status_code == 409:
+                    raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
+                agent_synced = resp.is_success
+                if not agent_synced:
+                    logger.warning(
+                        "Agent %s rejected schedule update: HTTP %s",
+                        clinic_id, resp.status_code,
+                    )
+        else:
+            logger.warning("Cannot notify agent %s: invalid server_host", clinic_id)
+
+        return {"ok": True, "schedule_hours": sorted_hours, "agent_synced": agent_synced}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to update confirmation schedule for %s: %s", clinic_id, e)
+        raise HTTPException(500, "Failed to update confirmation schedule")
 
 
 # --- Blocklist ---

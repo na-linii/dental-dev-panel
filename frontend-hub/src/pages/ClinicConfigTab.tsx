@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { clinicsApi } from '../api/client'
 import { ConfigSection, SECTION_COLORS } from '../components/ConfigSection'
 import { ConfigField } from '../components/ConfigField'
+import { ReminderScheduleEditor } from '../components/ReminderScheduleEditor'
 
 /* ── helper to safely dig into nested objects ── */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,6 +14,7 @@ function get(obj: any, path: string): any {
 
 export function ClinicConfigTab() {
   const { clinicId } = useParams<{ clinicId: string }>()
+  const queryClient = useQueryClient()
   const [botDisabled, setBotDisabled] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
@@ -232,11 +234,22 @@ export function ClinicConfigTab() {
       {/* ── Section 6: Confirmation ── */}
       <ConfigSection title="Confirmation" color={SECTION_COLORS.confirmation} defaultOpen={false}>
         <ConfigField label="Enabled" value={confirmation.enabled ?? cfg.confirmation_enabled} type="toggle" />
-        <ConfigField label="Schedule Hours" value={
-          Array.isArray(confirmation.schedule_hours)
-            ? confirmation.schedule_hours.join(', ')
-            : (cfg.confirmation_schedule_hours || get(confirmation, 'schedule_hours'))
-        } />
+
+        <div className="mt-4">
+          <ReminderScheduleEditor
+            hours={
+              Array.isArray(confirmation.schedule_hours)
+                ? confirmation.schedule_hours
+                : (cfg.confirmation_schedule_hours || [11, 17])
+            }
+            onSave={async (hours) => {
+              await clinicsApi.updateConfirmationSchedule(clinicId!, hours)
+              await queryClient.invalidateQueries({ queryKey: ['config', clinicId] })
+            }}
+            isLoading={isLoading}
+          />
+        </div>
+
         <ConfigField label="Advance Days" value={confirmation.advance_days ?? cfg.confirmation_advance_days} />
         {(confirmation.message_template || cfg.confirmation_message_template) && (
           <div className="mt-2">
