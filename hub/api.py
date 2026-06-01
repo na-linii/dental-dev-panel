@@ -357,22 +357,29 @@ async def update_confirmation_schedule_endpoint(clinic_id: str, body: dict, user
         # Also notify the running agent to update its runtime config.
         # Uses the new PD-468 admin endpoint that mutates app.state.confirmation_config
         # so the running scheduler sees the change on its next tick.
+        agent_synced = False
         if not _validate_server_host(clinic['server_host']):
-            logger.warning("Cannot notify agent: invalid server_host")
+            logger.warning("Cannot notify agent %s: invalid server_host", clinic_id)
         else:
             url = f"http://{clinic['server_host']}:{clinic['server_port']}/admin/api/settings/confirmation-schedule"
             try:
-                await _http_client.put(
+                resp = await _http_client.put(
                     url,
                     json={"schedule_hours": schedule_hours},
                     headers={"X-Hub-Secret": HUB_SERVICE_SECRET},
                     timeout=5,
                 )
-                logger.info("Notified agent %s of schedule update: %s", clinic_id, schedule_hours)
             except Exception as e:
-                logger.warning("Failed to notify agent %s of schedule update: %s", clinic_id, e)
+                # httpx raises only on network/timeout — agent 4xx/5xx checked below.
+                logger.warning("Failed to reach agent %s for schedule update: %s", clinic_id, e)
+            else:
+                if resp.status_code == 409:
+                    raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
+                agent_synced = resp.is_success
 
-        return {"ok": True}
+        return {"ok": True, "agent_synced": agent_synced}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Failed to update confirmation schedule for %s: %s", clinic_id, e)
         raise HTTPException(500, "Failed to update confirmation schedule")
@@ -1006,15 +1013,19 @@ async def admin_update_confirmation_schedule(request: Request, admin_user=Depend
         if _validate_server_host(clinic['server_host']):
             url = f"http://{clinic['server_host']}:{clinic['server_port']}/admin/api/settings/confirmation-schedule"
             try:
-                await _http_client.put(
+                resp = await _http_client.put(
                     url,
                     json={"schedule_hours": sorted_hours},
                     headers={"X-Hub-Secret": HUB_SERVICE_SECRET},
                     timeout=5,
                 )
-                agent_synced = True
             except Exception as e:
-                logger.warning("Failed to notify agent %s of schedule update: %s", clinic_id, e)
+                # httpx raises only on network/timeout — agent 4xx/5xx checked below.
+                logger.warning("Failed to reach agent %s for schedule update: %s", clinic_id, e)
+            else:
+                if resp.status_code == 409:
+                    raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
+                agent_synced = resp.is_success
         else:
             logger.warning("Cannot notify agent %s: invalid server_host", clinic_id)
 
