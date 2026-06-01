@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useAuth } from './hooks/useAuth'
+import { AuthProvider, useAuth } from './hooks/useAuth'
 import { Layout } from './components/Layout'
 import { Login } from './components/Login'
 import { ClinicsPage } from './pages/ClinicsPage'
@@ -33,22 +33,24 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthGate>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<ClinicsPage />} />
-              <Route path="/clinics/new" element={<ClinicCreatePage />} />
-              <Route path="/clinic/:clinicId" element={<ClinicLayout />}>
-                <Route index element={<ClinicVisualizerTab />} />
-                <Route path="config" element={<ClinicConfigTab />} />
-                <Route path="admins" element={<ClinicAdminsTab />} />
+        <AuthProvider>
+          <AuthGate>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<ClinicsPage />} />
+                <Route path="/clinics/new" element={<ClinicCreatePage />} />
+                <Route path="/clinic/:clinicId" element={<ClinicLayout />}>
+                  <Route index element={<ClinicVisualizerTab />} />
+                  <Route path="config" element={<ClinicConfigTab />} />
+                  <Route path="admins" element={<ClinicAdminsTab />} />
+                </Route>
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/visualizer" element={<Navigate to="/" replace />} />
               </Route>
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/visualizer" element={<Navigate to="/" replace />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </AuthGate>
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </AuthGate>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )
