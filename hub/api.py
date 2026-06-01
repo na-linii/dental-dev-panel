@@ -373,10 +373,18 @@ async def update_confirmation_schedule_endpoint(clinic_id: str, body: dict, user
                 # httpx raises only on network/timeout — agent 4xx/5xx checked below.
                 logger.warning("Failed to reach agent %s for schedule update: %s", clinic_id, e)
             else:
+                # Variant A: hub DB is source of truth, agent sync is best-effort.
+                # Only 409 (scheduler disabled in YAML) is surfaced to the operator;
+                # any other non-2xx leaves agent_synced=False and returns 200 — the
+                # schedule is saved and will apply on the next agent restart/tick.
                 if resp.status_code == 409:
                     raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
-                resp.raise_for_status()
-                agent_synced = True
+                agent_synced = resp.is_success
+                if not agent_synced:
+                    logger.warning(
+                        "Agent %s rejected schedule update: HTTP %s",
+                        clinic_id, resp.status_code,
+                    )
 
         return {"ok": True, "agent_synced": agent_synced}
     except HTTPException:
@@ -1024,10 +1032,18 @@ async def admin_update_confirmation_schedule(request: Request, admin_user=Depend
                 # httpx raises only on network/timeout — agent 4xx/5xx checked below.
                 logger.warning("Failed to reach agent %s for schedule update: %s", clinic_id, e)
             else:
+                # Variant A: hub DB is source of truth, agent sync is best-effort.
+                # Only 409 (scheduler disabled in YAML) is surfaced to the operator;
+                # any other non-2xx leaves agent_synced=False and returns 200 — the
+                # schedule is saved and will apply on the next agent restart/tick.
                 if resp.status_code == 409:
                     raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
-                resp.raise_for_status()
-                agent_synced = True
+                agent_synced = resp.is_success
+                if not agent_synced:
+                    logger.warning(
+                        "Agent %s rejected schedule update: HTTP %s",
+                        clinic_id, resp.status_code,
+                    )
         else:
             logger.warning("Cannot notify agent %s: invalid server_host", clinic_id)
 
