@@ -6,12 +6,6 @@ import { ConfigSection, SECTION_COLORS } from '../components/ConfigSection'
 import { ConfigField } from '../components/ConfigField'
 import { ReminderScheduleEditor } from '../components/ReminderScheduleEditor'
 
-/* ── helper to safely dig into nested objects ── */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function get(obj: any, path: string): any {
-  return path.split('.').reduce((o, k) => o?.[k], obj)
-}
-
 export function ClinicConfigTab() {
   const { clinicId } = useParams<{ clinicId: string }>()
   const queryClient = useQueryClient()
