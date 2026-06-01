@@ -10,7 +10,7 @@ export function ClinicLayout() {
 
   useEffect(() => {
     clinicsApi.list().then((clinics) => {
-      const c = clinics.find((x) => x.clinic_id === clinicId)
+      const c = clinics.find((x) => x.id === clinicId)
       if (c) setClinic(c)
     })
   }, [clinicId])
