@@ -375,7 +375,8 @@ async def update_confirmation_schedule_endpoint(clinic_id: str, body: dict, user
             else:
                 if resp.status_code == 409:
                     raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
-                agent_synced = resp.is_success
+                resp.raise_for_status()
+                agent_synced = True
 
         return {"ok": True, "agent_synced": agent_synced}
     except HTTPException:
@@ -1025,7 +1026,8 @@ async def admin_update_confirmation_schedule(request: Request, admin_user=Depend
             else:
                 if resp.status_code == 409:
                     raise HTTPException(409, "Confirmation scheduler disabled for this clinic")
-                agent_synced = resp.is_success
+                resp.raise_for_status()
+                agent_synced = True
         else:
             logger.warning("Cannot notify agent %s: invalid server_host", clinic_id)
 
