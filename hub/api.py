@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 
 from hub.auth import verify_github_token
 from hub.db import init_db, get_clinics, get_clinic, add_clinic, remove_clinic, update_clinic_deploy
+from hub.traces_query import build_traces_params
 
 logger = logging.getLogger(__name__)
 
@@ -340,6 +341,9 @@ async def proxy_chat(clinic_id: str, request: Request, user=Depends(verify_githu
 @app.get("/api/clinics/{clinic_id}/traces")
 async def get_clinic_traces(clinic_id: str, limit: int = 30, since: str = "", user=Depends(verify_github_token)):
     """Fetch recent traces for a clinic from Langfuse."""
+    clinic = await get_clinic(clinic_id)
+    if not clinic:
+        raise HTTPException(404)
     lf_pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
     lf_sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
     lf_host = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
@@ -347,9 +351,9 @@ async def get_clinic_traces(clinic_id: str, limit: int = 30, since: str = "", us
         return {"traces": [], "error": "Langfuse keys not configured"}
 
     try:
-        params = {"limit": min(limit, 100), "tags": clinic_id}
-        if since:
-            params["fromTimestamp"] = since
+        params = build_traces_params(
+            clinic["clinic_id"], since, limit, datetime.now(timezone.utc)
+        )
 
         r = await _http_client.get(
             f"{lf_host}/api/public/traces",
